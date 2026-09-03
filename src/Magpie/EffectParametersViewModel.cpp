@@ -13,6 +13,7 @@
 #include "EffectsService.h"
 #include "EffectDesc.h"
 #include "App.h"
+#include "CommonSharedConstants.h"
 
 using namespace Magpie;
 
@@ -53,6 +54,26 @@ static fire_and_forget LazySaveAppSettings() {
 	AppSettings::Get().SaveAsync();
 }
 
+// 效果参数标签支持本地化。资源键为 ScalingModes_EffectParam_<效果名>\<参数名>，其中 '\' 替换为 '_'
+// 当前语言未提供翻译（资源为空）时回落到效果文件中定义的标签
+static hstring GetEffectParamLabel(const std::wstring& effectName, const EffectParameterDesc& param) {
+	std::wstring key = L"ScalingModes_EffectParam_";
+	key.reserve(key.size() + effectName.size() + param.name.size() + 1);
+	for (wchar_t c : effectName) {
+		key += c == L'\\' ? L'_' : c;
+	}
+	key += L'_';
+	key += StrHelper::UTF8ToUTF16(param.name);
+
+	hstring localized = ResourceLoader::GetForCurrentView(
+		CommonSharedConstants::APP_RESOURCE_MAP_ID).GetString(key.c_str());
+	if (!localized.empty()) {
+		return localized;
+	}
+
+	return hstring(StrHelper::UTF8ToUTF16(param.label.empty() ? param.name : param.label));
+}
+
 EffectParametersViewModel::EffectParametersViewModel(uint32_t scalingModeIdx, uint32_t effectIdx)
 	: _scalingModeIdx(scalingModeIdx), _effectIdx(effectIdx)
 {
@@ -80,7 +101,7 @@ EffectParametersViewModel::EffectParametersViewModel(uint32_t scalingModeIdx, ui
 			const EffectConstant<float>& constant = std::get<0>(param.constant);
 			auto paramItem = make_self<ScalingModeParameter>(
 				i,
-				hstring(StrHelper::UTF8ToUTF16(param.label.empty() ? param.name : param.label)),
+				GetEffectParamLabel(scalingMode.effects[_effectIdx].name, param),
 				paramValue.has_value() ? *paramValue : constant.defaultValue,
 				constant.minValue,
 				constant.maxValue,
@@ -94,7 +115,7 @@ EffectParametersViewModel::EffectParametersViewModel(uint32_t scalingModeIdx, ui
 			if (constant.minValue == 0 && constant.maxValue == 1 && constant.step == 1) {
 				auto paramItem = make_self<ScalingModeParameter>(
 					i,
-					hstring(StrHelper::UTF8ToUTF16(param.label.empty() ? param.name : param.label)),
+					GetEffectParamLabel(scalingMode.effects[_effectIdx].name, param),
 					paramValue.has_value() ? std::abs(*paramValue) > FLOAT_EPSILON<float> : (bool)constant.defaultValue
 				);
 				paramItem->PropertyChanged({
@@ -106,7 +127,7 @@ EffectParametersViewModel::EffectParametersViewModel(uint32_t scalingModeIdx, ui
 			} else {
 				auto paramItem = make_self<ScalingModeParameter>(
 					i,
-					hstring(StrHelper::UTF8ToUTF16(param.label.empty() ? param.name : param.label)),
+					GetEffectParamLabel(scalingMode.effects[_effectIdx].name, param),
 					paramValue.has_value() ? *paramValue : (float)constant.defaultValue,
 					(float)constant.minValue,
 					(float)constant.maxValue,

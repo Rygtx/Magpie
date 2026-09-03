@@ -1063,4 +1063,40 @@
   <data name="Settings_General_SmoothMotionCompatibilityMode.Description" xml:space="preserve">
     <value>每次缩放结束后重启 Magpie，释放 NVIDIA Smooth Motion 驱动驻留的显存。仅在已为 Magpie 启用 Smooth Motion 时开启。</value>
   </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling" xml:space="preserve">
+    <value>调整输入分辨率（会降低 DLSSNR 质量）</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent" xml:space="preserve">
+    <value>输入分辨率（%）</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_nrPreset" xml:space="preserve">
+    <value>NR 预设（0 默认，1 预设 #1，2 预设 #2，3 预设 #3）</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_style" xml:space="preserve">
+    <value>NR 风格（0 默认，1 自然，2 电影感）</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity" xml:space="preserve">
+    <value>NR 强度</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength" xml:space="preserve">
+    <value>局部色调强度</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength" xml:space="preserve">
+    <value>局部结构强度</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength" xml:space="preserve">
+    <value>皮肤结构强度</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_useAutoMask" xml:space="preserve">
+    <value>自动遮罩</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_uiCorrection" xml:space="preserve">
+    <value>NR UI 修正</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_guidanceMode" xml:space="preserve">
+    <value>帧引导（0 可用，1 强制置零，2 仅运动，3 仅深度）</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_depthInferenceInterval" xml:space="preserve">
+    <value>深度推理间隔</value>
+  </data>
 </root>

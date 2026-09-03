@@ -1057,4 +1057,40 @@
   <data name="Home_Advanced_DeveloperOptions_DisableTopmost.Content" xml:space="preserve">
     <value>停用縮放視窗置頂</value>
   </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling" xml:space="preserve">
+    <value>調整輸入解析度（會降低 DLSSNR 品質）</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent" xml:space="preserve">
+    <value>輸入解析度（%）</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_nrPreset" xml:space="preserve">
+    <value>NR 預設（0 預設，1 預設 #1，2 預設 #2，3 預設 #3）</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_style" xml:space="preserve">
+    <value>NR 風格（0 預設，1 自然，2 電影感）</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity" xml:space="preserve">
+    <value>NR 強度</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength" xml:space="preserve">
+    <value>局部色調強度</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength" xml:space="preserve">
+    <value>局部結構強度</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength" xml:space="preserve">
+    <value>皮膚結構強度</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_useAutoMask" xml:space="preserve">
+    <value>自動遮罩</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_uiCorrection" xml:space="preserve">
+    <value>NR UI 修正</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_guidanceMode" xml:space="preserve">
+    <value>幀引導（0 可用，1 強制置零，2 僅運動，3 僅深度）</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_depthInferenceInterval" xml:space="preserve">
+    <value>深度推論間隔</value>
+  </data>
 </root>
