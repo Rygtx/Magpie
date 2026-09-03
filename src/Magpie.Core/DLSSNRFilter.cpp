@@ -104,9 +104,9 @@ RWTexture2D<float4> OutputColor : register(u0);
 cbuffer ResampleParams : register(b0) {
     uint2 SourceExtent;
     uint2 TargetExtent;
-    uint SourceIsBgra;
+    uint Padding0;
     float2 MotionScale;
-    uint Padding;
+    float ResidualMultiplier;
 };
 
 [numthreads(8, 8, 1)]
@@ -131,7 +131,7 @@ void DownsampleColor(uint3 tid : SV_DispatchThreadID) {
             float weight = weightX * weightY;
             float4 stored = InputColor.Load(int3(
                 clamp(int2(x, y), int2(0, 0), int2(SourceExtent) - 1), 0));
-            if (SourceIsBgra != 0) stored.rgb = stored.bgr;
+            // A typed BGRA SRV already returns logical RGBA components.
             total += stored * weight;
             totalWeight += weight;
         }
@@ -151,9 +151,9 @@ RWTexture2D<float> OutputConfidence : register(u2);
 cbuffer ResampleParams : register(b0) {
     uint2 SourceExtent;
     uint2 TargetExtent;
-    uint SourceIsBgra;
+    uint Padding0;
     float2 MotionScale;
-    uint Padding;
+    float ResidualMultiplier;
 };
 
 [numthreads(8, 8, 1)]
@@ -210,9 +210,9 @@ RWTexture2D<float4> HorizontalResidual : register(u0);
 cbuffer ResampleParams : register(b0) {
     uint2 SourceExtent;
     uint2 TargetExtent;
-    uint SourceIsBgra;
+    uint Padding0;
     float2 MotionScale;
-    uint Padding;
+    float ResidualMultiplier;
 };
 
 static const float PI = 3.14159265358979323846;
@@ -261,9 +261,9 @@ RWTexture2D<float4> OutputColor : register(u0);
 cbuffer ResampleParams : register(b0) {
     uint2 SourceExtent;
     uint2 TargetExtent;
-    uint SourceIsBgra;
+    uint Padding0;
     float2 MotionScale;
-    uint Padding;
+    float ResidualMultiplier;
 };
 
 static const float PI = 3.14159265358979323846;
@@ -280,12 +280,12 @@ float Lanczos3(float value) {
 void CompositeResidualVertical(uint3 tid : SV_DispatchThreadID) {
     if (any(tid.xy >= SourceExtent)) return;
     float4 storedOriginal = OriginalColor.Load(int3(tid.xy, 0));
-    float3 original = SourceIsBgra != 0 ?
-        storedOriginal.bgr : storedOriginal.rgb;
+    // A typed BGRA SRV already returns logical RGBA components.
+    float3 original = storedOriginal.rgb;
     if (SourceExtent.y == TargetExtent.y) {
         float3 residual = HorizontalResidual.Load(int3(tid.xy, 0)).rgb;
         OutputColor[tid.xy] = float4(
-            saturate(original + residual), storedOriginal.a);
+            saturate(original + residual * ResidualMultiplier), storedOriginal.a);
         return;
     }
     float reducedPosition = (float(tid.y) + 0.5) *
@@ -303,7 +303,7 @@ void CompositeResidualVertical(uint3 tid : SV_DispatchThreadID) {
     }
     residual /= abs(totalWeight) > 1e-6 ? totalWeight : 1.0;
     OutputColor[tid.xy] = float4(
-        saturate(original + residual), storedOriginal.a);
+        saturate(original + residual * ResidualMultiplier), storedOriginal.a);
 }
 )";
 
@@ -312,10 +312,10 @@ struct ResampleConstants {
 	uint32_t sourceHeight = 0;
 	uint32_t targetWidth = 0;
 	uint32_t targetHeight = 0;
-	uint32_t sourceIsBgra = 0;
+	uint32_t padding0 = 0;
 	float motionScaleX = 1.0f;
 	float motionScaleY = 1.0f;
-	uint32_t padding = 0;
+	float residualMultiplier = 1.0f;
 };
 static_assert(sizeof(ResampleConstants) == 32);
 
@@ -460,6 +460,9 @@ struct DLSSNRFilter::Impl {
 	TimingWindow evaluateGpuTimings;
 	FrameGuidanceFrameId lastGuidanceResetFrameId =
 		std::numeric_limits<FrameGuidanceFrameId>::max();
+	FrameGuidanceFrameId lastEvaluatedFrameId =
+		std::numeric_limits<FrameGuidanceFrameId>::max();
+	uint64_t duplicateFrameReuseCount = 0;
 	uint32_t sourceWidth = 0;
 	uint32_t sourceHeight = 0;
 	uint32_t width = 0;
@@ -962,7 +965,6 @@ static bool CreateResolutionScalingResources(
 			"Create DLSSNR resolution scaling color views failed", hr);
 		return false;
 	}
-
 	D3D11_TEXTURE2D_DESC compositeDesc = outputDesc;
 	compositeDesc.Usage = D3D11_USAGE_DEFAULT;
 	compositeDesc.CPUAccessFlags = 0;
@@ -1253,7 +1255,6 @@ static bool PrepareInput(
 			.sourceHeight = impl.sourceHeight,
 			.targetWidth = impl.width,
 			.targetHeight = impl.height,
-			.sourceIsBgra = impl.convertInputToRgba ? 1u : 0u,
 			.motionScaleX = float(impl.width) / float(impl.sourceWidth),
 			.motionScaleY = float(impl.height) / float(impl.sourceHeight)
 		};
@@ -1345,7 +1346,6 @@ static bool PrepareReducedGuidance(
 		.sourceHeight = impl.sourceHeight,
 		.targetWidth = impl.width,
 		.targetHeight = impl.height,
-		.sourceIsBgra = impl.convertInputToRgba ? 1u : 0u,
 		.motionScaleX = float(impl.width) / float(impl.sourceWidth),
 		.motionScaleY = float(impl.height) / float(impl.sourceHeight)
 	};
@@ -1441,24 +1441,21 @@ static FrameGuidanceView MakeReducedGuidance(
 static bool CompositeResidual(
 	DLSSNRFilter::Impl& impl,
 	ID3D11Texture2D* output,
-	ID3D11ShaderResourceView* reducedDenoised
+	ID3D11ShaderResourceView* reducedDenoised,
+	float residualMultiplier
 ) noexcept {
-	if (impl.sourceWidth == impl.width &&
-		impl.sourceHeight == impl.height) {
-		impl.context11->CopyResource(
-			output,
-			reducedDenoised == impl.sharedInputSrv11.get() ?
-				impl.sharedInput11.get() : impl.sharedOutput11.get());
-		return true;
-	}
+	// Even at 100%, input-resolution adjustment is an explicit request to use
+	// residual reconstruction.  Bypassing the compute passes at equal extents
+	// would silently ignore Residual Multiplier.  Both residual shaders have
+	// equal-extent paths, so keep one consistent composition contract here.
 	const ResampleConstants constants{
 		.sourceWidth = impl.sourceWidth,
 		.sourceHeight = impl.sourceHeight,
 		.targetWidth = impl.width,
 		.targetHeight = impl.height,
-		.sourceIsBgra = impl.convertInputToRgba ? 1u : 0u,
 		.motionScaleX = float(impl.width) / float(impl.sourceWidth),
-		.motionScaleY = float(impl.height) / float(impl.sourceHeight)
+		.motionScaleY = float(impl.height) / float(impl.sourceHeight),
+		.residualMultiplier = std::clamp(residualMultiplier, 0.0f, 4.0f)
 	};
 	impl.context11->UpdateSubresource(
 		impl.resampleConstants11.get(), 0, nullptr, &constants, 0, 0);
@@ -1543,6 +1540,8 @@ bool DLSSNRFilter::Initialize(
 	const DLSSNRSettings& settings
 ) noexcept {
 	_settings = settings;
+	_settings.residualMultiplier = std::clamp(
+		_settings.residualMultiplier, 1.0f, 2.0f);
 	_ngxCore = &ngxCore;
 	_impl.reset();
 	FrameGuidancePerformance::ResetDlssnrGpuTiming();
@@ -1781,13 +1780,15 @@ bool DLSSNRFilter::Initialize(
 	}
 
 	LogDlssnrStatus(fmt::format(
-		"DLSSNR STATUS: Feature=18 created=true path={} sourceSize={}x{} "
-		"inputSize={}x{} inputResolutionScaling={} inputResolutionPercent={} preset={} "
+		"DLSSNR STATUS: Feature=18 created=true path={} sourceSize={}x{} sourceFormat={} "
+		"inputSize={}x{} inputResolutionScaling={} inputResolutionPercent={} residualMultiplier={} preset={} "
 		"style={} intensity={} localTone={} localStructure={} skinStructure={} "
 		"guidanceMode={} autoMask={} uiCorrection={} depthInterval={} disabled=false",
 		ENABLE_CORE_FEATURE18_DIAGNOSTIC ? "core-diagnostic" : "signed-snippet",
-		impl->sourceWidth, impl->sourceHeight, impl->width, impl->height,
+		impl->sourceWidth, impl->sourceHeight, static_cast<uint32_t>(inputDesc.Format),
+		impl->width, impl->height,
 		impl->useResolutionScaling, _settings.inputResolutionPercent,
+		_settings.residualMultiplier,
 		_settings.preset, _settings.style,
 		_settings.intensity, _settings.localToneStrength,
 		_settings.localStructureStrength, _settings.skinStructureStrength,
@@ -1847,6 +1848,16 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 	Impl& impl = *_impl;
 	ID3D11Texture2D* input = context.input;
 	ID3D11Texture2D* output = context.output;
+	if (impl.lastEvaluatedFrameId == context.frameId) {
+		++impl.duplicateFrameReuseCount;
+		if (impl.duplicateFrameReuseCount <= 3 ||
+			impl.duplicateFrameReuseCount % 120 == 0) {
+			Logger::Get().Info(fmt::format(
+				"DLSSNR duplicate capture reused: frameId={} reuseCount={}",
+				context.frameId, impl.duplicateFrameReuseCount));
+		}
+		return true;
+	}
 	auto fail = [&](std::string_view stage) noexcept {
 		impl.disabled = true;
 		LogDlssnrStatus(fmt::format(
@@ -1872,7 +1883,8 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 	if (impl.disabled) {
 		if (impl.useResolutionScaling) {
 			return CompositeResidual(
-				impl, output, impl.sharedInputSrv11.get());
+				impl, output, impl.sharedInputSrv11.get(),
+				_settings.residualMultiplier);
 		}
 		impl.context11->CopyResource(output, impl.sharedInput11.get());
 		return true;
@@ -2020,7 +2032,8 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 		if (!CompositeResidual(
 			impl, output,
 			impl.disabled ? impl.sharedInputSrv11.get() :
-				impl.sharedOutputSrv11.get())) {
+				impl.sharedOutputSrv11.get(),
+			_settings.residualMultiplier)) {
 			return fail("residual-composite");
 		}
 	} else {
@@ -2059,6 +2072,7 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 				FormatTimingSummary("evaluateGPU", impl.evaluateGpuTimings.Summarize())));
 		}
 	}
+	impl.lastEvaluatedFrameId = context.frameId;
 	return true;
 }
 
