@@ -1063,4 +1063,40 @@
   <data name="Settings_General_SmoothMotionCompatibilityMode.Description" xml:space="preserve">
     <value>Restart Magpie after each scaling session to release GPU memory retained by NVIDIA Smooth Motion. Enable only when Smooth Motion is configured for Magpie.</value>
   </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling" xml:space="preserve">
+    <value>Adjust Input Resolution (Reduces DLSSNR Quality)</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent" xml:space="preserve">
+    <value>Input Resolution (%)</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_nrPreset" xml:space="preserve">
+    <value>NR Preset (0 Default, 1 Preset #1, 2 Preset #2, 3 Preset #3)</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_style" xml:space="preserve">
+    <value>NR Style (0 Default, 1 Natural, 2 Cinematic)</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity" xml:space="preserve">
+    <value>NR Intensity</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength" xml:space="preserve">
+    <value>Local Tone Strength</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength" xml:space="preserve">
+    <value>Local Structure Strength</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength" xml:space="preserve">
+    <value>Skin Structure Strength</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_useAutoMask" xml:space="preserve">
+    <value>Automatic Mask</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_uiCorrection" xml:space="preserve">
+    <value>NR UI Correction</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_guidanceMode" xml:space="preserve">
+    <value>Frame Guidance (0 Available, 1 Force Zero, 2 Motion Only, 3 Depth Only)</value>
+  </data>
+  <data name="ScalingModes_EffectParam_DLSSNR_DLSSNR_AI_Filter_depthInferenceInterval" xml:space="preserve">
+    <value>Depth Inference Interval</value>
+  </data>
 </root>
