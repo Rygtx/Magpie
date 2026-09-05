@@ -154,6 +154,19 @@ uint32_t ScalingRuntime::RunId() const noexcept {
 	return ScalingWindow::RunId();
 }
 
+void ScalingRuntime::UpdateFrameSyncSettings(FrameSyncSettings settings) {
+	if (State() == ScalingState::Idle || State() == ScalingState::Stopping) return;
+	const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);
+	_Dispatcher().TryEnqueue([this, generation, settings]() {
+		if (_commandGeneration.load(std::memory_order_acquire) != generation) return;
+		auto& window = ScalingWindow::Get();
+		if (auto session = window.Options().parameterSession) {
+			session->DesiredFrameSync(settings);
+			if (window) window.RenderOverlay();
+		}
+	});
+}
+
 void ScalingRuntime::UpdateEffectParameterFromSettings(uint32_t modeIdx, std::wstring modeName,
 	uint32_t effectIdx, EffectOption effect, std::string parameter, float value) {
 	const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);
@@ -198,12 +211,13 @@ bool ScalingRuntime::RestartWithEffectParameters(
 	HWND hwndSource,
 	HWND hwndScaling,
 	uint32_t scalingRunId,
-	std::vector<EffectOption>&& effects
+	std::vector<EffectOption>&& effects,
+	FrameSyncSettings frameSync
 ) {
 	const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);
 	return _Dispatcher().TryEnqueue([
 		this, hwndSource, hwndScaling, scalingRunId, generation,
-		effects = std::move(effects)
+		effects = std::move(effects), frameSync
 	]() mutable {
 		if (_commandGeneration.load(std::memory_order_acquire) != generation ||
 			State() != ScalingState::Scaling) return;
@@ -213,7 +227,7 @@ bool ScalingRuntime::RestartWithEffectParameters(
 			window.SrcTracker().Handle() != hwndSource) {
 			return;
 		}
-		window.RestartWithEffectParameters(std::move(effects));
+		window.RestartWithEffectParameters(std::move(effects), frameSync);
 	});
 }
 

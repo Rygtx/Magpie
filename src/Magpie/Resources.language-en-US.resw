@@ -1463,4 +1463,13 @@
   <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_1" xml:space="preserve"><value>Custom</value></data>
   <data name="Overlay_EffectParameters_AutoRestart" xml:space="preserve"><value>Auto restart</value></data>
   <data name="Overlay_EffectParameters_Reason_AutoRestart" xml:space="preserve"><value>After editing, the effect group stops and restarts after 500 ms to rebuild DLSSNR history.</value></data>
+  <data name="Overlay_FrameSync_Title" xml:space="preserve">
+    <value>Frame sync</value>
+  </data>
+  <data name="Overlay_FrameSync_Target" xml:space="preserve">
+    <value>Target frame rate (FPS)</value>
+  </data>
+  <data name="Overlay_FrameSync_Help" xml:space="preserve">
+    <value>Saved automatically; use Apply and restart to apply both settings. 0 is automatic. Apply a matching frame-rate cap to the source application.</value>
+  </data>
 </root>

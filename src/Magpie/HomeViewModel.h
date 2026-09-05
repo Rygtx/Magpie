@@ -141,6 +141,7 @@ private:
 
 	::Magpie::Event<bool, bool>::EventRevoker _isTimerOnRevoker;
 	::Magpie::Event<>::EventRevoker _issueChangedRevoker;
+	::Magpie::Event<>::EventRevoker _frameSyncChangedRevoker;
 	::Magpie::Event<double>::EventRevoker _timerTickRevoker;
 	::Magpie::Event<bool>::EventRevoker _isScalingChangedRevoker;
 	::Magpie::Event<bool>::EventRevoker _isShowOnHomePageChangedRevoker;

@@ -15,7 +15,7 @@
 
 “缩放模式”现称为“效果组”，一个组可以组合多个效果器。新配置默认包含 Lanczos、FSR、RTX Video VSR Ultra、DLSSFG、XeSSFG、DLSSNR，默认选择 Lanczos。原有自定义组保持保留。
 
-可从效果组页面导入 [可选预设](presets/ScalingModes-v0.6.5-experimental.json)，追加 DLSSFG、XeSSFG、DLSSNR。重置功能会恢复程序默认组；导入只追加。
+程序内置效果组包含 DLSSFG、XeSSFG 和 DLSSNR；可在效果组页面通过重置恢复默认组。
 
 参数修改自动保存。工具栏参数页按当前会话标记“实时”“重启”“自动重启”；后两者的区别是手动应用与编辑结束后自动重建。DLSSNR 核心和上游图像的原实时参数会触发完整停用，等待 500 毫秒再重新启用；残差合成参数保留原有实时行为。连续编辑合并处理，手动停用会取消等待中的重启。
 

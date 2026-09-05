@@ -350,7 +350,10 @@ public:
 	}
 	float FrontEdgeSyncFrameRate() const noexcept { return _frontEdgeSyncFrameRate; }
 	void FrontEdgeSyncFrameRate(float value) noexcept {
-		_frontEdgeSyncFrameRate = SanitizePresentationFrameRate(value);
+		value = SanitizePresentationFrameRate(value);
+		if (_frontEdgeSyncFrameRate == value) return;
+		_frontEdgeSyncFrameRate = value;
+		FrontEdgeSyncChanged.Invoke();
 		SaveAsync();
 	}
 

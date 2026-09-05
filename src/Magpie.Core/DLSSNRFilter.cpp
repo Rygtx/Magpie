@@ -289,10 +289,10 @@ void DownsampleGuidance(uint3 tid : SV_DispatchThreadID) {
 }
 )";
 
-constexpr char RESIDUAL_HORIZONTAL_HLSL[] = R"(
+constexpr char RESIDUAL_PREPARE_HLSL[] = R"(
 Texture2D<float4> ReducedColor : register(t0);
 Texture2D<float4> ReducedDenoised : register(t1);
-RWTexture2D<float4> HorizontalResidual : register(u0);
+RWTexture2D<float4> ControlledResidual : register(u0);
 
 cbuffer ResampleParams : register(b0) {
     uint2 SourceExtent;
@@ -305,65 +305,6 @@ cbuffer ResampleParams : register(b0) {
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
 };
-
-float CatmullRom(float x) {
-    x = abs(x);
-    if (x < 1.0) return ((1.5 * x - 2.5) * x) * x + 1.0;
-    if (x < 2.0) return ((-0.5 * x + 2.5) * x - 4.0) * x + 2.0;
-    return 0.0;
-}
-
-[numthreads(8, 8, 1)]
-void UpsampleResidualHorizontal(uint3 tid : SV_DispatchThreadID) {
-    if (tid.x >= SourceExtent.x || tid.y >= TargetExtent.y) return;
-    if (SourceExtent.x == TargetExtent.x) {
-        HorizontalResidual[tid.xy] =
-            ReducedDenoised.Load(int3(tid.xy, 0)) -
-            ReducedColor.Load(int3(tid.xy, 0));
-        return;
-    }
-    float reducedPosition = (float(tid.x) + 0.5) *
-        float(TargetExtent.x) / float(SourceExtent.x) - 0.5;
-    int center = int(floor(reducedPosition));
-    float3 residual = 0.0;
-    float totalWeight = 0.0;
-    [unroll]
-    for (int x = -1; x <= 2; ++x) {
-        float weight = CatmullRom(reducedPosition - float(center + x));
-        int sampleX = clamp(center + x, 0, int(TargetExtent.x) - 1);
-        int3 samplePixel = int3(sampleX, tid.y, 0);
-        residual += (ReducedDenoised.Load(samplePixel).rgb -
-            ReducedColor.Load(samplePixel).rgb) * weight;
-        totalWeight += weight;
-    }
-    residual /= abs(totalWeight) > 1e-6 ? totalWeight : 1.0;
-    HorizontalResidual[tid.xy] = float4(residual, 0.0);
-}
-)";
-
-constexpr char RESIDUAL_VERTICAL_COMPOSITE_HLSL[] = R"(
-Texture2D<float4> OriginalColor : register(t0);
-Texture2D<float4> HorizontalResidual : register(t1);
-RWTexture2D<float4> OutputColor : register(u0);
-
-cbuffer ResampleParams : register(b0) {
-    uint2 SourceExtent;
-    uint2 TargetExtent;
-    uint Padding0;
-    float2 MotionScale;
-    float ResidualMultiplier;
-    float ResidualSaturation;
-    float ResidualLightness;
-    float ShadowStructureMultiplier;
-    float ReflectionGlowMultiplier;
-};
-
-float CatmullRom(float x) {
-    x = abs(x);
-    if (x < 1.0) return ((1.5 * x - 2.5) * x) * x + 1.0;
-    if (x < 2.0) return ((-0.5 * x + 2.5) * x - 4.0) * x + 2.0;
-    return 0.0;
-}
 
 float3 RGBToHSL(float3 color) {
     float maximum = max(color.r, max(color.g, color.b));
@@ -421,7 +362,7 @@ float3 ApplyResidualControls(float3 original, float3 residual) {
     float4 fineControls = float4(
         ResidualSaturation, ResidualLightness,
         ShadowStructureMultiplier, ReflectionGlowMultiplier);
-    // Preserve the previous path exactly at the four new default values.
+    // Neutral fine controls preserve the multiplied residual in this low-resolution domain.
     float3 output = saturate(original + residual);
     [branch]
     if (any(abs(fineControls - 1.0) >= 1e-6)) {
@@ -452,6 +393,91 @@ float3 ApplyResidualControls(float3 original, float3 residual) {
 }
 
 [numthreads(8, 8, 1)]
+void PrepareResidual(uint3 tid : SV_DispatchThreadID) {
+    if (any(tid.xy >= TargetExtent)) return;
+    float3 original = ReducedColor.Load(int3(tid.xy, 0)).rgb;
+    float3 denoised = ReducedDenoised.Load(int3(tid.xy, 0)).rgb;
+    // Apply every residual control once per low-resolution pixel, before
+    // either Catmull-Rom pass. Keep signed differences in an FP16 texture.
+    ControlledResidual[tid.xy] = float4(
+        ApplyResidualControls(original, denoised - original) - original, 0.0);
+}
+)";
+
+constexpr char RESIDUAL_HORIZONTAL_HLSL[] = R"(
+Texture2D<float4> ControlledResidual : register(t0);
+RWTexture2D<float4> HorizontalResidual : register(u0);
+
+cbuffer ResampleParams : register(b0) {
+    uint2 SourceExtent;
+    uint2 TargetExtent;
+    uint Padding0;
+    float2 MotionScale;
+    float ResidualMultiplier;
+    float ResidualSaturation;
+    float ResidualLightness;
+    float ShadowStructureMultiplier;
+    float ReflectionGlowMultiplier;
+};
+
+float CatmullRom(float x) {
+    x = abs(x);
+    if (x < 1.0) return ((1.5 * x - 2.5) * x) * x + 1.0;
+    if (x < 2.0) return ((-0.5 * x + 2.5) * x - 4.0) * x + 2.0;
+    return 0.0;
+}
+
+[numthreads(8, 8, 1)]
+void UpsampleResidualHorizontal(uint3 tid : SV_DispatchThreadID) {
+    if (tid.x >= SourceExtent.x || tid.y >= TargetExtent.y) return;
+    if (SourceExtent.x == TargetExtent.x) {
+        HorizontalResidual[tid.xy] =
+            ControlledResidual.Load(int3(tid.xy, 0));
+        return;
+    }
+    float reducedPosition = (float(tid.x) + 0.5) *
+        float(TargetExtent.x) / float(SourceExtent.x) - 0.5;
+    int center = int(floor(reducedPosition));
+    float3 residual = 0.0;
+    float totalWeight = 0.0;
+    [unroll]
+    for (int x = -1; x <= 2; ++x) {
+        float weight = CatmullRom(reducedPosition - float(center + x));
+        int sampleX = clamp(center + x, 0, int(TargetExtent.x) - 1);
+        int3 samplePixel = int3(sampleX, tid.y, 0);
+        residual += ControlledResidual.Load(samplePixel).rgb * weight;
+        totalWeight += weight;
+    }
+    residual /= abs(totalWeight) > 1e-6 ? totalWeight : 1.0;
+    HorizontalResidual[tid.xy] = float4(residual, 0.0);
+}
+)";
+
+constexpr char RESIDUAL_VERTICAL_COMPOSITE_HLSL[] = R"(
+Texture2D<float4> OriginalColor : register(t0);
+Texture2D<float4> HorizontalResidual : register(t1);
+RWTexture2D<float4> OutputColor : register(u0);
+
+cbuffer ResampleParams : register(b0) {
+    uint2 SourceExtent;
+    uint2 TargetExtent;
+    uint Padding0;
+    float2 MotionScale;
+    float ResidualMultiplier;
+    float ResidualSaturation;
+    float ResidualLightness;
+    float ShadowStructureMultiplier;
+    float ReflectionGlowMultiplier;
+};
+
+float CatmullRom(float x) {
+    x = abs(x);
+    if (x < 1.0) return ((1.5 * x - 2.5) * x) * x + 1.0;
+    if (x < 2.0) return ((-0.5 * x + 2.5) * x - 4.0) * x + 2.0;
+    return 0.0;
+}
+
+[numthreads(8, 8, 1)]
 void CompositeResidualVertical(uint3 tid : SV_DispatchThreadID) {
     if (any(tid.xy >= SourceExtent)) return;
     float4 storedOriginal = OriginalColor.Load(int3(tid.xy, 0));
@@ -477,7 +503,7 @@ void CompositeResidualVertical(uint3 tid : SV_DispatchThreadID) {
         residual /= abs(totalWeight) > 1e-6 ? totalWeight : 1.0;
     }
     OutputColor[tid.xy] = float4(
-        ApplyResidualControls(original, residual), storedOriginal.a);
+        saturate(original + residual), storedOriginal.a);
 }
 )";
 
@@ -589,6 +615,7 @@ struct DLSSNRFilter::Impl {
 	winrt::com_ptr<ID3D11ComputeShader> colorDownsampleVerticalShader11;
 	winrt::com_ptr<ID3D11ComputeShader> colorDownsampleHorizontalShader11;
 	winrt::com_ptr<ID3D11ComputeShader> guidanceDownsampleShader11;
+	winrt::com_ptr<ID3D11ComputeShader> residualPrepareShader11;
 	winrt::com_ptr<ID3D11ComputeShader> residualHorizontalShader11;
 	winrt::com_ptr<ID3D11ComputeShader> residualVerticalCompositeShader11;
 	winrt::com_ptr<ID3D11Buffer> resampleConstants11;
@@ -605,6 +632,9 @@ struct DLSSNRFilter::Impl {
 	ID3D11Texture2D* guidanceDepth11 = nullptr;
 	ID3D11Texture2D* guidanceConfidence11 = nullptr;
 	winrt::com_ptr<ID3D11Texture2D> resampleIntermediate11;
+	winrt::com_ptr<ID3D11Texture2D> controlledResidual11;
+	winrt::com_ptr<ID3D11ShaderResourceView> controlledResidualSrv11;
+	winrt::com_ptr<ID3D11UnorderedAccessView> controlledResidualUav11;
 	winrt::com_ptr<ID3D11ShaderResourceView> resampleIntermediateSrv11;
 	winrt::com_ptr<ID3D11UnorderedAccessView> resampleIntermediateUav11;
 	winrt::com_ptr<ID3D11Texture2D> compositeOutput11;
@@ -1191,6 +1221,23 @@ static bool CreateResolutionScalingResources(
 
 	constexpr UINT GUIDANCE_BIND_FLAGS =
 		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+	impl.controlledResidual11 = DirectXHelper::CreateTexture2D(
+		impl.device11, DXGI_FORMAT_R16G16B16A16_FLOAT, impl.width, impl.height,
+		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS);
+	if (!impl.controlledResidual11) {
+		Logger::Get().Error("Create DLSSNR controlled residual texture failed");
+		return false;
+	}
+	hr = impl.device11->CreateShaderResourceView(
+		impl.controlledResidual11.get(), nullptr, impl.controlledResidualSrv11.put());
+	if (SUCCEEDED(hr)) {
+		hr = impl.device11->CreateUnorderedAccessView(
+			impl.controlledResidual11.get(), nullptr, impl.controlledResidualUav11.put());
+	}
+	if (FAILED(hr)) {
+		Logger::Get().ComError("Create DLSSNR controlled residual views failed", hr);
+		return false;
+	}
 	constexpr UINT GUIDANCE_MISC_FLAGS =
 		D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
 	impl.reducedMotion11 = DirectXHelper::CreateTexture2D(
@@ -1249,6 +1296,9 @@ static bool CreateResolutionScalingResources(
 		CreateComputeShader(
 			impl, GUIDANCE_DOWNSAMPLE_HLSL, "DownsampleGuidance",
 			"DLSSNRGuidanceDownsample", impl.guidanceDownsampleShader11) &&
+		CreateComputeShader(
+			impl, RESIDUAL_PREPARE_HLSL, "PrepareResidual",
+			"DLSSNRResidualPrepare", impl.residualPrepareShader11) &&
 		CreateComputeShader(
 			impl, RESIDUAL_HORIZONTAL_HLSL, "UpsampleResidualHorizontal",
 			"DLSSNRResidualHorizontal", impl.residualHorizontalShader11) &&
@@ -1639,8 +1689,8 @@ static bool CompositeResidual(
 ) noexcept {
 	// Even at 100%, input-resolution adjustment is an explicit request to use
 	// residual reconstruction.  Bypassing the compute passes at equal extents
-	// would silently ignore Residual Multiplier.  Both residual shaders have
-	// equal-extent paths, so keep one consistent composition contract here.
+	// would silently ignore the residual controls. Prepare them at the native
+	// NR extent before interpolation; equal-width input skips the horizontal pass.
 	const ResampleConstants constants{
 		.sourceWidth = impl.sourceWidth,
 		.sourceHeight = impl.sourceHeight,
@@ -1656,30 +1706,41 @@ static bool CompositeResidual(
 	};
 	impl.context11->UpdateSubresource(
 		impl.resampleConstants11.get(), 0, nullptr, &constants, 0, 0);
-	ID3D11ShaderResourceView* horizontalSrvs[]{
+	ID3D11ShaderResourceView* prepareSrvs[]{
 		impl.sharedInputSrv11.get(), reducedDenoised
 	};
-	ID3D11UnorderedAccessView* horizontalUav =
-		impl.resampleIntermediateUav11.get();
+	ID3D11UnorderedAccessView* prepareUav = impl.controlledResidualUav11.get();
 	ID3D11Buffer* constantBuffer = impl.resampleConstants11.get();
 	impl.context11->CSSetShader(
-		impl.residualHorizontalShader11.get(), nullptr, 0);
+		impl.residualPrepareShader11.get(), nullptr, 0);
 	impl.context11->CSSetShaderResources(
-		0, ARRAYSIZE(horizontalSrvs), horizontalSrvs);
+		0, ARRAYSIZE(prepareSrvs), prepareSrvs);
 	impl.context11->CSSetUnorderedAccessViews(
-		0, 1, &horizontalUav, nullptr);
+		0, 1, &prepareUav, nullptr);
 	impl.context11->CSSetConstantBuffers(0, 1, &constantBuffer);
 	impl.context11->Dispatch(
-		(impl.sourceWidth + 7) / 8, (impl.height + 7) / 8, 1);
-	ID3D11ShaderResourceView* nullHorizontalSrvs[
-		ARRAYSIZE(horizontalSrvs)]{};
+		(impl.width + 7) / 8, (impl.height + 7) / 8, 1);
+	ID3D11ShaderResourceView* nullPrepareSrvs[ARRAYSIZE(prepareSrvs)]{};
 	ID3D11UnorderedAccessView* nullUav = nullptr;
 	impl.context11->CSSetShaderResources(
-		0, ARRAYSIZE(nullHorizontalSrvs), nullHorizontalSrvs);
+		0, ARRAYSIZE(nullPrepareSrvs), nullPrepareSrvs);
 	impl.context11->CSSetUnorderedAccessViews(0, 1, &nullUav, nullptr);
 
+	ID3D11ShaderResourceView* verticalResidual = impl.controlledResidualSrv11.get();
+	if (impl.sourceWidth != impl.width) {
+		ID3D11ShaderResourceView* horizontalSrv = impl.controlledResidualSrv11.get();
+		ID3D11UnorderedAccessView* horizontalUav = impl.resampleIntermediateUav11.get();
+		impl.context11->CSSetShader(impl.residualHorizontalShader11.get(), nullptr, 0);
+		impl.context11->CSSetShaderResources(0, 1, &horizontalSrv);
+		impl.context11->CSSetUnorderedAccessViews(0, 1, &horizontalUav, nullptr);
+		impl.context11->Dispatch((impl.sourceWidth + 7) / 8, (impl.height + 7) / 8, 1);
+		ID3D11ShaderResourceView* nullSrv = nullptr;
+		impl.context11->CSSetShaderResources(0, 1, &nullSrv);
+		impl.context11->CSSetUnorderedAccessViews(0, 1, &nullUav, nullptr);
+		verticalResidual = impl.resampleIntermediateSrv11.get();
+	}
 	ID3D11ShaderResourceView* verticalSrvs[]{
-		impl.inputSrv11.get(), impl.resampleIntermediateSrv11.get()
+		impl.inputSrv11.get(), verticalResidual
 	};
 	ID3D11UnorderedAccessView* compositeUav =
 		impl.compositeOutputUav11.get();
@@ -2062,7 +2123,7 @@ bool DLSSNRFilter::Initialize(
 
 	LogDlssnrStatus(fmt::format(
 		"DLSSNR STATUS: Feature=18 created=true path={} sourceSize={}x{} sourceFormat={} "
-		"colorDownsample=lanczos2-aa residualUpsample=catmull-rom-4+4 inputSize={}x{} inputResolutionScaling={} inputResolutionPercent={} residualMultiplier={} "
+		"colorDownsample=lanczos2-aa residualControls=before-upsample residualUpsample=catmull-rom-4+4 inputSize={}x{} inputResolutionScaling={} inputResolutionPercent={} residualMultiplier={} "
 		"residualSaturation={} residualLightness={} shadowStructureMultiplier={} "
 		"reflectionGlowMultiplier={} preset=fixed-0 "
 		"style={} intensity={} localTone={} localStructure={} skinStructure={} "

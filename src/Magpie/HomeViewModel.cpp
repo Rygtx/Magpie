@@ -24,6 +24,10 @@ using namespace Magpie;
 namespace winrt::Magpie::implementation {
 
 HomeViewModel::HomeViewModel() {
+	_frameSyncChangedRevoker = AppSettings::Get().FrontEdgeSyncChanged(auto_revoke, [this] {
+		RaisePropertyChanged(L"IsFrontEdgeSyncEnabled");
+		RaisePropertyChanged(L"FrontEdgeSyncFrameRate");
+	});
 	_issueChangedRevoker = ErrorService::Get().Changed(auto_revoke, [this] {
 		RaisePropertyChanged(L"ShowRecentIssue");
 		RaisePropertyChanged(L"RecentIssueSummary");

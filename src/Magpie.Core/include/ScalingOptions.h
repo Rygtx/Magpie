@@ -3,6 +3,7 @@
 #include <string_view>
 #include <memory>
 #include "EffectParameterPersistence.h"
+#include "FramePacingOptions.h"
 #include <mutex>
 
 namespace Magpie {
@@ -176,11 +177,12 @@ struct EffectParameterSessionState {
 	struct Snapshot {
 		std::vector<EffectOption> applied;
 		std::vector<EffectOption> desired;
+		FrameSyncSettings frameSync;
 		uint64_t revision = 0;
 	};
 
-	explicit EffectParameterSessionState(const std::vector<EffectOption>& effects)
-		: _snapshot{ effects, effects, 1 } {}
+	explicit EffectParameterSessionState(const std::vector<EffectOption>& effects,
+		FrameSyncSettings frameSync = {}) : _snapshot{ effects, effects, frameSync, 1 } {}
 	// Save receipts survive automatic rebuilds too. The revision is allocated
 	// only by the scaling/UI thread; completion itself is atomic.
 	std::shared_ptr<EffectParametersSaveState> saveState = std::make_shared<EffectParametersSaveState>();
@@ -216,6 +218,12 @@ struct EffectParameterSessionState {
 		_snapshot.desired[effect].parameters[parameter] = value;
 		++_snapshot.revision;
 	}
+	void DesiredFrameSync(FrameSyncSettings value) {
+		std::scoped_lock lock(_mutex);
+		if (_snapshot.frameSync == value) return;
+		_snapshot.frameSync = value;
+		++_snapshot.revision;
+	}
 private:
 	mutable std::mutex _mutex;
 	Snapshot _snapshot;
@@ -230,6 +238,8 @@ struct EffectParametersRequest {
 	EffectParametersRequestKind kind = EffectParametersRequestKind::AutoSave;
 	std::vector<EffectOption> effects;
 	std::vector<EffectOption> previousEffects;
+	FrameSyncSettings frameSync;
+	FrameSyncSettings previousFrameSync;
 	std::shared_ptr<EffectParametersSaveState> saveState;
 	uint64_t revision = 0;
 	HWND hwndSource = nullptr;

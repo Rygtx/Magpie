@@ -1153,6 +1153,8 @@ void OverlayDrawer::_InitEffectParameterValues() noexcept {
 	_draftEffectParameterValues = _startupEffectParameterValues;
 	_submittedEffectParameterValues = _startupEffectParameterValues;
 	_submittedEffectOptions = options.effects;
+	_startupFrameSync = { options.isFrontEdgeSyncEnabled, options.frontEdgeSyncFrameRate };
+	_draftFrameSync = _submittedFrameSync = _startupFrameSync;
 	_effectParametersInitialized = true;
 }
 
@@ -1160,6 +1162,13 @@ void OverlayDrawer::_InitEffectParameterValues() noexcept {
 void OverlayDrawer::_SyncEffectParameterValues() noexcept {
 	const auto& session = ScalingWindow::Get().Options().parameterSession;
 	if (!session || !session->ReadIfChanged(_parameterSessionSnapshot)) return;
+	const auto frameSync = _parameterSessionSnapshot.frameSync;
+	if (frameSync.enabled != _submittedFrameSync.enabled) {
+		_draftFrameSync.enabled = _submittedFrameSync.enabled = frameSync.enabled;
+	}
+	if (frameSync.frameRate != _submittedFrameSync.frameRate) {
+		_draftFrameSync.frameRate = _submittedFrameSync.frameRate = frameSync.frameRate;
+	}
 	const auto& descriptions = ScalingWindow::Get().Renderer().ActiveEffectDescs();
 	for (size_t i = 0; i < _draftEffectParameterValues.size(); ++i) {
 		if (i >= _parameterSessionSnapshot.applied.size() ||
@@ -1217,6 +1226,8 @@ bool OverlayDrawer::_RequestEffectParameters(EffectParametersRequestKind kind) n
 			.kind = kind,
 			.effects = effects,
 			.previousEffects = _submittedEffectOptions,
+			.frameSync = _draftFrameSync,
+			.previousFrameSync = _submittedFrameSync,
 			.saveState = _effectParametersSaveState,
 			.revision = revision,
 			.hwndSource = ScalingWindow::Get().SrcTracker().Handle(),
@@ -1226,6 +1237,8 @@ bool OverlayDrawer::_RequestEffectParameters(EffectParametersRequestKind kind) n
 		if (options.requestEffectParameters &&
 			options.requestEffectParameters(options, std::move(request))) {
 			options.parameterSession->Desired(effects);
+			options.parameterSession->DesiredFrameSync(_draftFrameSync);
+			_submittedFrameSync = _draftFrameSync;
 			_submittedEffectOptions = std::move(effects);
 			_submittedEffectParameterValues = _draftEffectParameterValues;
 			return true;
@@ -1254,10 +1267,13 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 
 	const size_t configuredEffectCount = std::min(
 		ScalingWindow::Get().Options().effects.size(), descriptions.size());
-	bool hasParameters = false;
-	uint32_t restartChangeCount = 0;
+	auto frameSyncChangeCount = [&]() noexcept -> uint32_t {
+		const auto& options = ScalingWindow::Get().Options();
+		return uint32_t(_draftFrameSync.enabled != options.isFrontEdgeSyncEnabled) +
+			uint32_t(_draftFrameSync.frameRate != options.frontEdgeSyncFrameRate);
+	};
+	uint32_t restartChangeCount = frameSyncChangeCount();
 	for (size_t effectIdx = 0; effectIdx < configuredEffectCount; ++effectIdx) {
-		hasParameters |= !descriptions[effectIdx]->params.empty();
 		for (size_t parameterIdx = 0;
 			parameterIdx < _draftEffectParameterValues[effectIdx].size();
 			++parameterIdx) {
@@ -1316,8 +1332,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	}
 
 	const ImGuiStyle& style = ImGui::GetStyle();
-	const float actionHeight = hasParameters
-		? ImGui::GetFrameHeight() + style.ItemSpacing.y * 2.0f : 0.0f;
+	const float actionHeight = ImGui::GetFrameHeight() + style.ItemSpacing.y * 2.0f;
 	const float statusHeight = ImGui::GetTextLineHeight() + style.ItemSpacing.y;
 	const float footerHeight =
 		actionHeight + statusHeight + style.ItemSpacing.y * 3.0f;
@@ -1331,6 +1346,23 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	bool queueFailure = false;
 	bool parameterEdited = false;
 	bool requestRestart = false;
+	ImGui::PushID("frameSync");
+	ImGui::SeparatorText(_GetResourceString(L"Overlay_FrameSync_Title").c_str());
+	if (ImGui::Checkbox("Front Edge Sync", &_draftFrameSync.enabled)) {
+		parameterEdited = needRedraw = true;
+	}
+	ImGui::SameLine();
+	ImGui::TextDisabled("%s", _GetResourceString(L"Overlay_EffectParameters_RestartRequired").c_str());
+	ImGui::TextUnformatted(_GetResourceString(L"Overlay_FrameSync_Target").c_str());
+	ImGui::SameLine();
+	ImGui::TextDisabled("%s", _GetResourceString(L"Overlay_EffectParameters_RestartRequired").c_str());
+	ImGui::SetNextItemWidth(-1.0f);
+	if (ImGui::InputFloat("##targetFps", &_draftFrameSync.frameRate, 1.0f, 10.0f, "%.3f")) {
+		_draftFrameSync.frameRate = SanitizePresentationFrameRate(_draftFrameSync.frameRate);
+		parameterEdited = needRedraw = true;
+	}
+	ImGui::TextWrapped("%s", _GetResourceString(L"Overlay_FrameSync_Help").c_str());
+	ImGui::PopID();
 	auto getDraftValue = [&](size_t effectIdx, const EffectDesc& description,
 		std::string_view name, float fallback) noexcept {
 		for (size_t i = 0; i < description.params.size(); ++i) {
@@ -1599,21 +1631,18 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 #endif
 		ImGui::PopID();
 	}
-	if (!hasParameters) {
-		ImGui::TextUnformatted(
-			_GetResourceString(L"Overlay_EffectParameters_NoParameters").c_str());
-	}
 	ImGui::EndChild();
 	if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !resetPressClaimed) {
 		_parameterResetGesture.Clear();
 	}
 
-	if (hasParameters) {
+	{
 		ImGui::Separator();
 		if (ImGui::Button(
 			_GetResourceString(L"Overlay_EffectParameters_Revert").c_str())) {
 			parameterEdited = true;
 			_draftEffectParameterValues = _startupEffectParameterValues;
+			_draftFrameSync = _startupFrameSync;
 			for (size_t effectIdx = 0;
 				effectIdx < configuredEffectCount; ++effectIdx) {
 				for (size_t parameterIdx = 0;
@@ -1653,7 +1682,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	}
 	// Recount after this frame's edits (including Revert), keeping persistence
 	// separate from the values that have actually reached the backend.
-	restartChangeCount = 0;
+	restartChangeCount = frameSyncChangeCount();
 	for (size_t i = 0; i < _draftEffectParameterValues.size(); ++i) {
 		for (size_t j = 0; j < _draftEffectParameterValues[i].size(); ++j) {
 			if (i < runtimeInfos.size() && j < runtimeInfos[i].size() &&

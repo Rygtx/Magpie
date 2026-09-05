@@ -47,6 +47,11 @@ void ScalingService::Initialize() {
 
 	_shortcutActivatedRevoker = ShortcutService::Get().ShortcutActivated(
 		auto_revoke, std::bind_front(&ScalingService::_ShortcutService_ShortcutPressed, this));
+	_frameSyncChangedRevoker = AppSettings::Get().FrontEdgeSyncChanged(auto_revoke, [this] {
+		const auto& settings = AppSettings::Get();
+		if (_scalingRuntime) _scalingRuntime->UpdateFrameSyncSettings(
+			{ settings.IsFrontEdgeSyncEnabled(), settings.FrontEdgeSyncFrameRate() });
+	});
 
 	// 立即检查前台窗口
 	_CheckForegroundTimer_Tick(nullptr, nullptr);
@@ -59,6 +64,7 @@ void ScalingService::Uninitialize() {
 
 	_checkForegroundTimer.Stop();
 	_countDownTimer.Stop();
+	_frameSyncChangedRevoker.Revoke();
 	_scalingRuntime.reset();
 	// The runtime destructor drains UI requests before this final flush.
 	_FlushEffectParametersSaves(true);
@@ -622,7 +628,13 @@ void ScalingService::_HandleEffectParametersRequest(
 		}
 	}
 
-	std::vector<ScalingMode>& modes = AppSettings::Get().ScalingModes();
+	auto& settings = AppSettings::Get();
+	FrameSyncSettings mergedFrameSync{ settings.IsFrontEdgeSyncEnabled(), settings.FrontEdgeSyncFrameRate() };
+	if (!MergeFrameSyncSettings(mergedFrameSync, request.previousFrameSync, request.frameSync)) {
+		fail(EffectParametersSaveError::Conflict);
+		return;
+	}
+	std::vector<ScalingMode>& modes = settings.ScalingModes();
 	if (sessionOptions.scalingModeIdx >= modes.size()) {
 		fail(EffectParametersSaveError::Conflict);
 		return;
@@ -660,6 +672,9 @@ void ScalingService::_HandleEffectParametersRequest(
 		}
 	}
 	mode.effects = std::move(merged);
+	settings.IsFrontEdgeSyncEnabled(mergedFrameSync.enabled);
+	settings.FrontEdgeSyncFrameRate(mergedFrameSync.frameRate);
+	if (sessionOptions.parameterSession) sessionOptions.parameterSession->DesiredFrameSync(mergedFrameSync);
 	for (uint32_t i = 0; i < mode.effects.size(); ++i) {
 		ScalingModesService::Get().EffectParametersChanged.Invoke(sessionOptions.scalingModeIdx, i);
 	}
@@ -679,7 +694,7 @@ void ScalingService::_HandleEffectParametersRequest(
 	std::vector<EffectOption> effects;
 	for (const EffectItem& item : mode.effects) effects.push_back(static_cast<EffectOption>(item));
 	if (!_scalingRuntime->RestartWithEffectParameters(request.hwndSource,
-		request.hwndScaling, request.scalingRunId, std::move(effects))) {
+		request.hwndScaling, request.scalingRunId, std::move(effects), mergedFrameSync)) {
 		fail(EffectParametersSaveError::SessionExpired);
 	}
 }

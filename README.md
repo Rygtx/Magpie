@@ -15,7 +15,7 @@ Fully exit Magpie, extract all of `Magpie-Experimental-x64.zip` into a new direc
 
 Scaling modes are now called **Effect groups**, combining multiple effects. Fresh configurations contain Lanczos, FSR, RTX Video VSR Ultra, DLSSFG, XeSSFG and DLSSNR, with Lanczos selected. Existing custom groups are preserved.
 
-Import the [optional presets](presets/ScalingModes-v0.6.5-experimental.json) on the Effect groups page to append DLSSFG, XeSSFG and DLSSNR. Reset restores built-in groups; import only appends.
+DLSSFG, XeSSFG and DLSSNR are included among the built-in effect groups. Reset on the Effect groups page restores the defaults.
 
 Parameter edits save automatically. The toolbar editor labels controls **Live**, **Restart**, or **Auto restart**, distinguishing manual application from automatic rebuilding after editing. Previously live DLSSNR core/upstream image changes fully stop the group, wait 500 ms and restart it; residual composition retains its existing live behavior. Consecutive edits coalesce, and manually stopping cancels a pending restart.
 

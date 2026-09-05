@@ -128,6 +128,9 @@ private:
 	std::vector<std::vector<float>> _draftEffectParameterValues;
 	std::vector<std::vector<float>> _submittedEffectParameterValues;
 	std::vector<EffectOption> _submittedEffectOptions;
+	FrameSyncSettings _startupFrameSync;
+	FrameSyncSettings _draftFrameSync;
+	FrameSyncSettings _submittedFrameSync;
 	std::shared_ptr<EffectParametersSaveState> _effectParametersSaveState;
 	uint64_t _effectParametersRevision = 0;
 	uint64_t _lastEffectParametersSaveResult = 0;

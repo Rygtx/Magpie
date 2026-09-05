@@ -83,6 +83,7 @@ private:
 	winrt::DispatcherQueueTimer _checkForegroundTimer{ nullptr };
 
 	Event<winrt::Magpie::ShortcutAction>::EventRevoker _shortcutActivatedRevoker;
+	Event<>::EventRevoker _frameSyncChangedRevoker;
 
 	std::chrono::steady_clock::time_point _timerStartTimePoint;
 

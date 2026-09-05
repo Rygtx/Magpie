@@ -1430,4 +1430,13 @@
   <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_1" xml:space="preserve"><value>自訂</value></data>
   <data name="Overlay_EffectParameters_AutoRestart" xml:space="preserve"><value>自動重新啟用</value></data>
   <data name="Overlay_EffectParameters_Reason_AutoRestart" xml:space="preserve"><value>編輯結束後自動停用效果組，等待 500 毫秒再重新啟用，以重建 DLSSNR 歷史。</value></data>
+  <data name="Overlay_FrameSync_Title" xml:space="preserve">
+    <value>影格同步</value>
+  </data>
+  <data name="Overlay_FrameSync_Target" xml:space="preserve">
+    <value>目標影格率（FPS）</value>
+  </data>
+  <data name="Overlay_FrameSync_Help" xml:space="preserve">
+    <value>修改自動儲存；點擊「套用並重新啟用」後生效。0 為自動；請同步限制目標程式影格率。</value>
+  </data>
 </root>

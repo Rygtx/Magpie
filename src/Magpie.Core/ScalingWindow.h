@@ -98,7 +98,8 @@ public:
 
 	void RestartAfterSrcRepositioned() noexcept;
 	void RestartWithEffectParameters(
-		std::vector<EffectOption>&& effects
+		std::vector<EffectOption>&& effects,
+		FrameSyncSettings frameSync
 	) noexcept;
 
 	void CleanAfterSrcRepositioned() noexcept;
