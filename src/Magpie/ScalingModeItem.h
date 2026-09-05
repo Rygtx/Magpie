@@ -16,6 +16,7 @@ struct ScalingModeItem : ScalingModeItemT<ScalingModeItem>,
 	ScalingModeItem(uint32_t index, bool isInitialExpanded, bool shouldAutoRename);
 
 	void AddEffect(const hstring& fullName);
+	bool CanAddEffect(const hstring& fullName) const noexcept;
 
 	bool IsInitialExpanded() const noexcept {
 		return _isInitialExpanded;

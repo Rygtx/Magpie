@@ -44,6 +44,12 @@ public:
 		ID3D11Texture2D** inOutTexture
 	) noexcept;
 
+	bool UpdateParameters(
+		const EffectDesc& desc,
+		const EffectOption& option,
+		DeviceResources& deviceResources
+	) noexcept;
+
 	ID3D11Texture2D* GetOutputTexture() const noexcept {
 		return _textures[1].get();
 	}

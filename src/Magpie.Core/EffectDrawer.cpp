@@ -325,6 +325,29 @@ bool EffectDrawer::ResizeTextures(
 	return true;
 }
 
+bool EffectDrawer::UpdateParameters(
+	const EffectDesc& desc,
+	const EffectOption& option,
+	DeviceResources& deviceResources
+) noexcept {
+	if ((desc.flags & EffectFlags::InlineParams) ||
+		_textures.size() < 2 || !_textures[0] || !_textures[1]) {
+		return false;
+	}
+
+	D3D11_TEXTURE2D_DESC inputDesc{};
+	D3D11_TEXTURE2D_DESC outputDesc{};
+	_textures[0]->GetDesc(&inputDesc);
+	_textures[1]->GetDesc(&outputDesc);
+	return _UpdateConstants(
+		desc,
+		option,
+		deviceResources,
+		SIZE{ static_cast<LONG>(inputDesc.Width), static_cast<LONG>(inputDesc.Height) },
+		SIZE{ static_cast<LONG>(outputDesc.Width), static_cast<LONG>(outputDesc.Height) }
+	);
+}
+
 SIZE EffectDrawer::_CalcOutputSize(
 	const EffectDesc& desc,
 	const EffectOption& option,

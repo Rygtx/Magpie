@@ -6,6 +6,8 @@
 #include "ControlHelper.h"
 #include "ContentDialogHelper.h"
 #include "EffectsService.h"
+#include "EffectHelper.h"
+#include "EffectParametersViewModel.h"
 #include "App.h"
 #include "CommonSharedConstants.h"
 #include "Logger.h"
@@ -33,13 +35,159 @@ void ScalingModesPage::NumberBox_Loaded(IInspectable const& sender, RoutedEventA
 	ControlHelper::NumberBox_Loaded(sender);
 }
 
+void ScalingModesPage::_RefreshParameterSliderHint(Slider const& slider) {
+	if (auto parameter = slider.DataContext().try_as<Magpie::ScalingModeParameter>()) {
+		const auto loader = ResourceLoader::GetForCurrentView(
+			CommonSharedConstants::APP_RESOURCE_MAP_ID);
+		const auto text = fmt::format(fmt::runtime(std::wstring_view(loader.GetString(
+			L"Overlay_EffectParameters_ResetDefault"))),
+			fmt::format(L"{:.7g}", get_self<ScalingModeParameter>(parameter)->DefaultValue()));
+		ToolTipService::SetToolTip(slider, box_value(text));
+	}
+}
+
+void ScalingModesPage::ParameterSlider_Loaded(IInspectable const& sender, RoutedEventArgs const&) {
+	const auto slider = sender.as<Slider>();
+	_RefreshParameterSliderHint(slider);
+	if (!_parameterSliders.insert(reinterpret_cast<uintptr_t>(get_abi(slider))).second) return;
+	if (!_parameterSliderPressed) {
+		_parameterSliderPressed = box_value(PointerEventHandler{ get_weak(), &ScalingModesPage::_ParameterSlider_Pressed });
+		_parameterSliderMoved = box_value(PointerEventHandler{ get_weak(), &ScalingModesPage::_ParameterSlider_Moved });
+		_parameterSliderReleased = box_value(PointerEventHandler{ get_weak(), &ScalingModesPage::_ParameterSlider_Released });
+		_parameterSliderCanceled = box_value(PointerEventHandler{ get_weak(), &ScalingModesPage::_ParameterSlider_Canceled });
+		_parameterSliderCaptureLost = box_value(PointerEventHandler{ get_weak(), &ScalingModesPage::_ParameterSlider_CaptureLost });
+	}
+	// Thumb and track class handlers can already have consumed the event.
+	slider.AddHandler(UIElement::PointerPressedEvent(), _parameterSliderPressed, true);
+	slider.AddHandler(UIElement::PointerMovedEvent(), _parameterSliderMoved, true);
+	slider.AddHandler(UIElement::PointerReleasedEvent(), _parameterSliderReleased, true);
+	slider.AddHandler(UIElement::PointerCanceledEvent(), _parameterSliderCanceled, true);
+	slider.AddHandler(UIElement::PointerCaptureLostEvent(), _parameterSliderCaptureLost, true);
+}
+
+void ScalingModesPage::ParameterSlider_Unloaded(IInspectable const& sender, RoutedEventArgs const&) {
+	const auto slider = sender.as<Slider>();
+	if (_parameterSliders.erase(reinterpret_cast<uintptr_t>(get_abi(slider)))) {
+		slider.RemoveHandler(UIElement::PointerPressedEvent(), _parameterSliderPressed);
+		slider.RemoveHandler(UIElement::PointerMovedEvent(), _parameterSliderMoved);
+		slider.RemoveHandler(UIElement::PointerReleasedEvent(), _parameterSliderReleased);
+		slider.RemoveHandler(UIElement::PointerCanceledEvent(), _parameterSliderCanceled);
+		slider.RemoveHandler(UIElement::PointerCaptureLostEvent(), _parameterSliderCaptureLost);
+	}
+	_parameterResetGesture.Clear();
+	_resetHeldSlider = {};
+}
+
+void ScalingModesPage::ParameterSlider_LostFocus(IInspectable const&, RoutedEventArgs const&) {
+	_parameterResetGesture.Clear();
+	_resetHeldSlider = {};
+}
+
+void ScalingModesPage::ParameterSlider_DataContextChanged(
+	FrameworkElement const& sender, DataContextChangedEventArgs const&) {
+	_parameterResetGesture.Clear();
+	_resetHeldSlider = {};
+	_RefreshParameterSliderHint(sender.as<Slider>());
+}
+
+void ScalingModesPage::ParameterSlider_ValueChanged(
+	IInspectable const& sender, RangeBaseValueChangedEventArgs const&) {
+	const auto held = _resetHeldSlider.get();
+	if (!held || held != sender.try_as<Slider>()) return;
+	if (auto parameter = held.DataContext().try_as<Magpie::ScalingModeParameter>()) {
+		auto impl = get_self<ScalingModeParameter>(parameter);
+		impl->ResetToDefault();
+		if (held.Value() != impl->DefaultValue()) held.Value(impl->DefaultValue());
+	}
+}
+
+void ScalingModesPage::_ParameterSlider_Pressed(
+	IInspectable const& sender, PointerRoutedEventArgs const& args) {
+	const auto slider = sender.as<Slider>();
+	const auto point = args.GetCurrentPoint(slider);
+	const auto parameter = slider.DataContext().try_as<Magpie::ScalingModeParameter>();
+	if (point.PointerDevice().PointerDeviceType() != Windows::Devices::Input::PointerDeviceType::Mouse ||
+		!point.Properties().IsLeftButtonPressed() || (GetKeyState(VK_CONTROL) & 0x8000) ||
+		!slider.IsEnabled() || !parameter || !parameter.IsFloat() || !parameter.IsVisible()) {
+		_parameterResetGesture.Clear();
+		return;
+	}
+	if (!_parameterResetGesture.Press(reinterpret_cast<uintptr_t>(get_abi(slider)),
+		point.Timestamp(), point.Position().X, point.Position().Y, 4.0f)) return;
+
+	// Take over the second press from the Thumb. Keep its value fixed until up.
+	_resetHeldSlider = slider;
+	_capturingResetPointer = true;
+	slider.CapturePointer(args.Pointer());
+	_capturingResetPointer = false;
+	auto impl = get_self<ScalingModeParameter>(parameter);
+	impl->ResetToDefault();
+	slider.Value(impl->DefaultValue());
+	args.Handled(true);
+}
+
+void ScalingModesPage::_ParameterSlider_Moved(
+	IInspectable const& sender, PointerRoutedEventArgs const& args) {
+	const auto point = args.GetCurrentPoint(sender.as<Slider>());
+	_parameterResetGesture.Move(point.Position().X, point.Position().Y, 4.0f);
+	if (_resetHeldSlider.get() == sender.try_as<Slider>()) args.Handled(true);
+}
+
+void ScalingModesPage::_ParameterSlider_Released(
+	IInspectable const& sender, PointerRoutedEventArgs const& args) {
+	const auto slider = sender.as<Slider>();
+	const auto point = args.GetCurrentPoint(slider);
+	_parameterResetGesture.Move(point.Position().X, point.Position().Y, 4.0f);
+	_parameterResetGesture.Release();
+	if (_resetHeldSlider.get() == slider) {
+		ParameterSlider_ValueChanged(sender, nullptr);
+		_resetHeldSlider = {};
+		slider.ReleasePointerCapture(args.Pointer());
+		args.Handled(true);
+	}
+}
+
+void ScalingModesPage::_ParameterSlider_Canceled(
+	IInspectable const& sender, PointerRoutedEventArgs const&) {
+	ParameterSlider_ValueChanged(sender, nullptr);
+	_parameterResetGesture.Clear();
+	_resetHeldSlider = {};
+}
+
+void ScalingModesPage::_ParameterSlider_CaptureLost(
+	IInspectable const& sender, PointerRoutedEventArgs const& args) {
+	// Releasing capture after a normal button-up is not an interrupted click.
+	if (_capturingResetPointer ||
+		!args.GetCurrentPoint(nullptr).Properties().IsLeftButtonPressed()) return;
+	_ParameterSlider_Canceled(sender, args);
+}
+
 void ScalingModesPage::EffectSettingsCard_Loaded(IInspectable const& sender, RoutedEventArgs const&) {
 	XamlHelper::UpdateThemeOfTooltips(sender.try_as<DependencyObject>(), ActualTheme());
+}
+
+void ScalingModesPage::EffectParametersFlyout_Opening(
+	IInspectable const& sender,
+	IInspectable const&
+) {
+	Flyout flyout = sender.try_as<Flyout>();
+	ContentControl content = flyout ? flyout.Content().try_as<ContentControl>() : nullptr;
+	winrt::Magpie::EffectParametersViewModel parameters = content ?
+		content.Content().try_as<winrt::Magpie::EffectParametersViewModel>() : nullptr;
+	if (!parameters || !XamlRoot()) return;
+
+	// Leave room for presenter chrome and the root-bound popup margins. The
+	// view model keeps every visible group on screen by shrinking all columns
+	// together when the ideal 260-DIP layout cannot fit.
+	constexpr double FLYOUT_CHROME_AND_MARGIN = 72.0;
+	get_self<EffectParametersViewModel>(parameters)->UpdateLayoutWidth(
+		std::max(0.0, XamlRoot().Size().Width - FLYOUT_CHROME_AND_MARGIN));
 }
 
 void ScalingModesPage::AddEffectButton_Click(IInspectable const& sender, RoutedEventArgs const&) {
 	Button btn = sender.try_as<Button>();
 	_curScalingMode = get_self<ScalingModeItem>(btn.Tag().try_as<winrt::Magpie::ScalingModeItem>());
+	_RefreshEffectMenuAvailability();
 	_addEffectMenuFlyout.ShowAt(btn);
 }
 
@@ -562,7 +710,7 @@ void ScalingModesPage::_BuildEffectMenu() noexcept {
 			continue;
 		}
 
-		item.Text(name.substr(delimPos + 1));
+		item.Text(EffectHelper::GetDisplayName(name));
 
 		std::wstring_view dir = name.substr(0, delimPos);
 		auto it = folders.find(dir);
@@ -618,6 +766,32 @@ void ScalingModesPage::_BuildEffectMenu() noexcept {
 
 	for (MenuFlyoutItemBase& item : rootItems) {
 		_addEffectMenuFlyout.Items().Append(std::move(item));
+	}
+}
+
+void ScalingModesPage::_RefreshEffectMenuAvailability() noexcept {
+	if (!_curScalingMode) {
+		return;
+	}
+
+	auto updateItem = [this](const MenuFlyoutItemBase& itemBase) noexcept {
+		const MenuFlyoutItem item = itemBase.try_as<MenuFlyoutItem>();
+		if (!item || !item.Tag()) {
+			return;
+		}
+		item.IsEnabled(_curScalingMode->CanAddEffect(
+			unbox_value<hstring>(item.Tag())));
+	};
+
+	for (const MenuFlyoutItemBase& rootItem : _addEffectMenuFlyout.Items()) {
+		if (const MenuFlyoutSubItem folder =
+			rootItem.try_as<MenuFlyoutSubItem>()) {
+			for (const MenuFlyoutItemBase& item : folder.Items()) {
+				updateItem(item);
+			}
+		} else {
+			updateItem(rootItem);
+		}
 	}
 }
 

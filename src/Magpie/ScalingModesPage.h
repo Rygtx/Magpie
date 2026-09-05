@@ -2,6 +2,8 @@
 #include "ScalingModesPage.g.h"
 #include "ScalingModeItem.h"
 #include "ScalingModesViewModel.h"
+#include "EffectParameterResetGesture.h"
+#include <unordered_set>
 
 namespace winrt::Magpie::implementation {
 
@@ -15,8 +17,17 @@ struct ScalingModesPage : ScalingModesPageT<ScalingModesPage> {
 	void ComboBox_DropDownOpened(IInspectable const& sender, IInspectable const&);
 
 	void NumberBox_Loaded(IInspectable const& sender, RoutedEventArgs const&);
+	void ParameterSlider_Loaded(IInspectable const& sender, RoutedEventArgs const&);
+	void ParameterSlider_Unloaded(IInspectable const& sender, RoutedEventArgs const&);
+	void ParameterSlider_LostFocus(IInspectable const& sender, RoutedEventArgs const&);
+	void ParameterSlider_DataContextChanged(FrameworkElement const& sender,
+		DataContextChangedEventArgs const&);
+	void ParameterSlider_ValueChanged(IInspectable const& sender,
+		Controls::Primitives::RangeBaseValueChangedEventArgs const&);
 
 	void EffectSettingsCard_Loaded(IInspectable const& sender, RoutedEventArgs const&);
+
+	void EffectParametersFlyout_Opening(IInspectable const& sender, IInspectable const&);
 
 	void AddEffectButton_Click(IInspectable const& sender, RoutedEventArgs const&);
 
@@ -56,6 +67,27 @@ struct ScalingModesPage : ScalingModesPageT<ScalingModesPage> {
 		IInspectable const& sender,
 		Input::PointerRoutedEventArgs const& args);
 private:
+	void _ParameterSlider_Pressed(IInspectable const& sender,
+		Input::PointerRoutedEventArgs const& args);
+	void _ParameterSlider_Moved(IInspectable const& sender,
+		Input::PointerRoutedEventArgs const& args);
+	void _ParameterSlider_Released(IInspectable const& sender,
+		Input::PointerRoutedEventArgs const& args);
+	void _ParameterSlider_Canceled(IInspectable const& sender,
+		Input::PointerRoutedEventArgs const& args);
+	void _ParameterSlider_CaptureLost(IInspectable const& sender,
+		Input::PointerRoutedEventArgs const& args);
+	void _RefreshParameterSliderHint(Slider const& slider);
+	::Magpie::EffectParameterResetGesture _parameterResetGesture;
+	IInspectable _parameterSliderPressed{ nullptr };
+	IInspectable _parameterSliderMoved{ nullptr };
+	IInspectable _parameterSliderReleased{ nullptr };
+	IInspectable _parameterSliderCanceled{ nullptr };
+	IInspectable _parameterSliderCaptureLost{ nullptr };
+	std::unordered_set<uintptr_t> _parameterSliders;
+	weak_ref<Slider> _resetHeldSlider;
+	bool _capturingResetPointer = false;
+
 	struct ReorderPreviewItem {
 		uint32_t index = 0;
 		FrameworkElement container{ nullptr };
@@ -64,6 +96,7 @@ private:
 	};
 
 	void _BuildEffectMenu() noexcept;
+	void _RefreshEffectMenuAvailability() noexcept;
 
 	void _AddEffectMenuFlyoutItem_Click(IInspectable const& sender, RoutedEventArgs const&);
 

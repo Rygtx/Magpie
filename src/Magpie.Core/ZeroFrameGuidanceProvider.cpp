@@ -19,6 +19,15 @@ bool ZeroFrameGuidanceResources::Resize(FrameGuidanceExtent sourceExtent) noexce
 	return _CreateTextures(sourceExtent);
 }
 
+void ZeroFrameGuidanceResources::Reset() noexcept {
+	_depth = nullptr;
+	_motion = nullptr;
+	_confidence = nullptr;
+	_extent = {};
+	_context = nullptr;
+	_device = nullptr;
+}
+
 bool ZeroFrameGuidanceResources::_CreateTextures(
 	FrameGuidanceExtent sourceExtent
 ) noexcept {
@@ -31,17 +40,15 @@ bool ZeroFrameGuidanceResources::_CreateTextures(
 
 	constexpr UINT BIND_FLAGS =
 		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
-	constexpr UINT MISC_FLAGS =
-		D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
-	auto depth = DirectXHelper::CreateTexture2D(
+	auto depth = DirectXHelper::CreateSharedTexture2D(
 		_device, DXGI_FORMAT_R32_FLOAT, sourceExtent.width, sourceExtent.height,
-		BIND_FLAGS, D3D11_USAGE_DEFAULT, MISC_FLAGS);
-	auto motion = DirectXHelper::CreateTexture2D(
+		BIND_FLAGS, "Zero/Depth");
+	auto motion = DirectXHelper::CreateSharedTexture2D(
 		_device, DXGI_FORMAT_R16G16_FLOAT, sourceExtent.width, sourceExtent.height,
-		BIND_FLAGS, D3D11_USAGE_DEFAULT, MISC_FLAGS);
-	auto confidence = DirectXHelper::CreateTexture2D(
+		BIND_FLAGS, "Zero/Motion");
+	auto confidence = DirectXHelper::CreateSharedTexture2D(
 		_device, DXGI_FORMAT_R8_UNORM, sourceExtent.width, sourceExtent.height,
-		BIND_FLAGS, D3D11_USAGE_DEFAULT, MISC_FLAGS);
+		BIND_FLAGS, "Zero/Confidence");
 	if (!depth || !motion || !confidence) {
 		Logger::Get().Error("Create zero Frame Guidance textures failed");
 		return false;

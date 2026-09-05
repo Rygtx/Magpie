@@ -10,7 +10,10 @@ struct DLSSNRSettings {
 	bool enableInputResolutionScaling = false;
 	uint32_t inputResolutionPercent = 100;
 	float residualMultiplier = 1.0f;
-	int preset = 0;
+	float residualSaturation = 1.0f;
+	float residualLightness = 1.0f;
+	float shadowStructureMultiplier = 1.0f;
+	float reflectionGlowMultiplier = 1.0f;
 	int style = 0;
 	float intensity = 1.0f;
 	float localToneStrength = 1.0f;
@@ -18,10 +21,11 @@ struct DLSSNRSettings {
 	float skinStructureStrength = -1.0f;
 	bool useAutoMask = false;
 	bool uiCorrection = false;
-	// 0 available/both, 1 force Zero, 2 motion only, 3 depth only.
-	int guidanceMode = 0;
-	uint32_t depthInferenceInterval = 4;
+	NvidiaOpticalFlowQuality motionVectorQuality =
+		NvidiaOpticalFlowQuality::Balanced;
 };
+
+DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option) noexcept;
 
 // Experimental same-resolution DLSS neural filter. Magpie only owns the
 // composited colour frame, so valid zero-filled motion/depth textures are used
@@ -37,6 +41,16 @@ public:
 
 	FrameGuidanceRequirements GetFrameGuidanceRequirements() const noexcept override;
 	bool Drain() noexcept override;
+	EffectParameterApplyMode GetParameterApplyMode(
+		std::string_view parameterName
+	) const noexcept override;
+	EffectParameterRestartReason GetParameterRestartReason(
+		std::string_view parameterName
+	) const noexcept override;
+	bool ApplyLiveParameters(
+		const EffectOption& option,
+		std::span<const std::string> parameterNames
+	) noexcept override;
 
 	bool Initialize(
 		DeviceResources& resources,

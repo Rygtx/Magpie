@@ -1,9 +1,12 @@
 #pragma once
 #include "Event.h"
 #include "ScalingRuntime.h"
+#include "EffectParameterPersistence.h"
 
 namespace Magpie {
 class ScalingRuntime;
+struct ScalingOptions;
+struct EffectParametersRequest;
 }
 
 namespace Magpie {
@@ -45,6 +48,8 @@ public:
 
 	// 强制重新检查前台窗口
 	void CheckForeground();
+	void EffectParameterEdited(uint32_t modeIdx, uint32_t effectIdx,
+		const std::string& parameter, float value);
 
 	Event<bool, bool> IsTimerOnChanged;
 	Event<double> TimerTick;
@@ -66,6 +71,10 @@ private:
 	void _StartScale(HWND hWnd, const Profile& profile, bool windowedMode, bool force);
 
 	ScalingError _StartScaleImpl(HWND hWnd, const Profile& profile, bool windowedMode, bool force);
+	void _HandleEffectParametersRequest(
+		ScalingOptions&& sessionOptions,
+		EffectParametersRequest&& request
+	);
 
 	std::optional<ScalingRuntime> _scalingRuntime;
 
@@ -83,6 +92,15 @@ private:
 	// 1. 避免重复检查同一个窗口
 	// 2. 用户使用热键退出全屏后暂时阻止该窗口自动放大
 	HWND _hwndChecked = NULL;
+	struct PendingEffectParametersSave {
+		std::shared_ptr<EffectParametersSaveState> state;
+		uint64_t revision;
+	};
+	void _ScheduleEffectParametersSave(const EffectParametersRequest& request);
+	void _FlushEffectParametersSaves(bool synchronous = false);
+	winrt::DispatcherQueueTimer _effectParametersSaveTimer{ nullptr };
+	std::vector<PendingEffectParametersSave> _pendingEffectParametersSaves;
+	std::chrono::steady_clock::time_point _firstEffectParametersEdit{};
 };
 
 }

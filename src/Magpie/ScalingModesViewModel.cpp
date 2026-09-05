@@ -12,6 +12,9 @@
 #include "ScalingModeItem.h"
 #include "ToastService.h"
 #include "Win32Helper.h"
+#include "ErrorService.h"
+#include "StrHelper.h"
+#include <rapidjson/error/en.h>
 
 using namespace Magpie;
 
@@ -60,6 +63,7 @@ fire_and_forget ScalingModesViewModel::Export() noexcept {
 	com_ptr<IFileSaveDialog> fileDialog = try_create_instance<IFileSaveDialog>(CLSID_FileSaveDialog);
 	if (!fileDialog) {
 		Logger::Get().Error("创建 FileSaveDialog 失败");
+		ErrorService::Get().Report(ScalingError::FileDialogFailed, "Create FileSaveDialog");
 		co_return;
 	}
 
@@ -84,9 +88,8 @@ fire_and_forget ScalingModesViewModel::Export() noexcept {
 	writer.EndObject();
 
 	if (!Win32Helper::WriteTextFile(fileName->c_str(), { json.GetString(), json.GetLength() })) {
-		const hstring failedMsg = resourceLoader.GetString(L"Message_ExportScalingModesFailed");
-		ToastService::Get().ShowMessageInApp(
-			{}, failedMsg.c_str(), std::chrono::seconds(5));
+		ErrorService::Get().Report(ScalingError::ExportWriteFailed,
+			StrHelper::UTF16ToUTF8(fileName->native()));
 	}
 }
 
@@ -104,6 +107,7 @@ fire_and_forget ScalingModesViewModel::Import() {
 	com_ptr<IFileOpenDialog> fileDialog = try_create_instance<IFileOpenDialog>(CLSID_FileOpenDialog);
 	if (!fileDialog) {
 		Logger::Get().Error("创建 FileOpenDialog 失败");
+		ErrorService::Get().Report(ScalingError::FileDialogFailed, "Create FileOpenDialog");
 		co_return;
 	}
 
@@ -117,7 +121,11 @@ fire_and_forget ScalingModesViewModel::Import() {
 	}
 
 	std::string json;
-	Win32Helper::ReadTextFile(fileName->c_str(), json);
+	if (!Win32Helper::ReadTextFile(fileName->c_str(), json)) {
+		ErrorService::Get().Report(ScalingError::ImportReadFailed,
+			StrHelper::UTF16ToUTF8(fileName->native()));
+		co_return;
+	}
 
 	co_await App::Get().Dispatcher();
 
@@ -125,22 +133,31 @@ fire_and_forget ScalingModesViewModel::Import() {
 		co_return;
 	}
 
-	if (!json.empty()) {
-		rapidjson::Document doc;
-		// 导入时放宽 json 格式限制
-		doc.ParseInsitu<rapidjson::kParseCommentsFlag | rapidjson::kParseTrailingCommasFlag>(json.data());
-		if (doc.HasParseError()) {
-			Logger::Get().Error(fmt::format("解析 json 失败\n\t错误码: {}", (int)doc.GetParseError()));
-		} else if (doc.IsObject() &&
-			ScalingModesService::Get().Import(((const rapidjson::Document&)doc).GetObj(), false)) {
-			// 导入成功
-			co_return;
-		}
+	const std::string path = StrHelper::UTF16ToUTF8(fileName->native());
+	if (json.find_first_not_of(" \t\r\n") == std::string::npos) {
+		ErrorService::Get().Report(ScalingError::ImportEmpty, path);
+		co_return;
 	}
-
-	const hstring failedMsg = resourceLoader.GetString(L"Message_ImportScalingModesFailed");
-	ToastService::Get().ShowMessageInApp(
-		{}, failedMsg.c_str(), std::chrono::seconds(5));
+	rapidjson::Document doc;
+	// Preserve the existing acceptance of comments and trailing commas.
+	doc.Parse<rapidjson::kParseCommentsFlag | rapidjson::kParseTrailingCommasFlag>(json.data(), json.size());
+	if (doc.HasParseError()) {
+		ErrorService::Get().Report(ScalingError::ImportInvalidJson,
+			fmt::format("{} / byte {} / {}", path, doc.GetErrorOffset(),
+				rapidjson::GetParseError_En(doc.GetParseError())));
+		co_return;
+	}
+	if (!doc.IsObject() || !doc.HasMember("scalingModes") || !doc["scalingModes"].IsArray()) {
+		ErrorService::Get().Report(ScalingError::ImportWrongFileType, path);
+		co_return;
+	}
+	if (doc["scalingModes"].Empty()) {
+		ErrorService::Get().Report(ScalingError::ImportEmpty, path);
+		co_return;
+	}
+	if (!ScalingModesService::Get().Import(((const rapidjson::Document&)doc).GetObj(), false)) {
+		ErrorService::Get().Report(ScalingError::ImportIncompatible, path);
+	}
 }
 
 bool ScalingModesViewModel::CanReorderScalingModes() const noexcept {

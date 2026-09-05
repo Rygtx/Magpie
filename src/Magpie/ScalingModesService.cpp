@@ -3,6 +3,7 @@
 #include "EffectHelper.h"
 #include "EffectsService.h"
 #include "JsonHelper.h"
+#include "Logger.h"
 #include "ScalingMode.h"
 #include "ScalingModesService.h"
 #include "StrHelper.h"
@@ -141,10 +142,15 @@ static void WriteScalingMode(rapidjson::PrettyWriter<rapidjson::StringBuffer>& w
 }
 
 void ScalingModesService::Export(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer) const noexcept {
-	writer.Key("scalingModes");
-	writer.StartArray();
+	Export(writer, AppSettings::Get().ScalingModes());
+}
 
-	for (const ScalingMode& scalingMode : AppSettings::Get().ScalingModes()) {
+void ScalingModesService::Export(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+    const std::vector<ScalingMode>& modes) {
+    writer.Key("scalingModes");
+    writer.StartArray();
+
+    for (const ScalingMode& scalingMode : modes) {
 		WriteScalingMode(writer, scalingMode);
 	}
 
@@ -254,6 +260,185 @@ static bool LoadScalingMode(
 	return true;
 }
 
+struct V065NormalizationStats {
+	uint32_t removedDepthParameters = 0;
+	uint32_t removedLegacyParameters = 0;
+	uint32_t clampedParameters = 0;
+	uint32_t migratedGuidanceModes = 0;
+	uint32_t removedDepthDiagnostics = 0;
+	uint32_t insertedFallbacks = 0;
+	uint32_t migratedMotionVectorChoices = 0;
+	uint32_t normalizedOpticalFlowChoices = 0;
+	uint32_t migratedXeSSMfgSettings = 0;
+	uint32_t removedXeSSMfgNvidiaParameters = 0;
+
+	bool Changed() const noexcept {
+		return removedDepthParameters || removedLegacyParameters ||
+			clampedParameters || migratedGuidanceModes ||
+			removedDepthDiagnostics || insertedFallbacks ||
+			migratedMotionVectorChoices || normalizedOpticalFlowChoices ||
+			migratedXeSSMfgSettings || removedXeSSMfgNvidiaParameters;
+	}
+};
+
+static V065NormalizationStats NormalizeV065ScalingModes(
+	std::vector<ScalingMode>& scalingModes
+) noexcept {
+	V065NormalizationStats stats;
+	for (ScalingMode& scalingMode : scalingModes) {
+		const size_t oldEffectCount = scalingMode.effects.size();
+		std::erase_if(scalingMode.effects, [](const EffectItem& effect) {
+			return effect.name == L"Diagnostics\\FrameGuidance_Depth" ||
+				effect.name == L"Diagnostics\\FrameGuidance_DepthResidual";
+		});
+		stats.removedDepthDiagnostics += static_cast<uint32_t>(
+			oldEffectCount - scalingMode.effects.size());
+
+		for (EffectItem& effect : scalingMode.effects) {
+
+			if (effect.name == L"DLSSNR\\DLSSNR_AI_Filter") {
+				auto guidanceMode = effect.parameters.find(L"guidanceMode");
+				if (guidanceMode != effect.parameters.end()) {
+					const int oldMode = std::clamp(
+						static_cast<int>(std::lround(guidanceMode->second)), 0, 3);
+					effect.parameters.try_emplace(
+						L"useMotionVectors", oldMode == 0 || oldMode == 2 ? 1.0f : 0.0f);
+					effect.parameters.erase(guidanceMode);
+					++stats.migratedGuidanceModes;
+				}
+				stats.removedDepthParameters += static_cast<uint32_t>(
+					effect.parameters.erase(L"depthInferenceInterval"));
+				stats.removedLegacyParameters += static_cast<uint32_t>(
+					effect.parameters.erase(L"nrPreset"));
+				for (std::wstring_view name : {
+					L"intensity", L"localToneStrength", L"localStructureStrength" }) {
+					auto it = effect.parameters.find(name);
+					if (it == effect.parameters.end()) continue;
+					const float clamped = std::isfinite(it->second) ?
+						std::clamp(it->second, 0.0f, 1.0f) : 1.0f;
+					if (clamped != it->second) {
+						it->second = clamped;
+						++stats.clampedParameters;
+					}
+				}
+			} else if ((effect.name == L"DLSS\\DLSS_SR" && !effect.parameters.contains(L"opticalFlowMethod")) ||
+				effect.name == L"DLSSFG\\DLSS_FrameGeneration") {
+				stats.removedDepthParameters += static_cast<uint32_t>(
+					effect.parameters.erase(L"useEstimatedDepth"));
+			}
+
+			const bool isDlssMotionConsumer =
+				(effect.name == L"DLSS\\DLSS_SR" && !effect.parameters.contains(L"opticalFlowMethod")) ||
+				effect.name == L"DLSSFG\\DLSS_FrameGeneration" ||
+				effect.name == L"DLSSNR\\DLSSNR_AI_Filter";
+			if (isDlssMotionConsumer) {
+				auto quality = effect.parameters.find(L"motionVectorQuality");
+				if (quality == effect.parameters.end()) {
+					auto legacy = effect.parameters.find(L"useMotionVectors");
+					const float migrated = legacy != effect.parameters.end() &&
+						legacy->second < 0.5f ? 0.0f : 2.0f;
+					effect.parameters[L"motionVectorQuality"] = migrated;
+					++stats.migratedMotionVectorChoices;
+				} else {
+					const int value = std::isfinite(quality->second) ?
+						static_cast<int>(std::lround(quality->second)) : -1;
+					if (value < 0 || value > 5 || quality->second != float(value)) {
+						quality->second = 2.0f;
+						++stats.normalizedOpticalFlowChoices;
+					}
+				}
+				stats.removedLegacyParameters += static_cast<uint32_t>(
+					effect.parameters.erase(L"useMotionVectors"));
+			}
+
+			// r8: collapse SR marker variants; jitter never modified captured pixels.
+			for (std::wstring_view family : { L"DLSS", L"FSR2", L"FSR3", L"FSR4", L"XeSS" }) {
+				const std::wstring prefix = std::wstring(family) + L"\\" + std::wstring(family);
+				const bool legacyZero = effect.name == prefix + L"_ZeroMV" ||
+					effect.name == prefix + L"_ZeroMV_Jitter";
+				const bool legacyFlow = effect.name == prefix + L"_OpticalFlow";
+				if (!legacyZero && !legacyFlow && effect.name != prefix + L"_SR") continue;
+				if (legacyZero || legacyFlow) {
+					effect.name = prefix + L"_SR";
+					effect.parameters[L"opticalFlowMethod"] = legacyZero ? 0.0f : family == L"DLSS" ? 2.0f : 1.0f;
+					if (legacyFlow) effect.parameters[family == L"DLSS" ? L"nvidiaOpticalFlowQuality" : L"amdOpticalFlowMode"] = family == L"DLSS" ? 2.0f : 1.0f;
+					++stats.migratedMotionVectorChoices;
+				}
+				if (family == L"DLSS") {
+					auto old = effect.parameters.find(L"motionVectorQuality");
+					const float quality = old != effect.parameters.end() ? old->second : 2.0f;
+					if (effect.parameters.try_emplace(L"opticalFlowMethod", quality == 0.0f ? 0.0f : 2.0f).second) ++stats.migratedMotionVectorChoices;
+					effect.parameters.try_emplace(L"nvidiaOpticalFlowQuality", quality >= 1.0f && quality <= 5.0f ? quality : 2.0f);
+				}
+				for (const auto& [name, minimum, maximum, fallback] : {
+					std::tuple{ L"opticalFlowMethod", 0.0f, 2.0f, family == L"DLSS" ? 2.0f : 0.0f },
+					std::tuple{ L"amdOpticalFlowMode", 0.0f, 1.0f, 1.0f },
+					std::tuple{ L"nvidiaOpticalFlowQuality", 1.0f, 5.0f, 2.0f } }) {
+					auto [it, inserted] = effect.parameters.try_emplace(name, fallback);
+					if (inserted || !std::isfinite(it->second) || it->second < minimum ||
+						it->second > maximum || std::round(it->second) != it->second) {
+						it->second = fallback;
+						++stats.normalizedOpticalFlowChoices;
+					}
+				}
+				for (std::wstring_view old : { L"motionVectorQuality", L"useMotionVectors", L"useEstimatedDepth", L"enableJitter" })
+					stats.removedLegacyParameters += static_cast<uint32_t>(effect.parameters.erase(old));
+				break;
+			}
+
+			if (effect.name == L"XeSSFG\\XeSS_FrameGeneration_x2_ZeroMV" ||
+				effect.name == L"XeSSFG\\XeSS_MultiFrameGeneration_ZeroMV") {
+				auto normalizeChoice = [&](std::wstring_view name, int minValue,
+					int maxValue, int defaultValue,
+					uint32_t& migratedCounter) noexcept {
+					auto [it, inserted] = effect.parameters.try_emplace(
+						std::wstring(name), static_cast<float>(defaultValue));
+					if (inserted) {
+						++migratedCounter;
+						return;
+					}
+					const int value = std::isfinite(it->second) ?
+						static_cast<int>(std::lround(it->second)) : minValue - 1;
+					if (value < minValue || value > maxValue ||
+						it->second != static_cast<float>(value)) {
+						it->second = static_cast<float>(defaultValue);
+						++stats.normalizedOpticalFlowChoices;
+					}
+				};
+
+				if (effect.name == L"XeSSFG\\XeSS_FrameGeneration_x2_ZeroMV") {
+					normalizeChoice(L"opticalFlowMethod", 0, 2, 0,
+						stats.migratedMotionVectorChoices);
+					normalizeChoice(L"amdOpticalFlowMode", 0, 1, 1,
+						stats.migratedMotionVectorChoices);
+					normalizeChoice(L"nvidiaOpticalFlowQuality", 1, 5, 2,
+						stats.migratedMotionVectorChoices);
+				} else {
+					// MFG method 2 used to mean NVOF. It must fall back to None,
+					// never clamp to AMDOF. MFG x2 is a valid cross-vendor request.
+					normalizeChoice(L"opticalFlowMethod", 0, 1, 0,
+						stats.migratedXeSSMfgSettings);
+					normalizeChoice(L"amdOpticalFlowMode", 0, 1, 1,
+						stats.migratedMotionVectorChoices);
+					normalizeChoice(L"multiplier", 2, 4, 3,
+						stats.migratedXeSSMfgSettings);
+					stats.removedXeSSMfgNvidiaParameters +=
+						static_cast<uint32_t>(effect.parameters.erase(
+							L"nvidiaOpticalFlowQuality"));
+				}
+			}
+		}
+
+		if (oldEffectCount != 0 && scalingMode.effects.empty()) {
+			EffectItem& fallback = scalingMode.effects.emplace_back();
+			fallback.name = L"Bilinear";
+			fallback.scalingType = ScalingType::Fit;
+			++stats.insertedFallbacks;
+		}
+	}
+	return stats;
+}
+
 bool ScalingModesService::Import(const rapidjson::GenericObject<true, rapidjson::Value>& root, bool loadingSettings) noexcept {
 	auto scalingModesNode = root.FindMember("scalingModes");
 	if (scalingModesNode == root.MemberEnd()) {
@@ -295,6 +480,27 @@ bool ScalingModesService::Import(const rapidjson::GenericObject<true, rapidjson:
 		return true;
 	}
 
+	const V065NormalizationStats normalization =
+		NormalizeV065ScalingModes(scalingModes);
+	if (normalization.Changed()) {
+		Logger::Get().Info(fmt::format(
+			"v0.6.5 scaling-mode normalization: migratedGuidanceModes={} "
+			"removedDepthParameters={} removedLegacyParameters={} "
+			"clampedParameters={} removedDepthDiagnostics={} fallbacks={} "
+			"migratedMotionVectorChoices={} normalizedOpticalFlowChoices={} "
+			"migratedXeSSMfgSettings={} removedXeSSMfgNvidiaParameters={}",
+			normalization.migratedGuidanceModes,
+			normalization.removedDepthParameters,
+			normalization.removedLegacyParameters,
+			normalization.clampedParameters,
+			normalization.removedDepthDiagnostics,
+			normalization.insertedFallbacks,
+			normalization.migratedMotionVectorChoices,
+			normalization.normalizedOpticalFlowChoices,
+			normalization.migratedXeSSMfgSettings,
+			normalization.removedXeSSMfgNvidiaParameters));
+	}
+
 	std::vector<ScalingMode>& settings = AppSettings::Get().ScalingModes();
 	settings.insert(
 		settings.end(),
@@ -307,7 +513,7 @@ bool ScalingModesService::Import(const rapidjson::GenericObject<true, rapidjson:
 	if (!loadingSettings) {
 		AppSettings::Get().SaveAsync();
 	}
-	
+
 	return true;
 }
 

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "FrameTrace.h"
 #include "Win32Helper.h"
 #include "StrHelper.h"
 #include <dcomp.h>
@@ -470,6 +471,7 @@ int16_t Win32Helper::AdvancedWindowHitTest(HWND hWnd, POINT ptScreen, UINT timeo
 }
 
 bool Win32Helper::IsWindowHung(HWND hWnd) noexcept {
+	FrameTrace::Scope traceProbe(FrameTrace::Event::FocusProbe);
 	// 保险起见不使用 SMTO_ABORTIFHUNG。我不知道 OS 怎么判断线程是否处于无响应
 	// 状态，考虑到 IsHungAppWindow 有误报的情况 (GH#1244)，最好不要依赖。
 	return 0 == SendMessageTimeout(hWnd, WM_NULL, 0, 0, SMTO_ERRORONEXIT, 500, nullptr);
@@ -538,6 +540,7 @@ bool Win32Helper::ReadTextFile(const wchar_t* fileName, std::string& result) noe
 	// 获取文件长度
 	int fd = _fileno(hFile.get());
 	long size = _filelength(fd);
+	if (size < 0) return false;
 
 	result.clear();
 	result.resize(static_cast<size_t>(size) + 1, 0);
@@ -545,7 +548,7 @@ bool Win32Helper::ReadTextFile(const wchar_t* fileName, std::string& result) noe
 	size_t readed = fread(result.data(), 1, size, hFile.get());
 	result.resize(readed);
 
-	return true;
+	return ferror(hFile.get()) == 0;
 }
 
 bool Win32Helper::WriteTextFile(const wchar_t* fileName, std::string_view text) noexcept {
@@ -557,8 +560,13 @@ bool Win32Helper::WriteTextFile(const wchar_t* fileName, std::string_view text) 
 		return false;
 	}
 
-	fwrite(text.data(), 1, text.size(), hFile.get());
-	return true;
+	if (fwrite(text.data(), 1, text.size(), hFile.get()) != text.size() ||
+		fflush(hFile.get()) != 0) {
+		Logger::Get().Error("Writing text file or flushing buffered data failed");
+		return false;
+	}
+	// Buffered writes may fail only when closing the file.
+	return fclose(hFile.release()) == 0;
 }
 
 bool Win32Helper::FileExists(const wchar_t* fileName) noexcept {

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "FrameTrace.h"
 #include "NvidiaOpticalFlowProvider.h"
 #include "DeviceResources.h"
 #include "DirectXHelper.h"
@@ -23,9 +24,9 @@ cbuffer Params : register(b0) {
     uint2 SourceExtent;
     uint2 FlowExtent;
     uint GridSize;
+    uint HasForwardCost;
     uint HasBackward;
     uint HasBackwardCost;
-    uint Padding;
 };
 
 float2 LoadFlow(Texture2D<int2> field, int2 p) {
@@ -66,7 +67,11 @@ void Densify(uint3 tid : SV_DispatchThreadID) {
 
     float2 p = float2(tid.xy) + 0.5;
     float2 forward = SampleFlow(ForwardFlow, p);
-    float confidence = 1.0 - SampleCost(ForwardCost, p);
+    // Turing has no hardware cost output. A conservative non-zero baseline
+    // still lets downstream consumers use coherent motion while reset frames
+    // remain explicitly zero-confidence.
+    float confidence = HasForwardCost != 0 ?
+        1.0 - SampleCost(ForwardCost, p) : 0.65;
 
     if (HasBackward != 0) {
         float2 referencePixel = p + forward;
@@ -103,6 +108,31 @@ constexpr std::array<float, 2> DecodeS105(int16_t x, int16_t y) noexcept {
 // translation test. NVOF stores five fractional bits and we preserve X/Y signs.
 static_assert(DecodeS105(64, 0)[0] == 2.0f);
 static_assert(DecodeS105(0, -96)[1] == -3.0f);
+
+struct NvofProfile {
+	uint32_t gridSize;
+	NV_OF_PERF_LEVEL perfLevel;
+	std::string_view label;
+	std::string_view perfLabel;
+};
+
+constexpr NvofProfile ResolveProfile(
+	NvidiaOpticalFlowQuality quality
+) noexcept {
+	switch (quality) {
+	case NvidiaOpticalFlowQuality::Performance:
+		return { 4, NV_OF_PERF_LEVEL_FAST, "4F", "FAST" };
+	case NvidiaOpticalFlowQuality::Quality:
+		return { 4, NV_OF_PERF_LEVEL_SLOW, "4S", "SLOW" };
+	case NvidiaOpticalFlowQuality::HighQuality:
+		return { 2, NV_OF_PERF_LEVEL_MEDIUM, "2M", "MEDIUM" };
+	case NvidiaOpticalFlowQuality::HighestQuality:
+		return { 2, NV_OF_PERF_LEVEL_SLOW, "2S", "SLOW" };
+	case NvidiaOpticalFlowQuality::Balanced:
+	default:
+		return { 4, NV_OF_PERF_LEVEL_MEDIUM, "4M", "MEDIUM" };
+	}
+}
 
 FrameGuidanceMetadata MakeMetadata(
 	const FrameGuidanceFrame& frame,
@@ -173,7 +203,7 @@ struct NvidiaOpticalFlowProvider::Impl {
 	~Impl() { DestroySession(); }
 
 	void DestroySession() noexcept {
-		if (api.nvOFUnregisterResourceD3D11) {
+		if (session && api.nvOFUnregisterResourceD3D11) {
 			for (NvOFGPUBufferHandle& handle : registered) {
 				if (handle) {
 					api.nvOFUnregisterResourceD3D11(handle);
@@ -181,6 +211,7 @@ struct NvidiaOpticalFlowProvider::Impl {
 				}
 			}
 		}
+		for (NvOFGPUBufferHandle& handle : registered) handle = nullptr;
 		if (session && api.nvOFDestroy) {
 			api.nvOFDestroy(session);
 		}
@@ -200,6 +231,8 @@ struct NvidiaOpticalFlowProvider::Impl {
 		confidence = nullptr;
 		motionUav = nullptr;
 		confidenceUav = nullptr;
+		densifyShader = nullptr;
+		paramsBuffer = nullptr;
 		for (GpuQuerySlot& slot : gpuQuerySlots) {
 			slot.disjoint = nullptr;
 			slot.start = nullptr;
@@ -210,10 +243,16 @@ struct NvidiaOpticalFlowProvider::Impl {
 		nextGpuQuerySlot = 0;
 		gpuTimingSampleCount = 0;
 		gpuTimingAvailable = false;
+		profileLabel = {};
 		gridSize = 0;
+		costEnabled = false;
 		previousSlot = 0;
 		bidirectional = false;
 		historyValid = false;
+		resources = nullptr;
+		device = nullptr;
+		context = nullptr;
+		extent = {};
 	}
 
 	bool CreateGpuTimingQueries() noexcept {
@@ -252,9 +291,9 @@ struct NvidiaOpticalFlowProvider::Impl {
 			if (gpuTimingSampleCount <= 4 || gpuTimingSampleCount % 120 == 0) {
 				const NvofTimingSummary timing = gpuTimingWindow.Summarize();
 				Logger::Get().Info(fmt::format(
-					"Frame Guidance NVOF GPU interval: samples={} avg={:.3f} ms "
+					"Frame Guidance NVOF GPU interval: profile={} samples={} avg={:.3f} ms "
 					"p95={:.3f} ms p99={:.3f} ms max={:.3f} ms",
-					timing.count, timing.average, timing.p95,
+					profileLabel, timing.count, timing.average, timing.p95,
 					timing.p99, timing.maximum));
 			}
 		}
@@ -335,26 +374,26 @@ struct NvidiaOpticalFlowProvider::Impl {
 				return false;
 			}
 		}
-		for (size_t i = 0; i < cost.size(); ++i) {
-			cost[i] = DirectXHelper::CreateTexture2D(
-				device, DXGI_FORMAT_R8_UINT, flowWidth, flowHeight,
-				D3D11_BIND_SHADER_RESOURCE);
-			if (!cost[i] || FAILED(device->CreateShaderResourceView(
-				cost[i].get(), nullptr, costSrv[i].put()))) {
-				return false;
+		if (costEnabled) {
+			for (size_t i = 0; i < cost.size(); ++i) {
+				cost[i] = DirectXHelper::CreateTexture2D(
+					device, DXGI_FORMAT_R8_UINT, flowWidth, flowHeight,
+					D3D11_BIND_SHADER_RESOURCE);
+				if (!cost[i] || FAILED(device->CreateShaderResourceView(
+					cost[i].get(), nullptr, costSrv[i].put()))) {
+					return false;
+				}
 			}
 		}
 
 		constexpr UINT GUIDE_BIND =
 			D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
-		constexpr UINT GUIDE_MISC =
-			D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
-		motion = DirectXHelper::CreateTexture2D(
+		motion = DirectXHelper::CreateSharedTexture2D(
 			device, DXGI_FORMAT_R16G16_FLOAT, extent.width, extent.height,
-			GUIDE_BIND, D3D11_USAGE_DEFAULT, GUIDE_MISC);
-		confidence = DirectXHelper::CreateTexture2D(
+			GUIDE_BIND, "NVOF/Motion");
+		confidence = DirectXHelper::CreateSharedTexture2D(
 			device, DXGI_FORMAT_R8_UNORM, extent.width, extent.height,
-			GUIDE_BIND, D3D11_USAGE_DEFAULT, GUIDE_MISC);
+			GUIDE_BIND, "NVOF/Confidence");
 		if (!motion || !confidence ||
 			FAILED(device->CreateUnorderedAccessView(
 				motion.get(), nullptr, motionUav.put())) ||
@@ -369,8 +408,10 @@ struct NvidiaOpticalFlowProvider::Impl {
 		for (size_t i = 0; i < flow.size(); ++i) {
 			if (!Register(flow[i].get(), registered[2 + i])) return false;
 		}
-		for (size_t i = 0; i < cost.size(); ++i) {
-			if (!Register(cost[i].get(), registered[4 + i])) return false;
+		if (costEnabled) {
+			for (size_t i = 0; i < cost.size(); ++i) {
+				if (!Register(cost[i].get(), registered[4 + i])) return false;
+			}
 		}
 		return true;
 	}
@@ -398,13 +439,32 @@ struct NvidiaOpticalFlowProvider::Impl {
 
 	bool CreateSession(
 		DeviceResources& deviceResources,
-		FrameGuidanceExtent newExtent
+		FrameGuidanceExtent newExtent,
+		NvidiaOpticalFlowQuality requestedQuality
 	) noexcept {
 		DestroySession();
+		initializationError = OpticalFlowInitializationError::ProviderUnavailable;
+		bool initialized = false;
+		auto rollback = wil::scope_exit([&]() noexcept {
+			if (initialized) return;
+			const OpticalFlowInitializationError error = initializationError;
+			DestroySession();
+			initializationError = error;
+		});
+		resources = &deviceResources;
 		device = deviceResources.GetD3DDevice();
 		context = deviceResources.GetD3DDC();
 		extent = newExtent;
 		if (!device || !context || !extent.IsValid()) return false;
+		DXGI_ADAPTER_DESC1 adapterDesc{};
+		if (!deviceResources.GetGraphicsAdapter() || FAILED(
+			deviceResources.GetGraphicsAdapter()->GetDesc1(&adapterDesc)) ||
+			adapterDesc.VendorId != 0x10DE) {
+			Logger::Get().Warn(
+				"NVOF unavailable: selected adapter is not an NVIDIA adapter; "
+				"select AMD OF or None");
+			return false;
+		}
 
 		module = LoadLibraryExW(
 			L"nvofapi64.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
@@ -439,25 +499,31 @@ struct NvidiaOpticalFlowProvider::Impl {
 		std::vector<DXGI_FORMAT> inputFormats;
 		std::vector<DXGI_FORMAT> outputFormats;
 		std::vector<DXGI_FORMAT> costFormats;
+		const bool costFormatAvailable =
+			QueryFormats(NV_OF_BUFFER_USAGE_COST, costFormats) &&
+			HasFormat(costFormats, DXGI_FORMAT_R8_UINT);
 		if (!QueryFormats(NV_OF_BUFFER_USAGE_INPUT, inputFormats) ||
 			!QueryFormats(NV_OF_BUFFER_USAGE_OUTPUT, outputFormats) ||
-			!QueryFormats(NV_OF_BUFFER_USAGE_COST, costFormats) ||
 			!HasFormat(inputFormats, DXGI_FORMAT_B8G8R8A8_UNORM) ||
-			!HasFormat(outputFormats, DXGI_FORMAT_R16G16_SINT) ||
-			!HasFormat(costFormats, DXGI_FORMAT_R8_UINT)) {
-			Logger::Get().Warn("NVOF required ABGR8/S10.5/R8 cost formats unavailable");
+			!HasFormat(outputFormats, DXGI_FORMAT_R16G16_SINT)) {
+			Logger::Get().Warn("NVOF required ABGR8/S10.5 formats unavailable");
 			return false;
 		}
 
 		const std::vector<uint32_t> grids = QueryCaps(
 			NV_OF_CAPS_SUPPORTED_OUTPUT_GRID_SIZES);
-		for (uint32_t candidate : { 4u, 2u, 1u }) {
-			if (std::find(grids.begin(), grids.end(), candidate) != grids.end()) {
-				gridSize = candidate;
-				break;
-			}
+		const NvofProfile profile = ResolveProfile(requestedQuality);
+		if (std::find(grids.begin(), grids.end(), profile.gridSize) == grids.end()) {
+			initializationError = OpticalFlowInitializationError::QualityUnsupported;
+			Logger::Get().Warn(fmt::format(
+				"NVOF quality unsupported: profile={} requires {}x{} output grid; "
+				"select a lower quality, AMD OF, or None",
+				profile.label, profile.gridSize, profile.gridSize));
+			return false;
 		}
-		if (!gridSize) return false;
+		gridSize = profile.gridSize;
+		profileLabel = profile.label;
+		initializationError = OpticalFlowInitializationError::InteropFailed;
 
 		NV_OF_INIT_PARAMS init{
 			.width = extent.width,
@@ -465,9 +531,9 @@ struct NvidiaOpticalFlowProvider::Impl {
 			.outGridSize = static_cast<NV_OF_OUTPUT_VECTOR_GRID_SIZE>(gridSize),
 			.hintGridSize = NV_OF_HINT_VECTOR_GRID_SIZE_UNDEFINED,
 			.mode = NV_OF_MODE_OPTICALFLOW,
-			.perfLevel = NV_OF_PERF_LEVEL_MEDIUM,
+			.perfLevel = profile.perfLevel,
 			.enableExternalHints = NV_OF_FALSE,
-			.enableOutputCost = NV_OF_TRUE,
+			.enableOutputCost = costFormatAvailable ? NV_OF_TRUE : NV_OF_FALSE,
 			.hPrivData = nullptr,
 			.disparityRange = NV_OF_STEREO_DISPARITY_RANGE_UNDEFINED,
 			.enableRoi = NV_OF_FALSE,
@@ -477,9 +543,24 @@ struct NvidiaOpticalFlowProvider::Impl {
 		};
 		NV_OF_STATUS status = api.nvOFInit(session, &init);
 		bidirectional = status == NV_OF_SUCCESS;
-		if (!bidirectional) {
-			init.predDirection = NV_OF_PRED_DIRECTION_FORWARD;
+		costEnabled = costFormatAvailable && status == NV_OF_SUCCESS;
+		if (status != NV_OF_SUCCESS && costFormatAvailable) {
+			init.enableOutputCost = NV_OF_FALSE;
 			status = api.nvOFInit(session, &init);
+			bidirectional = status == NV_OF_SUCCESS;
+			costEnabled = false;
+		}
+		if (status != NV_OF_SUCCESS) {
+			init.predDirection = NV_OF_PRED_DIRECTION_FORWARD;
+			init.enableOutputCost = costFormatAvailable ? NV_OF_TRUE : NV_OF_FALSE;
+			status = api.nvOFInit(session, &init);
+			costEnabled = costFormatAvailable && status == NV_OF_SUCCESS;
+			if (status != NV_OF_SUCCESS && costFormatAvailable) {
+				init.enableOutputCost = NV_OF_FALSE;
+				status = api.nvOFInit(session, &init);
+				costEnabled = false;
+			}
+			bidirectional = false;
 		}
 		if (status != NV_OF_SUCCESS || !CreateTextures() || !CreatePostProcess()) {
 			return false;
@@ -494,11 +575,17 @@ struct NvidiaOpticalFlowProvider::Impl {
 		historyValid = false;
 		previousSlot = 0;
 		Logger::Get().Info(fmt::format(
-			"Frame Guidance NVOF initialized: API {}.{}, grid={}x{}, "
-			"bidirectional={}, cost=R8_UINT, preset=MEDIUM, "
+			"Frame Guidance NVOF initialized: profile={} grid={}x{} perf={} "
+			"driverApi={}.{} cost={} bidirectional={} input={}x{} output={}x{} "
 			"convention=current-to-previous/source-pixels/S10.5-self-test-passed",
-			driverVersion >> 4, driverVersion & 0xf, gridSize, gridSize,
-			bidirectional));
+			profile.label, gridSize, gridSize, profile.perfLabel,
+			driverVersion >> 4, driverVersion & 0xf,
+			costEnabled ? "R8_UINT" : "none", bidirectional,
+			extent.width, extent.height,
+			(extent.width + gridSize - 1) / gridSize,
+			(extent.height + gridSize - 1) / gridSize));
+		initializationError = OpticalFlowInitializationError::None;
+		initialized = true;
 		return true;
 	}
 
@@ -515,9 +602,9 @@ struct NvidiaOpticalFlowProvider::Impl {
 			uint32_t flowWidth;
 			uint32_t flowHeight;
 			uint32_t gridSize;
+			uint32_t hasForwardCost;
 			uint32_t hasBackward;
 			uint32_t hasBackwardCost;
-			uint32_t padding;
 		};
 		D3D11_MAPPED_SUBRESOURCE mapped{};
 		if (FAILED(context->Map(
@@ -528,7 +615,9 @@ struct NvidiaOpticalFlowProvider::Impl {
 			extent.width, extent.height,
 			(extent.width + gridSize - 1) / gridSize,
 			(extent.height + gridSize - 1) / gridSize,
-			gridSize, bidirectional ? 1u : 0u, bidirectional ? 1u : 0u, 0
+			gridSize, costEnabled ? 1u : 0u,
+			bidirectional ? 1u : 0u,
+			bidirectional && costEnabled ? 1u : 0u
 		};
 		context->Unmap(paramsBuffer.get(), 0);
 
@@ -578,13 +667,18 @@ struct NvidiaOpticalFlowProvider::Impl {
 	uint32_t gridSize = 0;
 	uint32_t previousSlot = 0;
 	uint64_t gpuTimingSampleCount = 0;
+	std::string_view profileLabel;
 	bool bidirectional = false;
+	bool costEnabled = false;
 	bool gpuTimingAvailable = false;
 	bool historyValid = false;
+	OpticalFlowInitializationError initializationError =
+		OpticalFlowInitializationError::ProviderUnavailable;
 };
 
-NvidiaOpticalFlowProvider::NvidiaOpticalFlowProvider() :
-	_impl(std::make_unique<Impl>()) {}
+NvidiaOpticalFlowProvider::NvidiaOpticalFlowProvider(
+	NvidiaOpticalFlowQuality quality
+) : _quality(quality), _impl(std::make_unique<Impl>()) {}
 
 NvidiaOpticalFlowProvider::~NvidiaOpticalFlowProvider() = default;
 
@@ -592,14 +686,14 @@ bool NvidiaOpticalFlowProvider::Initialize(
 	DeviceResources& resources,
 	FrameGuidanceExtent sourceExtent
 ) noexcept {
-	_impl->resources = &resources;
-	return _impl->CreateSession(resources, sourceExtent);
+	return _impl->CreateSession(resources, sourceExtent, _quality);
 }
 
 bool NvidiaOpticalFlowProvider::BeginFrame(
 	const FrameGuidanceFrame& frame,
 	MotionVectorProviderOutput& output
 ) noexcept {
+	FrameTrace::Scope traceNvof(FrameTrace::Event::NvofSubmit, static_cast<int64_t>(_quality));
 	Impl& impl = *_impl;
 	if (!frame.color || frame.sourceExtent != impl.extent || !impl.session) {
 		return false;
@@ -620,9 +714,10 @@ bool NvidiaOpticalFlowProvider::BeginFrame(
 		};
 		NV_OF_EXECUTE_OUTPUT_PARAMS outputParams{
 			.outputBuffer = impl.registered[2],
-			.outputCostBuffer = impl.registered[4],
+			.outputCostBuffer = impl.costEnabled ? impl.registered[4] : nullptr,
 			.bwdOutputBuffer = impl.bidirectional ? impl.registered[3] : nullptr,
-			.bwdOutputCostBuffer = impl.bidirectional ? impl.registered[5] : nullptr
+			.bwdOutputCostBuffer = impl.bidirectional && impl.costEnabled ?
+				impl.registered[5] : nullptr
 		};
 		const auto begin = std::chrono::steady_clock::now();
 		Impl::GpuQuerySlot* gpuTiming = impl.BeginGpuTiming();
@@ -675,9 +770,15 @@ bool NvidiaOpticalFlowProvider::Resize(
 	FrameGuidanceExtent sourceExtent
 ) noexcept {
 	if (!_impl->resources) return false;
-	const bool result = _impl->CreateSession(*_impl->resources, sourceExtent);
+	const bool result = _impl->CreateSession(
+		*_impl->resources, sourceExtent, _quality);
 	if (result) _impl->resetReason = FrameGuidanceResetReason::Resize;
 	return result;
+}
+
+OpticalFlowInitializationError
+NvidiaOpticalFlowProvider::InitializationError() const noexcept {
+	return _impl->initializationError;
 }
 
 }
@@ -686,10 +787,14 @@ bool NvidiaOpticalFlowProvider::Resize(
 
 namespace Magpie {
 
-struct NvidiaOpticalFlowProvider::Impl {};
+struct NvidiaOpticalFlowProvider::Impl {
+	OpticalFlowInitializationError initializationError =
+		OpticalFlowInitializationError::ProviderUnavailable;
+};
 
-NvidiaOpticalFlowProvider::NvidiaOpticalFlowProvider() :
-	_impl(std::make_unique<Impl>()) {}
+NvidiaOpticalFlowProvider::NvidiaOpticalFlowProvider(
+	NvidiaOpticalFlowQuality quality
+) : _quality(quality), _impl(std::make_unique<Impl>()) {}
 NvidiaOpticalFlowProvider::~NvidiaOpticalFlowProvider() = default;
 bool NvidiaOpticalFlowProvider::Initialize(
 	DeviceResources&, FrameGuidanceExtent) noexcept { return false; }
@@ -697,6 +802,10 @@ bool NvidiaOpticalFlowProvider::BeginFrame(
 	const FrameGuidanceFrame&, MotionVectorProviderOutput&) noexcept { return false; }
 void NvidiaOpticalFlowProvider::Reset(FrameGuidanceResetReason) noexcept {}
 bool NvidiaOpticalFlowProvider::Resize(FrameGuidanceExtent) noexcept { return false; }
+OpticalFlowInitializationError
+NvidiaOpticalFlowProvider::InitializationError() const noexcept {
+	return _impl->initializationError;
+}
 
 }
 

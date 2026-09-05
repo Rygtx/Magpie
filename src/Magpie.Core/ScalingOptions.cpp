@@ -63,6 +63,9 @@ void ScalingOptions::Log() const noexcept {
 		deviceId: {}
 	minFrameRate: {}
 	maxFrameRate: {}
+	frontEdgeSync: {}
+	frontEdgeSyncFrameRate: {}
+	vrr: {}
 	cursorScaling: {}
 	captureMethod: {}
 	multiMonitorUsage: {}
@@ -97,6 +100,9 @@ void ScalingOptions::Log() const noexcept {
 		graphicsCardId.deviceId,
 		minFrameRate,
 		maxFrameRate.has_value() ? *maxFrameRate : 0.0f,
+		isFrontEdgeSyncEnabled,
+		frontEdgeSyncFrameRate,
+		isVRREnabled,
 		cursorScaling,
 		(int)captureMethod,
 		(int)multiMonitorUsage,

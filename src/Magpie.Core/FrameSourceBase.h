@@ -8,6 +8,7 @@ class BackendDescriptorStore;
 enum class FrameSourceWaitType {
 	NoWait,
 	WaitForMessage,
+	WaitForEvent,
 	WaitForFrame
 };
 
@@ -33,6 +34,14 @@ public:
 
 	FrameSourceState Update() noexcept;
 
+	// Backend-thread state. A sequence changes only on a real capture discontinuity;
+	// the first valid frame must reach temporal consumers even if its pixels match.
+	uint64_t CaptureSequence() const noexcept { return _captureSequence; }
+	bool IsCaptureInterrupted() const noexcept { return _captureInterrupted; }
+	int64_t CaptureTimestamp100ns() const noexcept { return _captureTimestamp100ns; }
+	const char* CaptureErrorContext() const noexcept { return _captureErrorContext; }
+	HRESULT CaptureErrorCode() const noexcept { return _captureErrorCode; }
+
 	void ForceDuplicateFrameDetection(bool value) noexcept {
 		_forceDuplicateFrameDetection = value;
 	}
@@ -46,10 +55,18 @@ public:
 	virtual const char* Name() const noexcept = 0;
 
 	virtual FrameSourceWaitType WaitType() const noexcept = 0;
+	// Borrowed on the backend thread; valid until its next capture operation.
+	virtual HANDLE FrameArrivedEvent() const noexcept { return nullptr; }
 	
 	virtual void OnCursorVisibilityChanged(bool /*isVisible*/, bool /*onDestory*/) noexcept {};
 
 protected:
+	uint64_t _captureSequence = 0;
+	bool _captureInterrupted = false;
+	int64_t _captureTimestamp100ns = 0;
+	const char* _captureErrorContext = "Capture frame update";
+	HRESULT _captureErrorCode = S_OK;
+
 	virtual bool _Initialize() noexcept = 0;
 
 	virtual FrameSourceState _Update() noexcept = 0;
@@ -77,6 +94,11 @@ protected:
 	std::pair<uint32_t, uint32_t> _dispatchCount;
 
 private:
+	uint64_t _duplicateCaptureSequence = 0;
+	uint32_t _duplicateReadbackSamples = 0;
+	double _duplicateReadbackTotalMs = 0;
+	double _duplicateReadbackMaxMs = 0;
+
 	bool _InitCheckingForDuplicateFrame();
 
 	bool _IsDuplicateFrame();

@@ -12,6 +12,7 @@
 #include "CommonSharedConstants.h"
 #include "App.h"
 #include "ScalingModeEffectItem.h"
+#include "ScalingOptions.h"
 #include "RootPage.h"
 
 using namespace ::Magpie;
@@ -187,7 +188,7 @@ void ScalingModeItem::_RefreshEffectDragState() {
 }
 
 void ScalingModeItem::AddEffect(const hstring& fullName) {
-	if (_IsRemoved()) {
+	if (!CanAddEffect(fullName)) {
 		return;
 	}
 
@@ -209,6 +210,20 @@ void ScalingModeItem::AddEffect(const hstring& fullName) {
 	_RefreshEffectDragState();
 
 	AppSettings::Get().SaveAsync();
+}
+
+bool ScalingModeItem::CanAddEffect(const hstring& fullName) const noexcept {
+	if (_IsRemoved()) {
+		return false;
+	}
+
+	const FrameGenerationEffectKind candidate =
+		ClassifyFrameGenerationEffect(std::wstring_view(fullName));
+	if (candidate == FrameGenerationEffectKind::None) {
+		return true;
+	}
+
+	return !ValidateFrameGenerationChain(_Data().effects).HasFrameGeneration();
 }
 
 hstring ScalingModeItem::Name() const noexcept {

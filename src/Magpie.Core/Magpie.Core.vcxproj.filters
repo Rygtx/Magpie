@@ -40,6 +40,7 @@
     <ClInclude Include="GDIFrameSource.h">
       <Filter>Capture</Filter>
     </ClInclude>
+    <ClInclude Include="FrameTrace.h"><Filter>Render</Filter></ClInclude>
     <ClInclude Include="FrameSourceBase.h">
       <Filter>Capture</Filter>
     </ClInclude>
@@ -53,6 +54,12 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="include\EffectDesc.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EffectParameterRestart.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EffectParameterValue.h">
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="include\ScalingOptions.h">
@@ -100,6 +107,11 @@
     <ClInclude Include="FrameGuidanceService.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="MotionVectorRequest.h" />
+    <ClInclude Include="PresentationFrameRate.h" />
+    <ClInclude Include="FramePresentationTiming.h" />
+    <ClInclude Include="FramePacingWait.h" />
+    <ClInclude Include="include\FramePacingOptions.h" />
     <ClInclude Include="FrameGuidanceTypes.h">
       <Filter>Render</Filter>
     </ClInclude>
@@ -112,13 +124,13 @@
     <ClInclude Include="NvidiaOpticalFlowProvider.h">
       <Filter>Render</Filter>
     </ClInclude>
-    <ClInclude Include="DepthInferenceBackend.h">
-      <Filter>Render</Filter>
-    </ClInclude>
-    <ClInclude Include="DepthAnythingV2Provider.h">
-      <Filter>Render</Filter>
-    </ClInclude>
     <ClInclude Include="FrameGuidanceDiagnostics.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="PassThroughFrames.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EffectParameterResetGesture.h">
       <Filter>Render</Filter>
     </ClInclude>
     <ClInclude Include="FrameGuidanceD3D12Interop.h">
@@ -193,6 +205,7 @@
     <ClCompile Include="GDIFrameSource.cpp">
       <Filter>Capture</Filter>
     </ClCompile>
+    <ClCompile Include="FrameTrace.cpp"><Filter>Render</Filter></ClCompile>
     <ClCompile Include="FrameSourceBase.cpp">
       <Filter>Capture</Filter>
     </ClCompile>
@@ -230,13 +243,10 @@
     <ClCompile Include="NvidiaOpticalFlowProvider.cpp">
       <Filter>Render</Filter>
     </ClCompile>
-    <ClCompile Include="DepthInferenceBackend.cpp">
-      <Filter>Render</Filter>
-    </ClCompile>
-    <ClCompile Include="DepthAnythingV2Provider.cpp">
-      <Filter>Render</Filter>
-    </ClCompile>
     <ClCompile Include="FrameGuidanceDiagnostics.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="PassThroughFrames.cpp">
       <Filter>Render</Filter>
     </ClCompile>
     <ClCompile Include="FrameGuidanceD3D12Interop.cpp">

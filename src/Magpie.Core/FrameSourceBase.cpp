@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "FrameTrace.h"
 #include "FrameSourceBase.h"
 #include "BackendDescriptorStore.h"
 #include "DeviceResources.h"
@@ -58,10 +59,21 @@ bool FrameSourceBase::Initialize(DeviceResources& deviceResources, BackendDescri
 
 FrameSourceState FrameSourceBase::Update() noexcept {
 	const FrameSourceState state = _Update();
+	const bool newSequence = state == FrameSourceState::NewFrame &&
+		_duplicateCaptureSequence != _captureSequence;
+	if (newSequence) {
+		_duplicateCaptureSequence = _captureSequence;
+		_isCheckingForDuplicateFrame = true;
+		_framesLeft = INITIAL_CHECK_COUNT;
+		_nextSkipCount = INITIAL_SKIP_COUNT;
+		if (_prevFrame) {
+			_deviceResources->GetD3DDC()->CopyResource(_prevFrame.get(), _output.get());
+		}
+	}
 
 	const ScalingOptions& options = ScalingWindow::Get().Options();
 	const auto duplicateFrameDetectionMode = options.duplicateFrameDetectionMode;
-	if (state != FrameSourceState::NewFrame || (!_forceDuplicateFrameDetection &&
+	if (state != FrameSourceState::NewFrame || (newSequence && _prevFrame) || (!_forceDuplicateFrameDetection &&
 		(options.Is3DGameMode() ||
 			duplicateFrameDetectionMode == DuplicateFrameDetectionMode::Never))) {
 		return state;
@@ -308,6 +320,7 @@ bool FrameSourceBase::_InitCheckingForDuplicateFrame() {
 }
 
 bool FrameSourceBase::_IsDuplicateFrame() {
+	FrameTrace::Scope traceDuplicate(FrameTrace::Event::DuplicateCheck);
 	// 检查是否和前一帧相同
 	ID3D11DeviceContext4* d3dDC = _deviceResources->GetD3DDC();
 
@@ -332,10 +345,26 @@ bool FrameSourceBase::_IsDuplicateFrame() {
 
 	uint32_t result = 1;
 	D3D11_MAPPED_SUBRESOURCE ms;
+	const auto readbackStart = std::chrono::steady_clock::now();
+	FrameTrace::Scope traceReadback(FrameTrace::Event::DuplicateReadback);
 	HRESULT hr = d3dDC->Map(_readBackBuffer.get(), 0, D3D11_MAP_READ, 0, &ms);
 	if (SUCCEEDED(hr)) {
 		result = *(uint32_t*)ms.pData;
 		d3dDC->Unmap(_readBackBuffer.get(), 0);
+	}
+	traceReadback.Data(hr, result == 0);
+	traceReadback.End();
+	traceDuplicate.Data(result == 0, hr);
+	const double readbackMs = std::chrono::duration<double, std::milli>(
+		std::chrono::steady_clock::now() - readbackStart).count();
+	_duplicateReadbackTotalMs += readbackMs;
+	_duplicateReadbackMaxMs = std::max(_duplicateReadbackMaxMs, readbackMs);
+	if (++_duplicateReadbackSamples == 120) {
+		Logger::Get().Info(fmt::format(
+			"Capture duplicate readback CPU wait: samples=120 avgMs={:.3f} maxMs={:.3f}",
+			_duplicateReadbackTotalMs / 120, _duplicateReadbackMaxMs));
+		_duplicateReadbackSamples = 0;
+		_duplicateReadbackTotalMs = _duplicateReadbackMaxMs = 0;
 	}
 	return result == 0;
 }

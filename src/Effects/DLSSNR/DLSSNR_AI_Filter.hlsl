@@ -6,7 +6,8 @@
 //!SORT_NAME DLSSNR AI Filter (Experimental)
 
 //!PARAMETER
-//!LABEL Adjust Input Resolution (Reduces DLSSNR Quality)
+//!GROUP Detail Control
+//!LABEL Adjust Input Resolution\n(Reduces DLSSNR Quality)
 //!DEFAULT 0
 //!MIN 0
 //!MAX 1
@@ -14,6 +15,7 @@
 int enableInputResolutionScaling;
 
 //!PARAMETER
+//!GROUP Detail Control
 //!LABEL Input Resolution (%)
 //!DEFAULT 100
 //!MIN 25
@@ -22,6 +24,7 @@ int enableInputResolutionScaling;
 int inputResolutionPercent;
 
 //!PARAMETER
+//!GROUP Detail Control
 //!LABEL Residual Multiplier
 //!DEFAULT 1
 //!MIN 1
@@ -30,15 +33,56 @@ int inputResolutionPercent;
 float residualMultiplier;
 
 //!PARAMETER
-//!LABEL NR Preset (0 Default, 1 Preset #1, 2 Preset #2, 3 Preset #3)
-//!DEFAULT 0
+//!GROUP Detail Control
+//!LABEL Residual Saturation Multiplier
+//!DEFAULT 1
 //!MIN 0
-//!MAX 3
-//!STEP 1
-int nrPreset;
+//!MAX 2
+//!STEP 0.05
+float residualSaturation;
 
 //!PARAMETER
-//!LABEL NR Style (0 Default, 1 Natural, 2 Cinematic)
+//!GROUP Detail Control
+//!LABEL Residual Lightness Multiplier
+//!DEFAULT 1
+//!MIN 0
+//!MAX 2
+//!STEP 0.05
+float residualLightness;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Shadow / Structure Control
+//!DEFAULT 1
+//!MIN 0
+//!MAX 2
+//!STEP 0.05
+float shadowStructureMultiplier;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Reflection / Glow Control
+//!DEFAULT 1
+//!MIN 0
+//!MAX 2
+//!STEP 0.05
+float reflectionGlowMultiplier;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL OF Quality
+//!DEFAULT 2
+//!OPTION 0 None
+//!OPTION 1 Performance
+//!OPTION 2 Balanced (Recommended)
+//!OPTION 3 Quality
+//!OPTION 4 High Quality (High Cost)
+//!OPTION 5 Highest Quality (Very High Cost)
+int motionVectorQuality;
+
+//!PARAMETER
+//!GROUP DLSSNR
+//!LABEL NR Style\n(0 Default, 1 Natural, 2 Cinematic)
 //!DEFAULT 0
 //!MIN 0
 //!MAX 2
@@ -46,30 +90,34 @@ int nrPreset;
 int style;
 
 //!PARAMETER
+//!GROUP DLSSNR
 //!LABEL NR Intensity
 //!DEFAULT 1
 //!MIN 0
-//!MAX 2
+//!MAX 1
 //!STEP 0.05
 float intensity;
 
 //!PARAMETER
+//!GROUP DLSSNR
 //!LABEL Local Tone Strength
 //!DEFAULT 1
 //!MIN 0
-//!MAX 2
+//!MAX 1
 //!STEP 0.05
 float localToneStrength;
 
 //!PARAMETER
+//!GROUP DLSSNR
 //!LABEL Local Structure Strength
 //!DEFAULT 1
 //!MIN 0
-//!MAX 2
+//!MAX 1
 //!STEP 0.05
 float localStructureStrength;
 
 //!PARAMETER
+//!GROUP DLSSNR
 //!LABEL Skin Structure Strength
 //!DEFAULT -1
 //!MIN -1
@@ -78,6 +126,7 @@ float localStructureStrength;
 float skinStructureStrength;
 
 //!PARAMETER
+//!GROUP DLSSNR
 //!LABEL Automatic Mask
 //!DEFAULT 0
 //!MIN 0
@@ -86,28 +135,13 @@ float skinStructureStrength;
 int useAutoMask;
 
 //!PARAMETER
+//!GROUP DLSSNR
 //!LABEL NR UI Correction
 //!DEFAULT 0
 //!MIN 0
 //!MAX 1
 //!STEP 1
 int uiCorrection;
-
-//!PARAMETER
-//!LABEL Frame Guidance (0 Available, 1 Force Zero, 2 Motion Only, 3 Depth Only)
-//!DEFAULT 0
-//!MIN 0
-//!MAX 3
-//!STEP 1
-int guidanceMode;
-
-//!PARAMETER
-//!LABEL Depth Inference Interval
-//!DEFAULT 4
-//!MIN 1
-//!MAX 8
-//!STEP 1
-int depthInferenceInterval;
 
 //!TEXTURE
 Texture2D INPUT;

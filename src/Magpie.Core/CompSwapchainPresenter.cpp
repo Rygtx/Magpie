@@ -237,7 +237,8 @@ bool CompSwapchainPresenter::EndFrame(bool waitForGpu) noexcept {
 		Win32Helper::WaitForDwmComposition();
 	}
 
-	_presentationManager->Present();
+	const HRESULT presentResult = _presentationManager->Present();
+	_lastPresentedFrameCount = presentResult == S_OK ? 1u : 0u;
 
 	if (_isResized) {
 		_isResized = false;
@@ -246,7 +247,7 @@ bool CompSwapchainPresenter::EndFrame(bool waitForGpu) noexcept {
 		_WaitForGpu();
 	}
 
-	return true;
+	return SUCCEEDED(presentResult);
 }
 
 bool CompSwapchainPresenter::OnResize() noexcept {

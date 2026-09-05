@@ -9,48 +9,123 @@
 	<Page.Resources>
 		<DataTemplate x:Key="EffectParametersFlyout"
 		              x:DataType="local:EffectParametersViewModel">
-			<local:SimpleStackPanel Width="260" Margin="0,0,0,-5">
+			<ScrollViewer Width="{x:Bind ContentWidth, Mode=OneWay}"
+			              HorizontalScrollBarVisibility="Disabled"
+			              HorizontalScrollMode="Disabled"
+			              VerticalScrollBarVisibility="Auto"
+			              VerticalScrollMode="Enabled">
 				<ItemsControl IsTabStop="False"
-				              ItemsSource="{x:Bind Params, Mode=OneTime}">
+				              ItemsSource="{x:Bind Groups, Mode=OneTime}">
 					<ItemsControl.ItemsPanel>
 						<ItemsPanelTemplate>
-							<local:SimpleStackPanel Spacing="8" />
+							<local:SimpleStackPanel Orientation="Horizontal" Spacing="24" />
 						</ItemsPanelTemplate>
 					</ItemsControl.ItemsPanel>
 					<ItemsControl.ItemTemplate>
-						<DataTemplate x:DataType="local:ScalingModeParameter">
-							<Grid Visibility="{x:Bind IsVisible, Mode=OneWay}">
-								<CheckBox MinWidth="0"
-								          Content="{x:Bind Label, Mode=OneTime}"
-								          IsChecked="{x:Bind BooleanValue, Mode=TwoWay}"
-								          Visibility="{x:Bind IsBoolean, Mode=OneTime}" />
-								<local:SimpleStackPanel Visibility="{x:Bind IsFloat, Mode=OneTime}">
-									<Grid ColumnSpacing="4">
-										<Grid.ColumnDefinitions>
-											<ColumnDefinition Width="*" />
-											<ColumnDefinition Width="60" />
-										</Grid.ColumnDefinitions>
-										<TextBlock Grid.Column="0"
-										           VerticalAlignment="Center"
-										           Text="{x:Bind Label, Mode=OneTime}"
-										           TextWrapping="WrapWholeWords" />
-										<TextBlock Grid.Column="1"
-										           HorizontalAlignment="Right"
-										           VerticalAlignment="Center"
-										           Text="{x:Bind ValueText, Mode=OneWay}" />
-									</Grid>
+						<DataTemplate x:DataType="local:EffectParameterGroupViewModel">
+							<Grid Width="{x:Bind ColumnWidth, Mode=OneWay}"
+							      Visibility="{x:Bind IsVisible, Mode=OneWay}">
+								<Border Width="1"
+								        Margin="-12,0,0,0"
+								        HorizontalAlignment="Left"
+								        Background="{ThemeResource ControlStrokeColorDefaultBrush}"
+								        IsHitTestVisible="False"
+								        Opacity="0.45"
+								        Visibility="{x:Bind ShowLeadingSeparator, Mode=OneWay}" />
+								<!-- Keep the final control inside the ScrollViewer's measured extent. -->
+								<local:SimpleStackPanel>
+								<TextBlock Margin="0,0,0,8"
+								           FontWeight="SemiBold"
+								           Text="{x:Bind Label, Mode=OneTime}"
+								           Visibility="{x:Bind HasLabel, Mode=OneTime}" />
+								<ItemsControl IsTabStop="False"
+								              ItemsSource="{x:Bind Params, Mode=OneTime}">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate>
+											<local:SimpleStackPanel Spacing="8" />
+										</ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate x:DataType="local:ScalingModeParameter">
+											<Grid Visibility="{x:Bind IsVisible, Mode=OneWay}">
+												<CheckBox MinWidth="0"
+												          IsChecked="{x:Bind BooleanValue, Mode=TwoWay}"
+												          Visibility="{x:Bind IsBoolean, Mode=OneTime}">
+													<TextBlock Text="{x:Bind Label, Mode=OneTime}"
+													           TextWrapping="WrapWholeWords" />
+												</CheckBox>
+												<local:SimpleStackPanel Visibility="{x:Bind IsFloat, Mode=OneTime}">
+													<Grid ColumnSpacing="4"
+													      Visibility="{x:Bind HasNoDescriptionLine, Mode=OneTime}">
+														<Grid.ColumnDefinitions>
+															<ColumnDefinition Width="*" />
+															<ColumnDefinition Width="60" />
+														</Grid.ColumnDefinitions>
+														<TextBlock Grid.Column="0"
+														           VerticalAlignment="Center"
+														           Text="{x:Bind Label, Mode=OneTime}"
+														           TextWrapping="WrapWholeWords" />
+														<TextBlock Grid.Column="1"
+														           HorizontalAlignment="Right"
+														           VerticalAlignment="Center"
+														           Text="{x:Bind ValueText, Mode=OneWay}" />
+													</Grid>
+													<Grid Visibility="{x:Bind HasDescriptionLine, Mode=OneTime}">
+														<Grid.RowDefinitions>
+															<RowDefinition Height="Auto" />
+															<RowDefinition Height="Auto" />
+														</Grid.RowDefinitions>
+														<Grid.ColumnDefinitions>
+															<ColumnDefinition Width="*" />
+															<ColumnDefinition Width="60" />
+														</Grid.ColumnDefinitions>
+														<TextBlock Grid.Row="0"
+														           Grid.Column="0"
+														           VerticalAlignment="Center"
+														           Text="{x:Bind PrimaryLabel, Mode=OneTime}"
+														           TextWrapping="WrapWholeWords" />
+														<TextBlock Grid.Row="0"
+														           Grid.Column="1"
+														           HorizontalAlignment="Right"
+														           VerticalAlignment="Center"
+														           Text="{x:Bind ValueText, Mode=OneWay}" />
+														<TextBlock Grid.Row="1"
+														           Grid.ColumnSpan="2"
+														           Text="{x:Bind DescriptionLabel, Mode=OneTime}"
+														           TextWrapping="WrapWholeWords" />
+													</Grid>
 									<Slider HorizontalAlignment="Stretch"
+									        Loaded="ParameterSlider_Loaded"
+									        Unloaded="ParameterSlider_Unloaded"
+									        LostFocus="ParameterSlider_LostFocus"
+									        DataContextChanged="ParameterSlider_DataContextChanged"
+									        ValueChanged="ParameterSlider_ValueChanged"
+									        IsEnabled="{x:Bind IsEnabled, Mode=OneWay}"
 									        IsThumbToolTipEnabled="False"
 									        Maximum="{x:Bind Maximum, Mode=OneTime}"
 									        Minimum="{x:Bind Minimum, Mode=OneTime}"
 									        StepFrequency="{x:Bind Step, Mode=OneTime}"
 									        Value="{x:Bind Value, Mode=TwoWay}" />
 								</local:SimpleStackPanel>
+								<local:SimpleStackPanel Spacing="4"
+								                        Visibility="{x:Bind IsChoice, Mode=OneTime}">
+									<TextBlock Text="{x:Bind Label, Mode=OneTime}"
+									           TextWrapping="WrapWholeWords" />
+									<ComboBox HorizontalAlignment="Stretch"
+									          IsEnabled="{x:Bind IsEnabled, Mode=OneWay}"
+									          ItemsSource="{x:Bind Choices, Mode=OneWay}"
+									          SelectedIndex="{x:Bind ChoiceIndex, Mode=TwoWay}" />
+								</local:SimpleStackPanel>
+							</Grid>
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
+								</local:SimpleStackPanel>
 							</Grid>
 						</DataTemplate>
 					</ItemsControl.ItemTemplate>
 				</ItemsControl>
-			</local:SimpleStackPanel>
+			</ScrollViewer>
 		</DataTemplate>
 	</Page.Resources>
 	<local:PageFrame x:Uid="ScalingModes_PageFrame">
@@ -394,19 +469,20 @@
 														<Button.Content>
 															<FontIcon Glyph="&#xE9E9;" />
 														</Button.Content>
-														<Button.Flyout>
-															<Flyout>
-																<Flyout.FlyoutPresenterStyle>
-																	<Style BasedOn="{StaticResource DefaultFlyoutPresenterStyle}"
-																	       TargetType="FlyoutPresenter">
-																		<Setter Property="MaxHeight" Value="650" />
-																	</Style>
-																</Flyout.FlyoutPresenterStyle>
-																<ContentControl Content="{x:Bind Parameters, Mode=OneTime}"
-																                ContentTemplate="{StaticResource EffectParametersFlyout}"
-																                IsTabStop="False" />
-															</Flyout>
-														</Button.Flyout>
+													<Button.Flyout>
+														<Flyout Opening="EffectParametersFlyout_Opening">
+															<Flyout.FlyoutPresenterStyle>
+																<Style BasedOn="{StaticResource DefaultFlyoutPresenterStyle}"
+																       TargetType="FlyoutPresenter">
+																	<Setter Property="MaxHeight" Value="650" />
+																	<Setter Property="MaxWidth" Value="10000" />
+																</Style>
+															</Flyout.FlyoutPresenterStyle>
+															<ContentControl Content="{x:Bind Parameters, Mode=OneTime}"
+															                ContentTemplate="{StaticResource EffectParametersFlyout}"
+															                IsTabStop="False" />
+														</Flyout>
+													</Button.Flyout>
 													</Button>
 													<Button x:Uid="ScalingModes_Delete"
 													        Click="{x:Bind Remove}">

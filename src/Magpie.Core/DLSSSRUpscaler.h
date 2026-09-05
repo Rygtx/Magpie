@@ -6,13 +6,12 @@ namespace Magpie {
 class DeviceResources;
 
 struct DLSSSRSettings {
-	bool enableJitter = false;
-	bool useMotionVectors = true;
-	bool useEstimatedDepth = false;
+	MotionVectorRequest motionRequest = MotionVectorRequest::Nvidia(
+		NvidiaOpticalFlowQuality::Balanced);
 };
 
-// Experimental DLSS-SR adapter for captured colour frames. The non-jitter
-// path can consume Renderer-owned optical flow and estimated inverse depth.
+// DLSS SR adapter for captured colour frames, with shared optical flow
+// and a zero-depth contract.
 class DLSSSRUpscaler final : public NativeEffectBackend {
 public:
 	DLSSSRUpscaler() = default;
@@ -28,6 +27,19 @@ public:
 	) noexcept;
 
 	FrameGuidanceRequirements GetFrameGuidanceRequirements() const noexcept override;
+	EffectParameterApplyMode GetParameterApplyMode(
+		std::string_view /*parameterName*/
+	) const noexcept override {
+		return EffectParameterApplyMode::RestartRequired;
+	}
+	EffectParameterRestartReason GetParameterRestartReason(
+		std::string_view parameterName
+	) const noexcept override {
+		return parameterName == "opticalFlowMethod" ||
+			parameterName == "amdOpticalFlowMode" || parameterName == "nvidiaOpticalFlowQuality"
+			? EffectParameterRestartReason::FrameGuidance
+			: EffectParameterRestartReason::NativeBackend;
+	}
 
 	bool Resize(
 		DeviceResources& deviceResources,
@@ -53,7 +65,6 @@ private:
 	bool _ngxInitialized = false;
 	bool _resetHistory = true;
 	DLSSSRSettings _settings{};
-	uint32_t _frameIndex = 0;
 	uint8_t _lastGuidanceBinding = UINT8_MAX;
 	FrameGuidanceFrameId _lastGuidanceResetFrameId =
 		std::numeric_limits<FrameGuidanceFrameId>::max();
