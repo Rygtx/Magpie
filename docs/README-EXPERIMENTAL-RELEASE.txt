@@ -1,34 +1,41 @@
 Magpie Experimental v0.6.5 x64
 
-安装与升级
-- 完全退出 Magpie，将完整主包解压到新目录后运行 Magpie.exe；不要只替换 EXE 或复制旧效果目录。
-- 本版移除深度估算与旧 SR 实验入口，不再需要旧 DirectML/TensorRT 深度组件。旧配置自动迁移，升级前请备份。
-- 普通配置：%LOCALAPPDATA%\Magpie\config\v4\config.json。便携配置：程序目录内 config\config.json。
-- 默认组为 Lanczos、FSR、RTX Video VSR Ultra、DLSSFG、XeSSFG、DLSSNR，默认选择 Lanczos；已有自定义组保留。
+安装或从旧版升级
+建议先删除此前所有版本的 Magpie 程序目录（包括旧内测版），再安装本版，不要直接覆盖旧目录。
+1. 如需保留配置或截图，先备份到程序目录之外。
+2. 从托盘完全退出 Magpie，删除所有旧版程序目录。
+3. 将完整主包解压到新目录，运行 Magpie.exe。
+普通配置：%LOCALAPPDATA%\Magpie\config\v4\config.json。
+便携配置：原程序目录内 config\config.json。
+可保留或恢复配置，但不要复制旧版效果目录、DLL 或深度组件。
 
-主要变化
-- 缩放模式改称效果组；参数支持分组、中文和下拉选项，双击滑条（170 ms）恢复效果器自身默认值。
-- 参数自动保存，保留有效备份。Live 实时生效，Restart 等待手动应用；DLSSNR 核心/上游原实时参数会自动停用效果组，等待 500 ms 再重新启用。
-- 工具栏支持性能监测、参数、截图、固定、对比快捷键（Alt+Shift+P/E/S/F/C）。对比期间继续计算，角标停留 2 秒后 500 ms 淡出。
-- Front Edge Sync 默认开启、60 FPS；FG 时控制基础帧输入，可能增加延迟。目标程序需配合限帧，FrameRate Filter 默认跟随。VRR 暂时停用，HDR 未接入。
-- SR/NR/FG 共享光流请求；NVOF 优先，再 AMD OF，采用实际请求中的较高档位。高质量档位会增加 GPU 开销。
-- 修复捕获恢复、参数保存和分析器/FG 呈现的已定位问题，不保证解决所有机器的卡顿。
+使用入口
+- 效果组：选择或组合效果器；从工具栏打开“效果参数”边看画面边调节，修改自动保存。
+- 对比：切换原图与处理后画面，切回无需重新加载效果。
+- Front Edge Sync：默认开启、60 FPS，目标程序需配合限帧；启用补帧时控制真实帧输入，可能增加延迟。
+- 全屏切屏：Alt+Tab／Win+Tab 会停用全屏效果组，返回后需手动启用。
+- 性能与排错：在工具栏查看效果耗时；主页“最近一次问题”提供详情和日志入口。
 
-完整参数、迁移、工具用途与排错步骤请阅读 RELEASE-NOTES.md；帧同步见 FRAME_SYNC_GUIDE.md。
-发生问题时查看主页“最近一次问题”的详情与日志。CPU/编译/包体检查不等于目标 GPU 画质和性能验收。
-保留 LICENSE-Magpie.txt、THIRD-PARTY-NOTICES.md、各组件许可证与 build-manifest.json。
+完整更新、快捷键和可选附件用法见 RELEASE-NOTES.md；帧率设置见 FRAME_SYNC_GUIDE.md。
+请保留 LICENSE-Magpie.txt、THIRD-PARTY-NOTICES.md、组件许可证和 build-manifest.json。
 
 English
-- Fully exit Magpie, extract the complete package into a new directory, then run Magpie.exe. Do not replace only the EXE or copy old effects/depth components.
-- Depth estimation and legacy SR variants are removed; DirectML/TensorRT depth packages are no longer needed. Old settings migrate; back them up first.
-- Normal settings: %LOCALAPPDATA%\Magpie\config\v4\config.json. Portable settings: config\config.json beside Magpie.exe.
-- Default groups: Lanczos, FSR, RTX Video VSR Ultra, DLSSFG, XeSSFG, DLSSNR. Lanczos is selected; custom groups are preserved.
-- Scaling modes are now Effect groups. Parameters support groups, Chinese display and choices; double-click within 170 ms to restore the effect's own default.
-- Edits save automatically with valid backups. Live applies immediately; Restart needs manual application. Previously live DLSSNR core/upstream changes stop the group and restart after 500 ms.
-- Toolbar defaults: Alt+Shift+P/E/S/F/C for profiler/parameters/screenshot/pin/comparison. Comparison keeps effects running; its badge stays two seconds and fades over 500 ms.
-- Front Edge Sync defaults to enabled at 60 FPS, pacing base input with FG. Latency may increase; limit the source application too. FrameRate Filter follows by default. VRR is disabled and HDR is not integrated.
-- Consumers share NVOF first, then AMD OF, at the highest actually requested quality. Higher quality costs GPU time.
-- Identified capture-recovery, saving and profiler/FG presentation paths are fixed; this is not a guarantee against all stalls.
-- Read RELEASE-NOTES.md for full parameters, migration, tools and troubleshooting; FRAME_SYNC_GUIDE.md explains pacing.
-- Use Home's recent-issue details and logs. Build/CPU/package checks do not replace visual and performance acceptance on target hardware.
-- Retain LICENSE-Magpie.txt, THIRD-PARTY-NOTICES.md, vendor licenses and build-manifest.json.
+
+Install or upgrade
+We recommend deleting all previous Magpie program folders, including older beta builds, before installing this version. Do not install over an old folder.
+1. Back up any settings or screenshots you want to keep outside the program folders.
+2. Fully exit Magpie from the system tray and delete all old program folders.
+3. Extract the complete package into a new folder and run Magpie.exe.
+Normal settings: %LOCALAPPDATA%\Magpie\config\v4\config.json.
+Portable settings: config\config.json in the old program folder.
+Keep or restore settings if needed, but do not copy old effects, DLLs or depth components.
+
+Getting started
+- Effect groups: select or combine effects; open Effect parameters from the toolbar to adjust the image with automatic saving.
+- Comparison: switch between original and processed images without reloading effects.
+- Front Edge Sync: enabled at 60 FPS by default; apply a matching source limiter. With FG it controls real input frames and may increase latency.
+- Fullscreen switching: Alt+Tab / Win+Tab stop fullscreen effects; enable the group manually after returning.
+- Performance and troubleshooting: inspect effect timings from the toolbar; Home's recent-issue card provides details and log access.
+
+See RELEASE-NOTES.md for updates, shortcuts and optional assets, and FRAME_SYNC_GUIDE.md for frame-rate settings.
+Retain LICENSE-Magpie.txt, THIRD-PARTY-NOTICES.md, component licenses and build-manifest.json.
