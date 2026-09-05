@@ -168,7 +168,6 @@ private:
 	};
 
 	bool _FrontendRender(
-		const SmallVector<float>& effectTimings,
 		bool waitForGpu = false,
 		uint32_t sharedTextureSlot = std::numeric_limits<uint32_t>::max(),
 		FrontendRenderTimings* timings = nullptr,

@@ -48,6 +48,7 @@ public:
 
 	// 强制重新检查前台窗口
 	void CheckForeground();
+	void OnTaskSwitch();
 	void EffectParameterEdited(uint32_t modeIdx, uint32_t effectIdx,
 		const std::string& parameter, float value);
 
@@ -89,6 +90,8 @@ private:
 	bool _isCurCountdownWindowedMode = false;
 
 	HWND _hwndCurSrc = NULL;
+	// Task switching requires an explicit user start, even for automatic profiles.
+	bool _isAutoScaleSuspended = false;
 	// 1. 避免重复检查同一个窗口
 	// 2. 用户使用热键退出全屏后暂时阻止该窗口自动放大
 	HWND _hwndChecked = NULL;

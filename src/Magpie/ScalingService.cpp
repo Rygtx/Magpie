@@ -111,6 +111,13 @@ void ScalingService::CheckForeground() {
 	_CheckForegroundTimer_Tick(nullptr, nullptr);
 }
 
+void ScalingService::OnTaskSwitch() {
+	if (!_scalingRuntime || !_scalingRuntime->StopForTaskSwitch()) return;
+	_isAutoScaleSuspended = true;
+	StopTimer();
+	Logger::Get().Info("Task switch: stopping fullscreen effects; waiting for a manual start");
+}
+
 void ScalingService::_ShortcutService_ShortcutPressed(ShortcutAction action) {
 	switch (action) {
 	case ShortcutAction::Scale:
@@ -221,6 +228,7 @@ static bool IsReadyForScaling(HWND hwndFore) noexcept {
 }
 
 void ScalingService::_CheckForegroundTimer_Tick(winrt::DispatcherQueueTimer const&, winrt::IInspectable const&) {
+	if (_isAutoScaleSuspended) return;
 	const HWND hwndFore = GetForegroundWindow();
 	if (!hwndFore || hwndFore == _hwndChecked) {
 		return;
@@ -253,7 +261,7 @@ void ScalingService::_ScalingRuntime_StateChanged(ScalingState value) {
 			StopTimer();
 		} else if (value == ScalingState::Idle) {
 			_FlushEffectParametersSaves();
-			shouldRestartForSmoothMotion = _hwndCurSrc &&
+			shouldRestartForSmoothMotion = !_isAutoScaleSuspended && _hwndCurSrc &&
 				AppSettings::Get().IsSmoothMotionCompatibilityMode();
 
 			// 缩放结束后源窗口位于前台则不要检查自动缩放，用户可能刚通过快捷键或
@@ -525,6 +533,7 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	}
 
 	_hwndCurSrc = hWnd;
+	if (!force) _isAutoScaleSuspended = false;
 	return ScalingError::NoError;
 }
 

@@ -713,7 +713,6 @@ void Renderer::_CopySceneToTarget(ID3D11Texture2D* scene, ID3D11Texture2D* targe
 }
 
 bool Renderer::_FrontendRender(
-	const SmallVector<float>& effectTimings,
 	bool waitForGpu,
 	uint32_t sharedTextureSlot,
 	FrontendRenderTimings* timings,
@@ -817,7 +816,9 @@ bool Renderer::_FrontendRender(
 		d3dDC->OMSetRenderTargets(1, &target, nullptr);
 		// Input is injected inside Draw immediately before ImGui::NewFrame. All
 		// capacity and base-texture waits have already completed at this point.
-		_overlayDrawer.Draw(_stepTimer.FPS(), effectTimings, drawOffset);
+		// Drain samples only when drawing the overlay. Front Edge Sync retries
+		// above must leave them available for the frame that actually draws it.
+		_overlayDrawer.Draw(_stepTimer.FPS(), _effectsProfiler.GetTimings(), drawOffset);
 		_cursorDrawer.Draw(frameTex.get(), drawOffset);
 	}
 
@@ -933,7 +934,8 @@ bool Renderer::_FrontendOverlayRender(bool contentChanged) noexcept {
 	}
 	ID3D11RenderTargetView* target = frameRtv.get();
 	d3dDC->OMSetRenderTargets(1, &target, nullptr);
-	_overlayDrawer.Draw(_stepTimer.FPS(), {}, drawOffset);
+	// XeSS draws its UI in this independent layer, not in _FrontendRender.
+	_overlayDrawer.Draw(_stepTimer.FPS(), _effectsProfiler.GetTimings(), drawOffset);
 	_cursorDrawer.Draw(frameTex.get(), drawOffset,
 		cursorBackground);
 	const bool submitted = _presenter->EndOverlayFrame();
@@ -971,10 +973,6 @@ bool Renderer::Render(bool force, bool waitForGpu) noexcept {
 	FrameTrace::Mark(FrameTrace::Event::RenderDecision,
 		(force ? 1 : 0) | (hasNewBackendFrame ? 2 : 0) |
 		(_frontendBaseNeedsPresent ? 4 : 0) | (_isPassThroughActive ? 8 : 0));
-	SmallVector<float> effectTimings;
-	if (hasNewBackendFrame) {
-		effectTimings = _effectsProfiler.GetTimings();
-	}
 	if (!force && !hasNewBackendFrame && !_frontendBaseNeedsPresent) {
 		if (_lastAccessMutexKeys[sharedTextureSlot] == 0) {
 			// 第一帧尚未完成
@@ -992,7 +990,7 @@ bool Renderer::Render(bool force, bool waitForGpu) noexcept {
 		}
 	}
 
-	return _FrontendRender(effectTimings, waitForGpu, sharedTextureSlot,
+	return _FrontendRender(waitForGpu, sharedTextureSlot,
 		nullptr, !hasNewBackendFrame && !_frontendBaseNeedsPresent);
 }
 
@@ -1021,7 +1019,7 @@ bool Renderer::RenderOverlay() noexcept {
 	if (!_frontendPresentedBaseValid) {
 		return false;
 	}
-	return _FrontendRender({}, false,
+	return _FrontendRender(false,
 		std::numeric_limits<uint32_t>::max(), nullptr, true);
 }
 
@@ -1193,14 +1191,9 @@ DLSSFGFrameRenderResult Renderer::RenderDLSSFGFrame(
 	}
 	const auto pacingEnd = pacingStart;
 
-	SmallVector<float> effectTimings;
-	if (!_sharedTextureContainsGeneratedFrame[sharedTextureSlot].load(
-		std::memory_order_acquire)) {
-		effectTimings = _effectsProfiler.GetTimings();
-	}
 	FrontendRenderTimings timings;
 	const bool presented = _FrontendRender(
-		effectTimings, false, sharedTextureSlot, &timings);
+		false, sharedTextureSlot, &timings);
 	if (!presented) {
 		return DLSSFGFrameRenderResult::Retry;
 	}
@@ -1287,7 +1280,7 @@ void Renderer::OnEndResize() noexcept {
 	_presenter->OnEndResize(shouldRedraw);
 
 	if (shouldRedraw) {
-		_FrontendRender(SmallVector<float>{});
+		_FrontendRender();
 	}
 }
 

@@ -57,6 +57,7 @@ bool ScalingRuntime::Start(HWND hwndSrc, ScalingOptions&& options, bool force) {
 	const winrt::DispatcherQueue& dispatcher = _Dispatcher();
 	const uint64_t generation =
 		_commandGeneration.fetch_add(1, std::memory_order_acq_rel) + 1;
+	ScalingWindow::SessionWindowedMode(options.IsWindowedMode());
 	_State(ScalingState::Starting);
 	if (!dispatcher.TryEnqueue([
 		this, hwndSrc, options(std::move(options)), force, generation
@@ -129,6 +130,7 @@ void ScalingRuntime::Stop() {
 		_commandGeneration.fetch_add(1, std::memory_order_acq_rel) + 1;
 	_State(ScalingState::Stopping);
 	if (!_Dispatcher().TryEnqueue([this, generation]() {
+		if (_commandGeneration.load(std::memory_order_acquire) != generation) return;
 		ScalingWindow::Get().Stop();
 		if (_commandGeneration.load(std::memory_order_acquire) == generation) {
 			_State(ScalingState::Idle);
@@ -138,6 +140,14 @@ void ScalingRuntime::Stop() {
 			_State(ScalingState::Idle);
 		}
 	}
+}
+
+bool ScalingRuntime::StopForTaskSwitch() {
+	const ScalingState state = State();
+	if (state == ScalingState::Idle || state == ScalingState::Stopping ||
+		ScalingWindow::SessionWindowedMode()) return false;
+	Stop();
+	return true;
 }
 
 uint32_t ScalingRuntime::RunId() const noexcept {

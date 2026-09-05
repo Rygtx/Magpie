@@ -302,6 +302,9 @@ bool OverlayDrawer::NeedRedraw(uint32_t fps) const noexcept {
 	if (!AnyVisibleWindow()) {
 		return false;
 	}
+	// Independent overlays also need timing refreshes when the FPS text is
+	// unchanged. Bound them to 2 Hz, including when no new sample is available.
+	if (_isProfilerVisible && steady_clock::now() - _lastProfilerDrawTime >= 500ms) return true;
 	if (_isEffectParametersVisible && (!_effectParametersInitialized ||
 		_lastEffectParametersSaveResult != _effectParametersSaveState->result.load(std::memory_order_acquire) ||
 		ScalingWindow::Get().Options().parameterSession->HasChanges(_parameterSessionSnapshot.revision))) return true;
@@ -1703,6 +1706,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 }
 
 bool OverlayDrawer::_DrawProfiler(const SmallVector<float>& effectTimings, uint32_t fps, int& itemId) noexcept {
+	_lastProfilerDrawTime = steady_clock::now();
 	const ScalingOptions& options = ScalingWindow::Get().Options();
 	const Renderer& renderer = ScalingWindow::Get().Renderer();
 
@@ -1710,8 +1714,9 @@ bool OverlayDrawer::_DrawProfiler(const SmallVector<float>& effectTimings, uint3
 
 	bool needRedraw = false;
 
-	// effectTimings 为空表示后端没有渲染新的帧
-	if (!effectTimings.empty()) {
+	// Samples arrive asynchronously and are consumed once by the visible UI.
+	// Ignore a stale chain's sample while effect descriptors are being updated.
+	if (!effectTimings.empty() && effectTimings.size() == passCount) {
 		steady_clock::time_point now = steady_clock::now();
 		if (_lastUpdateTime == steady_clock::time_point{}) {
 			// 后端渲染的第一帧

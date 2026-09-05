@@ -1,6 +1,6 @@
 # Magpie Experimental v0.6.5
 
-本版汇总 0.6.5 r1–r10 的更新，以下以最终保留的功能为准。开发期间撤回、替换或暂缓的功能已单独标注。
+本版汇总 0.6.5 r1–r10 及发布前内测修复，以下以最终保留的功能为准。开发期间撤回、替换或暂缓的功能已单独标注。
 
 ## Magpie 本体更新
 
@@ -33,7 +33,8 @@
 - **参数保存与配置恢复**：修复保存成功后闪退、连续修改时保存顺序不正确等问题。保存保留上一份有效备份；配置损坏时先保留原文件，再尝试恢复备份或完整可读内容，减少损坏配置导致无法启动的情况。
 - **参数与画面保持一致**：修复窗口变化后参数恢复旧值、应用失败时控件与实际画面不一致，以及特定效果器的参数显隐误影响其他效果器的问题。
 - **浮窗交互修复**：改善启用 FG、静止画面和较低帧率下的按钮、滑条、滚轮、拖动与尺寸调整；下拉框打开后点击其他位置或失去焦点可自动收起。
-- **切屏与捕获恢复**：修复切屏、窗口尺寸变化或捕获中断时继续处理不完整／重复输入的路径。恢复期间保留最后有效画面，恢复后重新建立处理节奏。
+- **全屏切屏后等待手动启用**：使用 Alt+Tab、Alt+Shift+Tab 或 Win+Tab 时自动停用全屏效果组，回到原窗口后需手动再次启用。此时也会取消等待中的参数重启，并暂停自动配置启动，避免返回后继续使用异常画面；窗口效果组不受此规则影响。**此前仅依赖捕获／历史恢复的切屏补丁未能解决内测问题，因此新增这项退出措施。** 窗口尺寸变化和其他捕获中断的输入校验仍保留。
+- **恢复效果器耗时显示**：修复 Front Edge Sync 等待提交时丢失耗时样本，以及 XeSS FG 独立浮层收不到耗时数据的问题。固定帧率下性能面板也会定期刷新；保留异步采样，不为读取统计额外等待 GPU。
 - **性能监测与补帧稳定性**：修复性能分析器采样可能造成等待、拖动浮窗时干扰 DLSSFG，以及恢复后帧间隔异常的路径。减少工具栏和光标不必要的重复呈现，优先显示新画面；GPU 调度优先级保持 REALTIME。
 - **光流降级与启动开销**：光流停止工作后，后续效果不再持续反复重置；避免没有变更时重复编译 AMD OF 着色器。
 - **更有用的报错**：捕获、窗口状态、设备、效果启动、保存、导入／导出、截图与文件选择器的问题会给出对应建议。主页“最近一次问题”可查看详情、复制诊断信息、打开日志目录，也可手动关闭；正常取消操作不会被当作失败。
@@ -118,7 +119,7 @@ Magpie 从已捕获画面估算运动，不能获得游戏原生的运动矢量�
 
 # Magpie Experimental v0.6.5
 
-This release combines the r1–r10 updates. The list describes the final behavior and marks features withdrawn, replaced or deferred during development.
+This release combines the r1–r10 updates and pre-release beta fixes. The list describes the final behavior and marks features withdrawn, replaced or deferred during development.
 
 ## Magpie Application Updates
 
@@ -151,7 +152,8 @@ This release combines the r1–r10 updates. The list describes the final behavio
 - **Saving and configuration recovery**: fixed exits after a successful save and incorrect ordering of consecutive saves. A previous valid configuration is retained; damaged originals are preserved before recovery from a backup or complete readable content, reducing cases where corruption prevents startup.
 - **Parameters match the image**: fixed old values returning after window changes, controls disagreeing with applied values after failure, and effect-specific visibility rules affecting unrelated effects.
 - **Overlay interaction**: improved buttons, sliders, scrolling, dragging and resizing with FG, static images and low frame rates. Drop-downs dismiss on an outside click or loss of focus.
-- **Switching and capture recovery**: fixed paths that kept processing incomplete/repeated input during switching, resizing or capture interruption. The last valid image is retained during recovery and normal pacing is re-established afterward.
+- **Manual restart after fullscreen task switching**: Alt+Tab, Alt+Shift+Tab and Win+Tab stop fullscreen effects. Enable the group manually after returning. Pending parameter restarts are canceled and automatic profile activation is paused until a manual start, preventing automatic reuse of the affected session. Windowed groups are unaffected by this rule. **The earlier capture/history recovery patch did not resolve beta reports, so task switching now explicitly stops the session.** Input validation remains for resizing and other capture interruptions.
+- **Effect timing display restored**: fixed samples being lost while Front Edge Sync waits to submit, and timing data missing from the independent XeSS FG overlay. The profiler also refreshes at a steady frame rate. Sampling remains asynchronous, with no additional GPU wait for statistics.
 - **Profiler and FG stability**: fixed waits caused by profiler sampling, overlay dragging interfering with DLSSFG, and abnormal frame intervals after recovery. Reduced unnecessary toolbar/cursor presentations and prioritized new images. GPU scheduling priority remains REALTIME.
 - **Optical-flow fallback and startup overhead**: stopping optical flow no longer repeatedly resets downstream effects, and unchanged AMD OF shaders no longer recompile unnecessarily.
 - **Actionable errors**: capture, window state, device/effect startup, saving, import/export, screenshots and file-picker failures have relevant suggestions. Home's recent-issue card offers details, diagnostic copying, log access and manual dismissal. Normal cancellation is not reported as failure.

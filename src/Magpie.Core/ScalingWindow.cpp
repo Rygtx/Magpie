@@ -383,6 +383,7 @@ void ScalingWindow::ToggleScaling(bool isWindowedMode) noexcept {
 	}
 
 	// 源窗口在前台时按快捷键可以切换全屏/窗口模式缩放
+	SessionWindowedMode(isWindowedMode);
 	_isSrcRepositioning = true;
 	if (_options.IsWindowedMode()) {
 		_lastWindowedRendererWidth = _rendererRect.right - _rendererRect.left;

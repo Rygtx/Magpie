@@ -27,6 +27,8 @@ public:
 	void InvokeOverlayAction(OverlayAction action);
 
 	void Stop();
+	// Main-thread system-key notification; cancels pending fullscreen restarts too.
+	bool StopForTaskSwitch();
 
 	uint32_t RunId() const noexcept;
 	void UpdateEffectParameterFromSettings(uint32_t modeIdx, std::wstring modeName,

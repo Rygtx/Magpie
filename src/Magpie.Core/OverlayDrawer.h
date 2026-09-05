@@ -115,6 +115,7 @@ private:
 	ImFont* _fontIcons = nullptr; // 图标字体
 
 	std::chrono::steady_clock::time_point _lastUpdateTime{};
+	std::chrono::steady_clock::time_point _lastProfilerDrawTime{};
 	// (总计时间, 帧数)
 	SmallVector<std::pair<float, uint32_t>, 0> _effectTimingsStatistics;
 	SmallVector<float> _lastestAvgEffectTimings;

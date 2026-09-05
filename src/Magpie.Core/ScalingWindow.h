@@ -39,6 +39,15 @@ public:
 
 	void ToggleScaling(bool isWindowedMode) noexcept;
 
+	// Shared with the main-thread task-switch hook, including initialization,
+	// toolbar mode changes and the interval between automatic restarts.
+	static bool SessionWindowedMode() noexcept {
+		return _sessionWindowedMode.load(std::memory_order_acquire);
+	}
+	static void SessionWindowedMode(bool windowed) noexcept {
+		_sessionWindowedMode.store(windowed, std::memory_order_release);
+	}
+
 	void SwitchToolbarState() noexcept;
 
 	void Render() noexcept;
@@ -192,6 +201,7 @@ private:
 	void _DelayedStop(bool onSrcHung = false, bool onSrcRepositioning = false) const noexcept;
 
 	static inline std::atomic<uint32_t> _runId = 0;
+	static inline std::atomic<bool> _sessionWindowedMode = false;
 	static inline winrt::DispatcherQueue _dispatcher{ nullptr };
 
 	RECT _windowRect{};
