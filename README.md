@@ -3,53 +3,75 @@
 
 🌍 **English** | [简体中文](./README_ZH.md)
 
-An unofficial experimental fork of [Blinue/Magpie](https://github.com/Blinue/Magpie), providing captured-window DLSS, DLSS Frame Generation, DLSSNR, XeSS, FSR and RTX Video effects. This is not an official Magpie release and is not supported by upstream.
+Magpie Experimental is a Windows tool for processing window content and an unofficial fork of [Blinue/Magpie](https://github.com/Blinue/Magpie). Built on Magpie's window-scaling and effect system, it explores DLSS, XeSS, FSR, RTX Video and related technologies for games, video and other windowed content.
 
-## Versions and Installation
+The application captures a target window, processes its images through a user-configured effect group, and displays the result fullscreen or in a window. The source application does not need to integrate these effects itself. This is not an official Magpie release; please report experimental-fork issues in this repository.
 
-0.6.5 is in local release-package preparation. See the complete [0.6.5 Release Note](docs/RELEASE_NOTES_v0.6.5-experimental.md); publicly available builds are listed on [GitHub Releases](https://github.com/SAOG0721/Magpie/releases).
+## Main Features
 
-Fully exit Magpie, extract all of `Magpie-Experimental-x64.zip` into a new directory, and run `Magpie.exe`. Do not replace only the EXE or copy old effects/depth components into the new package. Normal settings use `%LOCALAPPDATA%\Magpie\config\v4\config.json`; portable settings use `config\config.json` beside the program. Back up your configuration and previous installation before upgrading.
+### Image Processing and Frame Generation
 
-## Effect Groups and Parameters
+| Feature | Example Effects | Purpose |
+| --- | --- | --- |
+| Spatial upscaling and sharpening | Lanczos, FSR and other MagpieFX effects | Enlarge window content and adjust clarity and detail |
+| Experimental temporal super resolution | DLSS SR, FSR 2/3/4, XeSS SR | Explore image reconstruction from captured frames and estimated motion |
+| AI image controls | DLSSNR | Same-resolution SDR processing with tone, structure, shadow, reflection and glow controls |
+| Video enhancement | RTX Video | Video super resolution and denoising for low-resolution or compressed content |
+| Frame generation | DLSSFG, XeSSFG | Generate intermediate images between real frames for smoother motion |
 
-Scaling modes are now called **Effect groups**, combining multiple effects. Fresh configurations contain Lanczos, FSR, RTX Video VSR Ultra, DLSSFG, XeSSFG and DLSSNR, with Lanczos selected. Existing custom groups are preserved.
+Experimental-effect availability depends on the GPU, driver, runtime components and effect combination. See the [Release notes](https://github.com/SAOG0721/Magpie/releases) for the effects and hardware requirements of each build.
 
-DLSSFG, XeSSFG and DLSSNR are included among the built-in effect groups. Reset on the Effect groups page restores the defaults.
+### Effect Groups and Parameter Editing
 
-Parameter edits save automatically. The toolbar editor labels controls **Live**, **Restart**, or **Auto restart**, distinguishing manual application from automatic rebuilding after editing. Previously live DLSSNR core/upstream image changes fully stop the group, wait 500 ms and restart it; residual composition retains its existing live behavior. Consecutive edits coalesce, and manually stopping cancels a pending restart.
+An **effect group** combines effects in a chosen order, storing their parameters and scaling settings. Use built-in groups or create your own combinations for different applications.
 
-Double-click a slider within 170 ms to restore the effect's own default. Parameters support groups, drop-down choices, and Simplified/Traditional Chinese display. The editor distinguishes desired values from applied values when saving fails or a change has not taken effect.
+The toolbar's parameter panel lets you adjust effects while viewing the result, with automatic saving. Controls indicate whether a change applies live or requires the group to restart; double-clicking a slider restores the effect's default value. Parameters support groups, drop-down choices and Chinese translations.
 
-## Toolbar and Frame Pacing
+### Comparison, Performance Monitoring and Frame Sync
 
-| Action | Default Shortcut |
-| --- | --- |
-| Profiler | Alt+Shift+P |
-| Effect parameters | Alt+Shift+E |
-| Screenshot | Alt+Shift+S |
-| Pin toolbar | Alt+Shift+F |
-| Comparison | Alt+Shift+C |
+The toolbar offers original/processed comparison, per-effect timings and frame-rate monitoring, screenshots and parameter editing, with customizable shortcuts. When frame generation is enabled, separate output and real-frame readings help you assess the result and processing cost.
 
-Configure shortcuts in Home's collapsible toolbar section. Comparison continues effect processing while showing the original; its badge stays for two seconds and fades over 500 ms. With FG, frame rates support an output/real-frame display.
+Front Edge Sync controls Magpie's frame submission pace, regulating real-frame input before FG when frame generation is active. Apply a matching frame-rate cap in the source application; synchronization waits may increase latency. See the [frame-sync guide](docs/FRAME_SYNC_GUIDE.md) for setup details.
 
-Front Edge Sync defaults to enabled at 60 FPS and controls base-frame pacing before FG. Apply a matching limiter in the source application too; latency may increase. FrameRate Filter follows this setting by default and offers Custom only with synchronization disabled. See the [frame-sync guide](docs/FRAME_SYNC_GUIDE.md). VRR is currently hidden and disabled; HDR remains unimplemented.
+## Download and Install
 
-## Optical Flow and Compatibility
+1. Choose a version from [GitHub Releases](https://github.com/SAOG0721/Magpie/releases), read its notes and download the main `Magpie-Experimental-x64.zip` package.
+2. Fully exit any running Magpie instance and extract the complete package into a new directory.
+3. Run `Magpie.exe`, select an effect group and target window, and use the shortcut shown on Home to enable the effects.
 
-DLSS SR, FSR 2/3/4 and XeSS SR each have one entry with None / AMD OF / NVOF. Standalone Zero MV, Optical Flow and metadata-only jitter variants are merged, with automatic migration of old settings. DLSSNR and DLSSFG use NVOF; XeSSFG x2 offers AMD OF/NVOF, while XeSS Multi-FG currently supports AMD OF or None.
+Before upgrading, back up any settings and screenshots you want to keep outside the program directory, then follow that release's instructions for the old installation and configuration. The same notes explain optional runtimes, DLL choices and helper tools. GitHub's automatically generated source archives are for development, not ready-to-run application packages.
 
-Consumers share a requested provider: NVOF first, then AMD OF, at the highest quality actually requested for that source. NVOF Highest Quality is 2×2 Slow and can be very expensive; Balanced remains marked Recommended.
+## Usage and Compatibility
 
-Magpie lacks engine-native depth, motion vectors, exposure and UI separation. Depth contracts use zero-filled textures and motion is estimated from captured color, so this is not equivalent to native DLSS/FSR/XeSS integration. Use only one FG per group and avoid stacking it with Smooth Motion or other frame-generation systems.
+- The main release package targets Windows x64 and requires a DirectX 11-capable GPU; individual AI effects may have higher requirements.
+- Magpie processes complete window images without access to the game engine's full native motion vectors, depth, exposure or separated UI. Estimated optical flow can assist some effects, but this is not equivalent to native in-game DLSS/FSR/XeSS integration.
+- Image processing can affect text and UI along with the scene; temporal effects may also produce ghosting or other artifacts. Use Comparison to judge whether an effect suits the content.
+- Use one frame-generation effect per group and avoid combining it with other frame-generation systems. Generated FPS is not the game's real rendering rate and does not imply a proportional improvement in input responsiveness.
 
-## Troubleshooting and Development
+## Reporting Problems
 
-Start with Home's recent-issue details and logs. Release tools include the NGX OTA switch and DLSSNR DLL choices; see the Release Note for usage and limitations. Optional proprietary backends default to disabled in source builds; local SDK/runtime paths belong in the untracked `src/BuildOptions.props.user`.
+Start with the suggestions and details in Home's recent-issue card, or open the log directory. When filing an [issue](https://github.com/SAOG0721/Magpie/issues), include the application version, GPU and driver, effect group, input/output resolution, reproduction steps and relevant logs.
 
-- [Dependencies, notices and build boundaries](docs/THIRD_PARTY_AND_REDISTRIBUTION.md)
-- [Experimental development documentation](docs/experimental/README.md)
+The [upstream Magpie FAQ](https://github.com/Blinue/Magpie/wiki/FAQ) also covers general usage questions. Please discuss this fork's experimental effects and compatibility issues in this repository.
+
+## Development and Documentation
+
+The project includes the Magpie application, MagpieFX effects and experimental native effect backends. Optional proprietary backends are disabled by default in source builds and require separately supplied SDKs and runtimes. Configure local paths in the untracked `src/BuildOptions.props.user` file.
+
+- [Third-party dependencies, licenses and build boundaries](docs/THIRD_PARTY_AND_REDISTRIBUTION.md)
+- [Experimental feature designs and development records](docs/experimental/README.md)
 - [Build and packaging script](scripts/Build-Release.ps1)
-- [MagpieFX format](<docs/MagpieFX (EN).md>)
+- [MagpieFX effect format](<docs/MagpieFX (EN).md>)
 
-Source retains [GPLv3](LICENSE). Third-party runtimes, SDKs, models and local configuration are excluded from the source repository.
+## Contributions and Acknowledgments
+
+This project builds on [Blinue/Magpie](https://github.com/Blinue/Magpie) and its contributors' work. Thanks also to everyone contributing code, translations, design suggestions and testing feedback.
+
+- [HexBen123](https://github.com/HexBen123): early depth-estimation performance optimization and TensorRT integration guidance, plus the [DLSSNR parameter-localization proposal](https://github.com/SAOG0721/Magpie/pull/16).
+- [Kristijan1001](https://github.com/Kristijan1001): the [reference implementation for editing effect parameters while scaling](https://github.com/SAOG0721/Magpie/pull/4), which informed this project's parameter-panel design and implementation.
+
+Contributions through Issues and Pull Requests are welcome. See [Contributors](https://github.com/SAOG0721/Magpie/graphs/contributors) for the code contribution history.
+
+## License
+
+Magpie-derived source code is licensed under [GPLv3](LICENSE). Third-party SDKs, models and runtimes have their own licenses; see the [third-party and redistribution notes](docs/THIRD_PARTY_AND_REDISTRIBUTION.md).
