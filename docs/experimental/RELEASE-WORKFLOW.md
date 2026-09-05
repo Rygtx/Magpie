@@ -119,23 +119,6 @@ Contributor: [GitHub 用户名](https://github.com/用户名) 具体贡献。
 - `Magpie.exe` 与 `resources.pri` 必须来自同一次完整构建。涉及 UI 资源或索引映射时，两者必须一起更新。
 - 包内保留 `LICENSE-Magpie.txt`、`THIRD-PARTY-NOTICES.md`、`README-Experimental.txt` 和 `build-manifest.json`。
 
-### TensorRT 深度估算可选组件
-
-分卷名称：
-
-```text
-Magpie-vX.Y.Z-TensorRT-Depth-Components-x64.7z.001
-Magpie-vX.Y.Z-TensorRT-Depth-Components-x64.7z.002
-```
-
-- 所有分卷放在同一目录，从 `.7z.001` 开始解压。
-- 打开或解压 7z 后，顶层直接包含所有需要合并到 `Magpie.exe` 所在目录的文件和目录。
-- 不再额外套版本目录、`256`、`runtime` 或其他仅用于内部整理的二级包装目录。
-- 内部仍应保留程序运行所要求的真实相对目录结构；这里禁止的是无运行意义的额外外壳。
-- 用户复制解压得到的全部内容到 `Magpie.exe` 所在目录，保持目录结构并允许覆盖同名文件。
-- 不允许只复制个别 DLL，也不得混用其他版本的 CUDA、cuDNN 或 TensorRT 文件。
-- 分卷前先检查归档根目录，再实际完成一次解压和安装测试。
-
 ### DLSSNR DLL 选项包
 
 - 使用 `DLSSNR-DLL-Options-<版本>.zip` 命名。

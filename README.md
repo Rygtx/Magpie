@@ -1,122 +1,55 @@
-<p align="center">
-  <img src="./src/Magpie/Icons/SVG/Magpie Icon Full Disabled.svg" width="150" height="150" alt="Magpie">
-</p>
+<p align="center"><img src="./src/Magpie/Icons/SVG/Magpie Icon Full Disabled.svg" width="150" height="150" alt="Magpie"></p>
 <h1 align="center">Magpie Experimental</h1>
-
-<div align="center">
-
-[![License](https://img.shields.io/github/license/Blinue/Magpie)](./LICENSE)
-
-</div>
 
 🌍 **English** | [简体中文](./README_ZH.md)
 
-This is an unofficial experimental fork of [Blinue/Magpie](https://github.com/Blinue/Magpie). It focuses on captured-frame experiments with DLSS, DLSS Frame Generation, DLSSNR, XeSS, FSR, and RTX Video. It is not an official Magpie release and is not supported by the upstream project.
+An unofficial experimental fork of [Blinue/Magpie](https://github.com/Blinue/Magpie), providing captured-window DLSS, DLSS Frame Generation, DLSSNR, XeSS, FSR and RTX Video effects. This is not an official Magpie release and is not supported by upstream.
 
-## Download and install
+## Versions and Installation
 
-1. Download the latest `Magpie-Experimental-x64.zip` from [GitHub Releases](https://github.com/SAOG0721/Magpie/releases).
-2. Fully exit any running Magpie instance.
-3. Extract the complete ZIP into a new directory. Do not run it from inside the archive or overwrite an older experimental directory.
-4. Run `Magpie.exe`.
+0.6.5 is in local release-package preparation. See the complete [0.6.5 Release Note](docs/RELEASE_NOTES_v0.6.5-experimental.md); publicly available builds are listed on [GitHub Releases](https://github.com/SAOG0721/Magpie/releases).
 
-Settings are normally stored in `%LOCALAPPDATA%\Magpie\config\v4\config.json`. Updating the program does not replace existing scaling modes.
+Fully exit Magpie, extract all of `Magpie-Experimental-x64.zip` into a new directory, and run `Magpie.exe`. Do not replace only the EXE or copy old effects/depth components into the new package. Normal settings use `%LOCALAPPDATA%\Magpie\config\v4\config.json`; portable settings use `config\config.json` beside the program. Back up your configuration and previous installation before upgrading.
 
-## Default scaling modes
+## Effect Groups and Parameters
 
-A fresh configuration includes the following modes and selects Lanczos by default:
+Scaling modes are now called **Effect groups**, combining multiple effects. Fresh configurations contain Lanczos, FSR, RTX Video VSR Ultra, DLSSFG, XeSSFG and DLSSNR, with Lanczos selected. Existing custom groups are preserved.
 
-| Mode | Main use | Hardware |
-| --- | --- | --- |
-| Lanczos | General spatial scaling | DirectX 11 GPU |
-| FSR | General spatial upscaling and sharpening | DirectX 11 GPU |
-| DLSS SR | Experimental DLSS super resolution | NVIDIA RTX |
-| RTX Video VSR Ultra | Video, visual novels, and compressed images | NVIDIA RTX |
-| DLSSFG | Experimental x2/x3/x4 frame generation | NVIDIA RTX |
-| XeSSFG | Experimental cross-vendor x2 frame generation | Compatible Intel, NVIDIA, or AMD GPU |
-| DLSSNR | Same-resolution SDR AI filter | Supported NVIDIA RTX runtime |
+Import the [optional presets](presets/ScalingModes-v0.6.5-experimental.json) on the Effect groups page to append DLSSFG, XeSSFG and DLSSNR. Reset restores built-in groups; import only appends.
 
-Users upgrading from an older build can import `ScalingModes-v0.5.7-experimental.json` from the Release on the Scaling Modes page. It only appends `DLSSFG`, `XeSSFG`, and `DLSSNR`; it does not remove or replace existing modes.
+Parameter edits save automatically. The toolbar editor labels controls **Live**, **Restart**, or **Auto restart**, distinguishing manual application from automatic rebuilding after editing. Previously live DLSSNR core/upstream image changes fully stop the group, wait 500 ms and restart it; residual composition retains its existing live behavior. Consecutive edits coalesce, and manually stopping cancels a pending restart.
 
-## Recommended configuration
+Double-click a slider within 170 ms to restore the effect's own default. Parameters support groups, drop-down choices, and Simplified/Traditional Chinese display. The editor distinguishes desired values from applied values when saving fails or a change has not taken effect.
 
-### DLSS SR
+## Toolbar and Frame Pacing
 
-- `Use Motion Vectors` defaults to on.
-- `Use Estimated Depth (Experimental)` defaults to off. Enable it only when it visibly improves a specific application.
-- Existing `DLSS\DLSS_ZeroMV` configurations migrate to `DLSS\DLSS_SR` while preserving their parameters and scaling type.
+| Action | Default Shortcut |
+| --- | --- |
+| Profiler | Alt+Shift+P |
+| Effect parameters | Alt+Shift+E |
+| Screenshot | Alt+Shift+S |
+| Pin toolbar | Alt+Shift+F |
+| Comparison | Alt+Shift+C |
 
-Magpie cannot access engine-native motion vectors, depth, exposure, camera matrices, or separated UI. Its inputs are estimated from captured color frames and are not equivalent to a native in-game DLSS integration.
+Configure shortcuts in Home's collapsible toolbar section. Comparison continues effect processing while showing the original; its badge stays for two seconds and fades over 500 ms. With FG, frame rates support an output/real-frame display.
 
-### DLSS Frame Generation
+Front Edge Sync defaults to enabled at 60 FPS and controls base-frame pacing before FG. Apply a matching limiter in the source application too; latency may increase. FrameRate Filter follows this setting by default and offers Custom only with synchronization disabled. See the [frame-sync guide](docs/FRAME_SYNC_GUIDE.md). VRR is currently hidden and disabled; HDR remains unimplemented.
 
-- `Frame Multiplier` offers x2, x3, and x4, subject to GPU, driver, and presentation support.
-- `Use Motion Vectors` defaults to on.
-- `Use Estimated Depth (Experimental)` defaults to off.
-- Do not combine DLSS FG with XeSS FG, NVIDIA Smooth Motion, or another frame generator.
+## Optical Flow and Compatibility
 
-x3/x4 require sufficient display refresh capacity. If the generated target exceeds the monitor refresh rate, not every generated frame can be displayed and final FPS will not simply equal input FPS multiplied by the selected factor.
+DLSS SR, FSR 2/3/4 and XeSS SR each have one entry with None / AMD OF / NVOF. Standalone Zero MV, Optical Flow and metadata-only jitter variants are merged, with automatic migration of old settings. DLSSNR and DLSSFG use NVOF; XeSSFG x2 offers AMD OF/NVOF, while XeSS Multi-FG currently supports AMD OF or None.
 
-### DLSSNR
+Consumers share a requested provider: NVOF first, then AMD OF, at the highest quality actually requested for that source. NVOF Highest Quality is 2×2 Slow and can be very expensive; Balanced remains marked Recommended.
 
-DLSSNR is a same-resolution SDR post-process and does not upscale. It may affect both game content and composed text or UI. HDR is not currently supported.
+Magpie lacks engine-native depth, motion vectors, exposure and UI separation. Depth contracts use zero-filled textures and motion is estimated from captured color, so this is not equivalent to native DLSS/FSR/XeSS integration. Use only one FG per group and avoid stacking it with Smooth Motion or other frame-generation systems.
 
-| Parameter | Range | Default | Description |
-| --- | --- | --- | --- |
-| NR Preset | 0–3 | 0 | Default, Preset #1, #2, or #3 |
-| NR Style | 0–2 | 0 | Default, Natural, or Cinematic |
-| NR Intensity | 0–2 | 1 | Overall processing strength |
-| Local Tone Strength | 0–2 | 1 | Local tone strength |
-| Local Structure Strength | 0–2 | 1 | Local structure strength |
-| Skin Structure Strength | -1–2 | -1 | -1 keeps the default behavior |
-| Automatic Mask | 0/1 | 0 | Automatic masking, off by default |
-| NR UI Correction | 0/1 | 0 | UI correction, off by default |
-| Frame Guidance | 0–3 | 0 | Available, Force Zero, Motion Only, or Depth Only |
-| Depth Inference Interval | 1–8 | 4 | Minimum real-frame interval for estimated depth |
+## Troubleshooting and Development
 
-`Frame Guidance=0 Available` and `Depth Inference Interval=4` are suitable defaults. A lower interval can be tested for faster motion, but it changes estimated-depth update frequency and GPU cost rather than the NR model itself.
+Start with Home's recent-issue details and logs. Release tools include the NGX OTA switch and DLSSNR DLL choices; see the Release Note for usage and limitations. Optional proprietary backends default to disabled in source builds; local SDK/runtime paths belong in the untracked `src/BuildOptions.props.user`.
 
-### XeSS FG and RTX Video
+- [Dependencies, notices and build boundaries](docs/THIRD_PARTY_AND_REDISTRIBUTION.md)
+- [Experimental development documentation](docs/experimental/README.md)
+- [Build and packaging script](scripts/Build-Release.ps1)
+- [MagpieFX format](<docs/MagpieFX (EN).md>)
 
-XeSSFG currently uses the cross-vendor x2 Zero-MV path and does not consume the estimated Motion/Depth used by DLSS. RTX Video VSR Ultra has a relatively high GPU cost, so use it according to target resolution and available GPU headroom.
-
-## DLSSNR DLL choices
-
-The main Release Pack includes a community-modified `nvngx_dlssnr.dll` 310.8.0.0 intended for RTX 40-series and RTX 50-series compatibility. It is not an untouched NVIDIA-signed file, and Windows Authenticode reports a file-hash mismatch.
-
-The same Release provides `DLSSNR-DLL-Options-310.8.0.0.zip`:
-
-- `NVIDIA-Original`: the original NVIDIA-signed runtime.
-- `Community-RTX40-RTX50`: the community compatibility runtime used by the main pack.
-
-Fully exit Magpie before replacing `nvngx_dlssnr.dll` in the application directory. Third-party DLLs are not included in this source repository or GitHub-generated source archives.
-
-## Temporary NGX OTA tool
-
-`NGX_OTA_Switch.bat` addresses environments where many `nvngx_update.exe` processes accumulate. It can temporarily disable the system-wide NGX OTA setting, terminate existing updater processes, or remove the override to restore NVIDIA's default behavior.
-
-The tool requires administrator access and affects other programs using NGX. Disabling OTA can prevent NVIDIA NGX components from updating online; restore the default setting when appropriate.
-
-## Troubleshooting
-
-- Logs are stored in `logs\magpie.log` under the application directory.
-- Search for `DLSSNR STATUS` to verify DLSSNR creation and evaluation. NVIDIA's on-screen Indicator is not guaranteed to appear in every environment.
-- If frame generation shows no image, confirm that no other frame generator is enabled and inspect the log for `DLSSFG` or `XeSSFG` errors.
-- If an effect or DLL is missing, extract the complete Release again instead of copying only `Magpie.exe`.
-- Include the Magpie version, GPU, driver, effect chain, input/output resolution, and log when reporting a problem.
-
-## Contributors
-
-- [HexBen123](https://github.com/HexBen123) — Depth-estimation performance optimization and TensorRT integration guidance.
-
-## Requirements and license
-
-- Windows 10 v1903+ or Windows 11
-- DirectX feature level 11
-- x64 system
-
-The Magpie-derived source is licensed under [GPLv3](./LICENSE). Third-party SDKs, models, and runtimes remain under their respective licenses; see [Third-party components and redistribution](./docs/THIRD_PARTY_AND_REDISTRIBUTION.md).
-
-- [Experimental Releases](https://github.com/SAOG0721/Magpie/releases)
-- [Upstream Magpie](https://github.com/Blinue/Magpie)
-- [Upstream FAQ](https://github.com/Blinue/Magpie/wiki/FAQ)
+Source retains [GPLv3](LICENSE). Third-party runtimes, SDKs, models and local configuration are excluded from the source repository.
