@@ -6,6 +6,8 @@
 #include "ExclModeHelper.h"
 #include "Logger.h"
 #include "Renderer.h"
+#include "NgxRuntimeGuard.h"
+#include "ScalingWindowOwner.h"
 #include "EffectParameterValue.h"
 #include "Win32Helper.h"
 #include "WindowHelper.h"
@@ -53,6 +55,13 @@ static void LogRects(const RECT& srcRect, const RECT& rendererRect, const RECT& 
 }
 
 ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
+	if (NgxRuntimeGuard::IsFaulted() && std::ranges::any_of(_options.effects, [](const auto& effect) {
+		return effect.name == "DLSSNR\\DLSSNR_AI_Filter" ||
+			ClassifyFrameGenerationEffect(effect.name) == FrameGenerationEffectKind::DLSS;
+	})) {
+		Logger::Get().Error("Effect group blocked after NGX fault; fully restart Magpie");
+		return ScalingError::NgxRestartRequired;
+	}
 	if (!_options.parameterSession) {
 		_options.parameterSession = std::make_shared<EffectParameterSessionState>(
 			_options.effects, FrameSyncSettings{ _options.isFrontEdgeSyncEnabled, _options.frontEdgeSyncFrameRate });
@@ -232,7 +241,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 			_windowRect.top,
 			_windowRect.right - _windowRect.left,
 			_windowRect.bottom - _windowRect.top,
-			hwndSrc,
+			nullptr, // Associate with the source only after initialization succeeds.
 			NULL,
 			wil::GetModuleInstanceHandle(),
 			this
@@ -292,7 +301,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 			_windowRect.top,
 			_windowRect.right - _windowRect.left,
 			_windowRect.bottom - _windowRect.top,
-			hwndSrc,
+			nullptr, // An initializing window must not block its source's window messages.
 			NULL,
 			wil::GetModuleInstanceHandle(),
 			this
@@ -328,6 +337,17 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 	if (_options.IsTouchSupportEnabled()) {
 		// 应在 Renderer 初始化后调用。推迟到缩放窗口显示后再显示
 		_UpdateTouchHoleWindows(true);
+	}
+	if (!IsWindow(hwndSrc)) return ScalingError::SourceWindowClosed;
+	if (Win32Helper::IsWindowHung(hwndSrc)) return ScalingError::SourceWindowUnresponsive;
+	if (!SetScalingWindowOwner(Handle(), hwndSrc)) {
+		Logger::Get().Win32Error("Set scaling window owner after initialization failed");
+		return ScalingError::ScalingWindowCreationFailed;
+	}
+	// Restore the existing input behavior only after establishing ownership.
+	// This does not replace removing ownership before a blocking teardown.
+	if (!AttachThreadInput(GetCurrentThreadId(), GetWindowThreadProcessId(hwndSrc, nullptr), FALSE)) {
+		Logger::Get().Win32Warn("Detach source input queue after setting window owner failed");
 	}
 
 	return ScalingError::NoError;
@@ -497,7 +517,7 @@ void ScalingWindow::RestartWithEffectParameters(
 
 	// Preserve the complete current session options while performing one full
 	// teardown/startup. WM_DESTROY must not clear _options in between.
-	const bool reopen = _renderer && _renderer->IsEffectParametersVisible();
+	const auto overlayState = _renderer ? _renderer->CaptureOverlayState() : OverlaySessionState{};
 	_CancelParameterRestart();
 	_isSrcRepositioning = true;
 	Destroy();
@@ -508,7 +528,7 @@ void ScalingWindow::RestartWithEffectParameters(
 	_options.frontEdgeSyncFrameRate = frameSync.frameRate;
 	_options.parameterSession->Desired(_options.effects);
 	Start(hwndSource, std::move(_options));
-	if (Handle() && _renderer && reopen) _renderer->InvokeOverlayAction(OverlayAction::EffectParameters);
+	if (Handle() && _renderer) _renderer->RestoreOverlayState(overlayState);
 }
 
 void ScalingWindow::CleanAfterSrcRepositioned() noexcept {
@@ -547,7 +567,7 @@ void ScalingWindow::_CancelParameterRestart() noexcept {
 	_parameterRestartQueue.Cancel();
 	_parameterRestartSaveRevision = 0;
 	_restartParameters.clear();
-	_reopenEffectParameters = false;
+	_restartOverlayState = {};
 }
 
 void ScalingWindow::UpdateWaitingEffectParameter(
@@ -581,11 +601,11 @@ void ScalingWindow::ProcessPendingParameterRestart() noexcept {
 			Stop();
 			return;
 		}
-		const bool reopen = _reopenEffectParameters;
+		const auto overlayState = _restartOverlayState;
 		_CancelParameterRestart();
 		Logger::Get().Info("DLSSNR parameter restart: starting effect group after 500 ms pause");
 		Start(source, std::move(_options));
-		if (Handle() && _renderer && reopen) _renderer->InvokeOverlayAction(OverlayAction::EffectParameters);
+		if (Handle() && _renderer) _renderer->RestoreOverlayState(overlayState);
 		return;
 	}
 
@@ -618,7 +638,7 @@ void ScalingWindow::ProcessPendingParameterRestart() noexcept {
 				infos[effect][parameter].applyMode });
 		}
 	}
-	_reopenEffectParameters = _renderer->IsEffectParametersVisible();
+	_restartOverlayState = _renderer->CaptureOverlayState();
 	auto changes = _parameterRestartQueue.TakeChanges();
 	Logger::Get().Info(fmt::format("DLSSNR parameter restart: stopping effect group for {} edited parameter(s)", changes.size()));
 	// Joining the backend in WM_DESTROY preserves its final Applied snapshot.
@@ -646,14 +666,6 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 	switch (msg) {
 	case WM_CREATE:
 	{
-		// 源窗口的输入已被附加到了缩放窗口上，这是所有者窗口的默认行为，但我们不需要
-		// 见 https://devblogs.microsoft.com/oldnewthing/20130412-00/?p=4683
-		AttachThreadInput(
-			GetCurrentThreadId(),
-			GetWindowThreadProcessId(_srcTracker.Handle(), nullptr),
-			FALSE
-		);
-
 		// 防止缩放 UWP 窗口时无法遮挡任务栏
 		// https://github.com/dechamps/WindowInvestigator/issues/3
 		SetProp(Handle(), L"TreatAsDesktopFullscreen", (HANDLE)TRUE);
@@ -1090,15 +1102,21 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 	}
 	case WM_DESTROY:
 	{
+		// The source can synchronously wait for an owned popup's window thread.
+		// Remove that relationship before joining workers or entering SDK teardown.
+		if (!SetScalingWindowOwner(Handle(), nullptr)) {
+			Logger::Get().Win32Warn("Detach scaling window owner before teardown failed");
+		}
+		const bool ngxWasFaulted = NgxRuntimeGuard::IsFaulted();
+		// Invalidate queued callbacks before any teardown can dispatch messages.
+		++_runId;
 		Logger::Get().Info("缩放结束");
 		if (_renderer) {
+			_renderer->BeginShutdown();
 			_renderer->ClearOverlayStates();
 		}
 		_frontendRenderPending = false;
 		_dlssFgFrameJobs.clear();
-
-		// 更新 _runId 表明当前缩放结束
-		++_runId;
 
 		if (_exclModeMutex) {
 			_exclModeMutex.ReleaseMutex();
@@ -1114,6 +1132,16 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 
 		_renderer.reset();
 		Logger::Get().Info("Renderer 已析构");
+		if (!ngxWasFaulted && NgxRuntimeGuard::IsFaulted()) {
+			if (const auto report = _options.reportErrorDetails) {
+				report(_srcTracker.Handle(), ScalingError::NgxRestartRequired,
+					fmt::format("NGX teardown fault at {:#x}, thread={}; restart required",
+						NgxRuntimeGuard::FaultAddress(), NgxRuntimeGuard::FaultThread()),
+					NgxRuntimeGuard::FaultCode());
+			} else {
+				ShowError(ScalingError::NgxRestartRequired);
+			}
+		}
 		// The backend has joined. Preserve its final applied snapshot for every
 		// automatic restart, without applying queued restart-only target values.
 		if (_isSrcRepositioning && _options.parameterSession) {

@@ -11,17 +11,6 @@
 
 namespace Magpie {
 
-// Called only for parameters otherwise supported by the running live backend.
-inline bool NeedsDlssNrParameterRestart(std::string_view effect,
-	std::string_view parameter, bool hasLaterDlssNr) noexcept {
-	if (IsFrameRateFilterEffect(effect)) return false;
-	if (hasLaterDlssNr) return true;
-	if (effect != "DLSSNR\\DLSSNR_AI_Filter") return false;
-	return parameter != "residualMultiplier" && parameter != "residualSaturation" &&
-		parameter != "residualLightness" && parameter != "shadowStructureMultiplier" &&
-		parameter != "reflectionGlowMultiplier";
-}
-
 class EffectParameterRestartQueue {
 public:
 	using Clock = std::chrono::steady_clock;

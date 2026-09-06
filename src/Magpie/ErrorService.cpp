@@ -70,6 +70,7 @@ static const wchar_t* MessageKey(ScalingError error) noexcept {
 	case ScalingError::ExportWriteFailed: return L"Message_ExportWriteFailed";
 	case ScalingError::FileDialogFailed: return L"Message_FileDialogFailed";
 	case ScalingError::PassThroughUnavailable: return L"Message_PassThroughUnavailable";
+	case ScalingError::NgxRestartRequired: return L"Message_NgxRestartRequired";
 	default: return L"Message_ScalingFailedGeneral";
 	}
 }

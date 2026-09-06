@@ -1439,4 +1439,7 @@
   <data name="Overlay_FrameSync_Help" xml:space="preserve">
     <value>修改自動儲存；點擊「套用並重新啟用」後生效。0 為自動；請同步限制目標程式影格率。</value>
   </data>
+  <data name="Message_NgxRestartRequired" xml:space="preserve">
+    <value>NVIDIA 效果執行異常。請從系統匣完全結束 Magpie 並重新開啟，再啟用 DLSSNR 或 DLSS 補幀。</value>
+  </data>
 </root>

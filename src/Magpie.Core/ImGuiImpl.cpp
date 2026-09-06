@@ -199,6 +199,12 @@ void ImGuiImpl::NewFrame(
 		}
 
 		const char* windowId = GetWindowIDFromName(window->Name);
+		// This resizable panel restores both position and size before Begin and
+		// records only user edits there, so viewport clamping cannot erase its
+		// preferred size or edge anchoring.
+		if (std::string_view(windowId) == "effectParameters") {
+			continue;
+		}
 		if (auto it = windowOptions.find(windowId); it != windowOptions.end()) {
 			OverlayWindowOption& option = it->second;
 

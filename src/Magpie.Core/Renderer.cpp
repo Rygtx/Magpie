@@ -18,6 +18,7 @@
 #include "Logger.h"
 #include "OverlayDrawer.h"
 #include "Renderer.h"
+#include "NgxRuntimeGuard.h"
 #include "ScalingOptions.h"
 #include "ScalingWindow.h"
 #include "ScreenshotHelper.h"
@@ -152,13 +153,19 @@ static double GetDisplayRefreshRate(HWND window) noexcept {
 	return static_cast<double>(mode.dmDisplayFrequency);
 }
 
-Renderer::Renderer() noexcept {}
+Renderer::Renderer() noexcept :
+	_sessionLifetime(std::make_shared<ScalingSessionLifetime>(ScalingWindow::RunId())) {}
 
-Renderer::~Renderer() noexcept {
+void Renderer::BeginShutdown() noexcept {
+	_sessionLifetime->RequestStop();
 	// The backend can be waiting for a synchronous DLSSFG presentation while
 	// the frontend thread is destroying this Renderer. Stop issuing new
 	// synchronous sends before waiting for the backend thread to exit.
 	_synchronousFramePresentationEnabled.store(false, std::memory_order_release);
+}
+
+Renderer::~Renderer() noexcept {
+	BeginShutdown();
 
 	_hKeyboardHook.reset();
 
@@ -337,6 +344,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	const HANDLE sharedTextureHandle = _sharedTextureHandle.load(std::memory_order_acquire);
 	if (sharedTextureHandle == INVALID_HANDLE_VALUE) {
 		Logger::Get().Error("后端初始化失败");
+		if (NgxRuntimeGuard::IsFaulted()) return ScalingError::NgxRestartRequired;
 		// 一般的错误不会设置 _backendInitError
 		return _backendInitError == ScalingError::NoError ? ScalingError::ScalingFailedGeneral : _backendInitError;
 	}
@@ -408,7 +416,9 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 
 void Renderer::OnCursorVisibilityChanged(bool isVisible, bool onDestory) {
 	_backendThreadDispatcher.TryEnqueue([this, isVisible, onDestory]() {
-		if (_frameSource) {
+		// Still deliver cursor teardown, but don't reopen WGC for earlier input
+		// notifications once the frontend has begun stopping the session.
+		if (_frameSource && (onDestory || !_sessionLifetime->IsStopping())) {
 			_frameSource->OnCursorVisibilityChanged(isVisible, onDestory);
 			// Apply capture continuity resets on the first valid frame, not on a
 			// forced redraw while a restarted session is still waiting for content.
@@ -740,9 +750,9 @@ bool Renderer::_FrontendRender(
 		!_presenter->SetBaseFrameRateLimit(_FrontEdgeFrameRate())) {
 		if (!_frontEdgeLimiterFailed) {
 			_frontEdgeLimiterFailed = true;
-			ScalingWindow::Dispatcher().TryEnqueue([] {
+			ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime] {
 				auto& window = ScalingWindow::Get();
-				if (!window) return;
+				if (!session->IsCurrent(ScalingWindow::RunId()) || !window) return;
 				if (auto report = window.Options().reportErrorDetails) report(
 					window.SrcTracker().Handle(), ScalingError::PresentationInitFailed,
 					"XeLL frame-rate configuration failed; disable Front Edge Sync and re-enable the effect group", 0);
@@ -1289,6 +1299,12 @@ void Renderer::OnMove() noexcept {
 	_UpdateDestRect();
 }
 
+void Renderer::RestoreOverlayState(const OverlaySessionState& state) noexcept {
+	++_overlayActionRevision;
+	_overlayDrawer.RestoreSessionState(state);
+	Render();
+}
+
 void Renderer::InvokeOverlayAction(OverlayAction action) noexcept {
     const ScalingWindow& window = ScalingWindow::Get();
     if (action == OverlayAction::Screenshot) {
@@ -1603,11 +1619,6 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 	_effectParameterRuntimeInfos.clear();
 	_effectParameterRuntimeInfos.resize(_effectDescs.size());
-	std::optional<uint32_t> lastDlssNr;
-	for (uint32_t i = 0; i < _runtimeEffectOptions.size(); ++i) {
-		if (_runtimeEffectOptions[i].name == "DLSSNR\\DLSSNR_AI_Filter" &&
-			i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) lastDlssNr = i;
-	}
 
 	for (uint32_t effectIdx = 0; effectIdx < _effectDescs.size(); ++effectIdx) {
 		const EffectDesc& desc = _effectDescs[effectIdx];
@@ -1641,8 +1652,8 @@ void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 				info.applyMode = EffectParameterApplyMode::Live;
 				info.restartReason = EffectParameterRestartReason::None;
 			}
-			info.automaticRestart = lastDlssNr && info.applyMode == EffectParameterApplyMode::Live &&
-				NeedsDlssNrParameterRestart(option.name, parameter.name, effectIdx < *lastDlssNr);
+			// Honor the running backend's live support. DLSSNR resets its history
+			// for core/upstream edits without tearing down the effect group.
 			infos.push_back(std::move(info));
 		}
 	}
@@ -2020,7 +2031,8 @@ bool Renderer::_InitializeDLSSFrameGenerator(
 	if (!frameGenerator->Initialize(
 		_backendResources, _ngxD3D12Core, input,
 		{ sourceDesc.Width, sourceDesc.Height }, settings)) {
-		_backendInitError = ScalingError::FrameGenerationInitFailed;
+		_backendInitError = NgxRuntimeGuard::IsFaulted() ?
+			ScalingError::NgxRestartRequired : ScalingError::FrameGenerationInitFailed;
 		_backendInitContext = "DLSSFG\\DLSS_FrameGeneration";
 		return false;
 	}
@@ -2309,6 +2321,33 @@ void Renderer::_BackendThreadProc() noexcept {
 
 	MSG msg;
 	while (true) {
+		if (NgxRuntimeGuard::IsFaulted() && _ngxD3D12Core.Device() && !_sessionLifetime->IsStopping()) {
+			ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime]() {
+				auto& window = ScalingWindow::Get();
+				if (!session->IsCurrent(ScalingWindow::RunId()) || !window) return;
+				if (const auto report = window.Options().reportErrorDetails) {
+					report(window.SrcTracker().Handle(), ScalingError::NgxRestartRequired,
+						fmt::format("NGX runtime fault at {:#x}, thread={}; restart required",
+							NgxRuntimeGuard::FaultAddress(), NgxRuntimeGuard::FaultThread()),
+						NgxRuntimeGuard::FaultCode());
+				} else {
+					window.ShowError(ScalingError::NgxRestartRequired);
+				}
+				window.Stop();
+			});
+			_frameSource.reset();
+			return;
+		}
+		if (_sessionLifetime->IsStopping()) {
+			// Drain queued teardown (including cursor restoration) until WM_QUIT.
+			// No pacing waits, frame acquisition or rendering after shutdown.
+			if (GetMessage(&msg, NULL, 0, 0) <= 0) {
+				_frameSource.reset();
+				return;
+			}
+			DispatchMessage(&msg);
+			continue;
+		}
 		bool fpsUpdated = false;
 		bool waitedForContent = false;
 		FrameTrace::Scope traceWait(FrameTrace::Event::BackendWait);
@@ -2342,6 +2381,8 @@ void Renderer::_BackendThreadProc() noexcept {
 		}
 
 		traceMessages.End();
+		// DispatchMessage may have just closed the capture session.
+		if (_sessionLifetime->IsStopping()) continue;
 		if (_pendingFrameGenerationInput) {
 			const auto now = std::chrono::steady_clock::now();
 			if (now < _fgInputClock.Due(now)) continue;
@@ -2375,6 +2416,8 @@ void Renderer::_BackendThreadProc() noexcept {
 		traceCapture.End();
 		FrameTrace::Mark(FrameTrace::Event::CaptureResult, static_cast<int64_t>(frameSourceState),
 			_frameSource->CaptureTimestamp100ns());
+		// An acquisition already in progress may finish while the frontend stops.
+		if (_sessionLifetime->IsStopping()) continue;
 		switch (frameSourceState) {
 		case FrameSourceState::Waiting:
 			if (_frameSource->IsCaptureInterrupted()) {
@@ -2421,9 +2464,11 @@ void Renderer::_BackendThreadProc() noexcept {
 		case FrameSourceState::Error:
 			// 捕获出错，退出缩放
 			ScalingWindow::Dispatcher().TryEnqueue([
+				session = _sessionLifetime,
 				context = std::string(_frameSource->CaptureErrorContext()),
 				code = _frameSource->CaptureErrorCode()]() {
 				ScalingWindow& scalingWindow = ScalingWindow::Get();
+				if (!session->IsCurrent(ScalingWindow::RunId()) || !scalingWindow) return;
 				if (auto report = scalingWindow.Options().reportErrorDetails) {
 					report(scalingWindow.SrcTracker().Handle(), ScalingError::CaptureFailed,
 						context, code);

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "NgxRuntimeGuard.h"
 #include "DLSSFrameGenerator.h"
 #include "DeviceResources.h"
 #include "FrameGuidanceD3D12Interop.h"
@@ -63,21 +64,13 @@ static bool NGXSucceeded(NVSDK_NGX_Result result) noexcept {
 	return NVSDK_NGX_SUCCEED(result);
 }
 
-static LONG CaptureNgxException(DWORD code, DWORD* sehCode) noexcept {
-	*sehCode = code;
-	return EXCEPTION_EXECUTE_HANDLER;
-}
-
 static NVSDK_NGX_Result ReleaseFeatureSafely(
 	NVSDK_NGX_Handle* feature,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return NVSDK_NGX_D3D12_ReleaseFeature(feature);
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 static NVSDK_NGX_Result GetParameterISafely(
@@ -86,12 +79,9 @@ static NVSDK_NGX_Result GetParameterISafely(
 	int* value,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return NVSDK_NGX_Parameter_GetI(parameters, name, value);
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 static NVSDK_NGX_Result GetParameterUISafely(
@@ -100,12 +90,9 @@ static NVSDK_NGX_Result GetParameterUISafely(
 	uint32_t* value,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return NVSDK_NGX_Parameter_GetUI(parameters, name, value);
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 static bool SetParameterUISafely(
@@ -114,13 +101,10 @@ static bool SetParameterUISafely(
 	uint32_t value,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		NVSDK_NGX_Parameter_SetUI(parameters, name, value);
 		return true;
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return false;
-	}
+	}, false, sehCode);
 }
 
 static bool SetParameterULLSafely(
@@ -129,13 +113,10 @@ static bool SetParameterULLSafely(
 	uint64_t value,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		NVSDK_NGX_Parameter_SetULL(parameters, name, value);
 		return true;
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return false;
-	}
+	}, false, sehCode);
 }
 
 static NVSDK_NGX_Result CreateDlssgSafely(
@@ -145,13 +126,10 @@ static NVSDK_NGX_Result CreateDlssgSafely(
 	NVSDK_NGX_DLSSG_Create_Params* createParams,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return NGX_D3D12_CREATE_DLSSG(
 			commandList, 1, 1, feature, parameters, createParams);
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 static NVSDK_NGX_Result EvaluateDlssgSafely(
@@ -162,13 +140,10 @@ static NVSDK_NGX_Result EvaluateDlssgSafely(
 	NVSDK_NGX_DLSSG_Opt_Eval_Params* optionalParams,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return NGX_D3D12_EVALUATE_DLSSG(
 			commandList, feature, parameters, evalParams, optionalParams);
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 static bool WaitForFence(DLSSFrameGenerator::Impl& impl, uint64_t value) noexcept {

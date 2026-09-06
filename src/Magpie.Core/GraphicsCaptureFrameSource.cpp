@@ -99,6 +99,7 @@ bool GraphicsCaptureFrameSource::Start() noexcept {
 
 FrameSourceState GraphicsCaptureFrameSource::_Update() noexcept {
 	FrameTrace::Scope traceAcquire(FrameTrace::Event::WgcAcquire);
+	if (_captureStopping) return FrameSourceState::Waiting;
 	if (_captureFailed) return FrameSourceState::Error;
 	if (!_captureSession || !_captureFramePool) {
 		return _FailCapture("WGC capture session unavailable", E_UNEXPECTED);
@@ -208,6 +209,11 @@ FrameSourceState GraphicsCaptureFrameSource::_Update() noexcept {
 }
 
 void GraphicsCaptureFrameSource::OnCursorVisibilityChanged(bool isVisible, bool onDestory) noexcept {
+	if (_captureStopping) return;
+	if (onDestory) {
+		_captureStopping = true;
+		_FinishRecovery();
+	}
 	// 显示光标时必须重启捕获
 	if (isVisible) {
 		const bool stopped = _StopCapture();

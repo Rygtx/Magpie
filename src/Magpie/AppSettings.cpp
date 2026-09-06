@@ -719,6 +719,10 @@ std::string AppSettings::_Serialize(const _AppSettingsData& data) {
 		writer.Double(windowOption.hPos);
 		writer.Key("vPos");
 		writer.Double(windowOption.vPos);
+		writer.Key("width");
+		writer.Double(windowOption.width);
+		writer.Key("height");
+		writer.Double(windowOption.height);
 		writer.EndObject();
 	}
 	writer.EndObject();
@@ -1054,6 +1058,9 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 					JsonHelper::ReadUInt16(windowOptionObj, "vArea", windowOption.vArea);
 					JsonHelper::ReadFloat(windowOptionObj, "hPos", windowOption.hPos);
 					JsonHelper::ReadFloat(windowOptionObj, "vPos", windowOption.vPos);
+					JsonHelper::ReadFloat(windowOptionObj, "width", windowOption.width);
+					JsonHelper::ReadFloat(windowOptionObj, "height", windowOption.height);
+					SanitizeOverlayWindowOption(windowOption);
 				}
 			}
 		}

@@ -72,6 +72,8 @@
     <ClInclude Include="include\EffectDesc.h" />
     <ClInclude Include="include\EffectParameterValue.h" />
     <ClInclude Include="include\ScalingOptions.h" />
+    <ClInclude Include="include\ScalingSessionLifetime.h" />
+    <ClInclude Include="include\OverlayWindowGeometry.h" />
     <ClInclude Include="include\EffectParameterPersistence.h" />
     <ClInclude Include="include\EffectParameterRestart.h" />
     <ClInclude Include="include\EffectParameterLocalization.h" />
@@ -119,6 +121,8 @@
     <ClInclude Include="NativeEffectBackend.h" />
     <ClInclude Include="NativeEffectBackendFactory.h" />
     <ClInclude Include="NgxD3D12Core.h" />
+    <ClInclude Include="include\NgxRuntimeGuard.h" />
+    <ClInclude Include="include\ScalingWindowOwner.h" />
     <ClInclude Include="RTXVideoDenoiser.h" />
   </ItemGroup>
   <ItemGroup>

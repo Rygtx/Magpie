@@ -12,6 +12,7 @@
 #include "PresentationFrameRate.h"
 #include "FramePresentationTiming.h"
 #include "ScalingOptions.h"
+#include "ScalingSessionLifetime.h"
 #include "StepTimer.h"
 #include <mutex>
 #include <unordered_map>
@@ -35,6 +36,8 @@ public:
 	Renderer(Renderer&&) = delete;
 
 	ScalingError Initialize(HWND hwndAttach, OverlayOptions& overlayOptions) noexcept;
+	// Frontend: cancel new capture/presentation work before cursor teardown.
+	void BeginShutdown() noexcept;
 	const std::string& InitializationContext() const noexcept { return _backendInitContext; }
 	const std::wstring& MotionConfigurationNotice() const noexcept { return _motionConfigurationNotice; }
 
@@ -63,6 +66,8 @@ public:
 
 	void SwitchToolbarState() noexcept;
 	void InvokeOverlayAction(OverlayAction action) noexcept;
+	OverlaySessionState CaptureOverlayState() const noexcept { return _overlayDrawer.CaptureSessionState(); }
+	void RestoreOverlayState(const OverlaySessionState& state) noexcept;
 	bool IsPassThroughActive() const noexcept { return _isPassThroughActive; }
 	bool SetPassThroughActive(bool value) noexcept;
 	void TakeDisplayedScreenshot() noexcept {
@@ -271,6 +276,7 @@ private:
 	bool _frontendBaseNeedsPresent = false;
 	RECT _destRect{};
 	
+	const std::shared_ptr<ScalingSessionLifetime> _sessionLifetime;
 	std::thread _backendThread;
 
 	wil::unique_hhook _hKeyboardHook;

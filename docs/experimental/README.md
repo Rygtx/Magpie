@@ -1,6 +1,10 @@
 # Magpie 实验分支文档索引
 
-当前准备版本：[0.6.5 Release Note](../RELEASE_NOTES_v0.6.5-experimental.md)。r1–r10 已完成本地开发整合，发布包仍待维护者检查。历史 TODO 中的阶段性行为以 [r10](../RELEASE_NOTES_v0.6.5-r10-local.md) 和正式准备说明为准。
+当前待发布版本：[0.6.6 Release Note](../RELEASE_NOTES_v0.6.6-experimental.md)。本版改进参数实时编辑、Front Edge Sync 滑条和重新启用后的浮窗恢复。此前 [0.6.5](../RELEASE_NOTES_v0.6.5-experimental.md) 的 r1–r10 记录保留历史，其中 DLSSNR 自动重启分类由 0.6.6 的实时更新替代。
+
+- [0.6.6 参数交互与本地验证](reviews/20260906-v0.6.6-parameter-interaction.md)
+- [0.6.6 停止缩放后的过期回调保护](reviews/20260906-v0.6.6-capture-shutdown.md)
+- [0.6.6 NGX 异常后的死锁保护](reviews/20260906-v0.6.6-ngx-deadlock.md)
 
 - [r10 DLSSNR 参数延迟重新启用](reviews/20260905-r10-dlssnr-parameter-restart.md)
 - [Front Edge Sync 使用说明](../FRAME_SYNC_GUIDE.md)
@@ -45,7 +49,7 @@
 - [实验分支交接](../EXPERIMENTAL_HANDOFF_ZH.md)
 - [v0.6.1 Hotfix 说明](../RELEASE_NOTES_v0.6.1-experimental-hotfix.md)
 - [v0.6.1 已发布实验版说明](../RELEASE_NOTES_v0.6.1-experimental.md)
-- [v0.6.5 下一实验版说明（开发中）](../RELEASE_NOTES_NEXT.md)
+- [下一实验版计划](../RELEASE_NOTES_NEXT.md)
 - [v0.6.0 Hotfix 说明](../RELEASE_NOTES_v0.6.0-experimental-hotfix.md)
 - [v0.6.0 实验版说明](../RELEASE_NOTES_v0.6.0-experimental.md)
 - [v0.5.9 未发布历史草稿](../RELEASE_NOTES_v0.5.9-experimental.md)

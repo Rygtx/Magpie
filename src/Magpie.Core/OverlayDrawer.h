@@ -32,6 +32,8 @@ public:
 	void ToolbarState(Magpie::ToolbarState value) noexcept;
 
 	void InvokeAction(OverlayAction action) noexcept;
+	OverlaySessionState CaptureSessionState() const noexcept;
+	void RestoreSessionState(const OverlaySessionState& state) noexcept;
 
 	bool AnyVisibleWindow() const noexcept;
 	bool IsEffectParametersVisible() const noexcept { return _isEffectParametersVisible; }
@@ -158,7 +160,10 @@ private:
 	bool _isEffectParameterInputActive = false;
 	bool _overlayDirty = true;
 	bool _effectParametersInitialized = false;
-	bool _effectParametersWindowSizeInitialized = false;
+	bool _effectParametersWindowLayoutInitialized = false;
+	bool _effectParametersWindowLayoutDirty = false;
+	ImVec2 _effectParametersViewport{};
+	OverlayWindowRect _effectParametersWindowRect{};
 	EffectParameterResetGesture _parameterResetGesture;
 #ifdef _DEBUG
 	bool _isDemoWindowVisible = false;
