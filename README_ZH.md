@@ -69,6 +69,7 @@ Front Edge Sync 用于控制 Magpie 的帧提交节奏，启用 FG 时控制补�
 
 - [HexBen123](https://github.com/HexBen123)：早期深度估算性能优化与 TensorRT 集成指导，以及 [DLSSNR 参数本地化提案](https://github.com/SAOG0721/Magpie/pull/16)。
 - [Kristijan1001](https://github.com/Kristijan1001)：[缩放期间实时编辑效果参数的参考实现](https://github.com/SAOG0721/Magpie/pull/4)，为本项目参数面板的设计与实现提供了参考。
+- [LCPD15](https://github.com/LCPD15)：[窗口模式 1.0× 倍率修复](https://github.com/SAOG0721/Magpie/pull/3)，允许同分辨率效果按原尺寸显示，避免输出被额外放大。
 
 欢迎通过 Issues 和 Pull Requests 参与；代码贡献记录见 [Contributors](https://github.com/SAOG0721/Magpie/graphs/contributors)。
 
