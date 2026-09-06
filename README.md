@@ -27,6 +27,8 @@ An **effect group** combines effects in a chosen order, storing their parameters
 
 The toolbar's parameter panel lets you adjust effects while viewing the result, with automatic saving. Controls indicate whether a change applies live or requires the group to restart; double-clicking a slider restores the effect's default value. Parameters support groups, drop-down choices and Chinese translations.
 
+The same panel places the Front Edge Sync switch and target frame rate before the effect controls, so you can adjust frame pacing and image processing in one place. Follow each control's Live or Restart label to see how a change takes effect.
+
 ### Comparison, Performance Monitoring and Frame Sync
 
 The toolbar offers original/processed comparison, per-effect timings and frame-rate monitoring, screenshots and parameter editing, with customizable shortcuts. When frame generation is enabled, separate output and real-frame readings help you assess the result and processing cost.
