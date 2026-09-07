@@ -353,6 +353,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 
 void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 	assert(!Handle());
+	_stopRequested = false;
 	_frontendRenderPending = false;
 	_dlssFgFrameJobs.clear();
 
@@ -388,10 +389,20 @@ void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 }
 
 void ScalingWindow::Stop() noexcept {
+	if (_isDestroying) return;
 	_CancelParameterRestart();
 	Destroy();
 	// 为了简化逻辑和确保可靠清理，这里始终调用 CleanAfterSrcRepositioned
 	CleanAfterSrcRepositioned();
+}
+
+void ScalingWindow::Destroy() noexcept {
+	if (_isDestroying) return;
+	// Publish cancellation before DestroyWindow can synchronously dispatch input
+	// or owner/focus messages. WM_DESTROY also handles destruction by the OS.
+	if (_cursorManager) _cursorManager->BeginShutdown();
+	if (_renderer) _renderer->BeginShutdown();
+	base_type::Destroy();
 }
 
 void ScalingWindow::ToggleScaling(bool isWindowedMode) noexcept {
@@ -660,7 +671,14 @@ winrt::hstring ScalingWindow::GetLocalizedString(std::wstring_view resName) cons
 }
 
 LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) noexcept {
-	if (_renderer) {
+	if (msg == WM_DESTROY) {
+		if (_isDestroying) return 0;
+		_isDestroying = true;
+		_stopRequested = false;
+		if (_cursorManager) _cursorManager->BeginShutdown();
+		if (_renderer) _renderer->BeginShutdown();
+	}
+	if (_renderer && !_isDestroying) {
 		_renderer->MessageHandler(msg, wParam, lParam);
 	}
 
@@ -1163,7 +1181,9 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 	}
 	}
 
-	return base_type::_MessageHandler(msg, wParam, lParam);
+	const LRESULT result = base_type::_MessageHandler(msg, wParam, lParam);
+	if (msg == WM_DESTROY) _isDestroying = false;
+	return result;
 }
 
 LRESULT ScalingWindow::_RendererWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {

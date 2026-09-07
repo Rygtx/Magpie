@@ -36,6 +36,15 @@ public:
 	void Start(HWND hwndSrc, ScalingOptions&& options) noexcept;
 
 	void Stop() noexcept;
+	void Destroy() noexcept;
+	void RequestStop(uint32_t runId) noexcept {
+		if (Handle() && !_isDestroying && runId == RunId()) _stopRequested = true;
+	}
+	bool ProcessPendingStop() noexcept {
+		if (!std::exchange(_stopRequested, false)) return false;
+		Stop();
+		return true;
+	}
 
 	void ToggleScaling(bool isWindowedMode) noexcept;
 
@@ -133,6 +142,8 @@ protected:
 	LRESULT _MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
 
 private:
+	bool _isDestroying = false;
+	bool _stopRequested = false;
 	ScalingWindow() noexcept;
 	~ScalingWindow() noexcept;
 

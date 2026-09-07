@@ -351,6 +351,10 @@ void ScalingRuntime::_ScalingThreadProc() noexcept {
 
 		// Parameter callbacks only queue changes. Tear down here after rendering
 		// and window callbacks have returned, and service messages during the pause.
+		if (scalingWindow.ProcessPendingStop()) {
+			_State(ScalingState::Idle);
+			continue;
+		}
 		const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);
 		if (parameterRestartGeneration && *parameterRestartGeneration != generation) {
 			if (scalingWindow.IsWaitingForParameterRestart()) scalingWindow.Stop();

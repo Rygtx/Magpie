@@ -1039,9 +1039,7 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		const std::string& closeStr = _GetResourceString(L"Overlay_Toolbar_Close");
 		const std::string& closeDescStr = _GetResourceString(L"Overlay_Toolbar_Close_Description");
 		if (drawButton(OverlayHelper::SegoeIcons::Cancel, closeStr.c_str(), closeDescStr.c_str())) {
-			ScalingWindow::Dispatcher().TryEnqueue([]() {
-				ScalingWindow::Get().Stop();
-			});
+			ScalingWindow::Get().RequestStop(ScalingWindow::RunId());
 		}
 		if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
 			ScalingWindow::Dispatcher().TryEnqueue([this, runId(ScalingWindow::RunId())]() {
