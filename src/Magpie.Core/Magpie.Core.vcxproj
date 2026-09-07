@@ -130,7 +130,6 @@
     <ClInclude Include="include\NgxRuntimeGuard.h" />
     <ClInclude Include="include\ScalingWindowOwner.h" />
     <ClInclude Include="RTXVideoDenoiser.h" />
-    <ClInclude Include="NvCVImageD3D11Proxy.h" Condition="$(EnableRTXVideoDenoise) And '$(Platform)' == 'x64'" />
     <ClInclude Include="HdrFrame.h" />
     <ClInclude Include="HdrColorTransform.h" />
     <ClInclude Include="HdrProtocol.h" />
@@ -217,7 +216,9 @@
     <ClCompile Include="$(VFXSdkDir)\nvvfx\src\NVVideoEffectsProxy.cpp" Condition="$(EnableRTXVideoDenoise) And '$(Platform)' == 'x64'">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="NvCVImageD3D11Proxy.cpp" Condition="$(EnableRTXVideoDenoise) And '$(Platform)' == 'x64'" />
+    <ClCompile Include="$(VFXSdkDir)\nvvfx\src\nvCVImageProxy.cpp" Condition="$(EnableRTXVideoDenoise) And '$(Platform)' == 'x64'">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="$(FSR3SdkDir)\Kits\FidelityFX\api\internal\ffx_assert.cpp" Condition="$(EnableAmdOpticalFlow) And '$(Platform)' == 'x64'">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

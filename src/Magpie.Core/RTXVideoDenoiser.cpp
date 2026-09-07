@@ -9,7 +9,7 @@
 
 #include <nvCVImage.h>
 #include <nvVideoEffects.h>
-#include "NvCVImageD3D11Proxy.h"
+#include <nvTransferD3D11.h>
 
 // Required by NVIDIA's MIT-licensed proxy loader. USE_APP_PATH below makes it
 // load the runtime copied beside Magpie.exe rather than an obsolete system SDK.
