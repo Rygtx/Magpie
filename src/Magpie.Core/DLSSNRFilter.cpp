@@ -11,7 +11,7 @@
 
 namespace Magpie {
 
-DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option) noexcept {
+DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) noexcept {
 	auto getParameter = [&](std::string_view name, float defaultValue) noexcept {
 		auto it = option.parameters.find(std::string(name));
 		return it != option.parameters.end() && std::isfinite(it->second)
@@ -28,6 +28,8 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option) noexcept {
 			static_cast<NvidiaOpticalFlowQuality>(motionQualityValue) :
 			NvidiaOpticalFlowQuality::Balanced;
 
+	const float hdrScale = hdrEnabled ? getParameter("experimentalHdrScale", 1.0f) : 1.0f;
+	const bool hdrPath = hdrEnabled && getParameter("experimentalHdrPath", 0.0f) >= 0.5f;
 	return DLSSNRSettings{
 		.enableInputResolutionScaling =
 			getParameter("enableInputResolutionScaling", 0.0f) >= 0.5f,
@@ -51,7 +53,14 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option) noexcept {
 			"skinStructureStrength", -1.0f, -1.0f, 2.0f),
 		.useAutoMask = getParameter("useAutoMask", 0.0f) >= 0.5f,
 		.uiCorrection = getParameter("uiCorrection", 0.0f) >= 0.5f,
-		.motionVectorQuality = motionQuality
+		.motionVectorQuality = motionQuality,
+		.experimentalHdr = DlssnrExperimentProtocol{
+			.enabled = hdrPath && std::isfinite(hdrScale) &&
+				(hdrScale == 1.0f || hdrScale == 2.0f || hdrScale == 4.5f),
+			.scale = (std::isfinite(hdrScale) &&
+				(hdrScale == 1.0f || hdrScale == 2.0f || hdrScale == 4.5f)) ?
+				hdrScale : 1.0f
+		}
 	};
 }
 
@@ -681,6 +690,8 @@ struct DLSSNRFilter::Impl {
 	uint32_t width = 0;
 	uint32_t height = 0;
 	bool convertInputToRgba = false;
+	bool experimentalHdrPath = false;
+	float experimentalHdrScale = 1.0f;
 	bool useResolutionScaling = false;
 	bool coreRegistered = false;
 	bool snippetInitialized = false;
@@ -1056,7 +1067,7 @@ DLSSNRFilter::Impl::~Impl() {
 		if (callerCompatibilityRestored && !NgxRuntimeGuard::IsFaulted()) {
 			if (!FreeLibrary(snippetModule)) {
 				Logger::Get().Win32Error(
-					"Release DLSSNR signed snippet DLL failed");
+				"Release DLSSNR signed snippet DLL failed");
 			}
 		} else {
 			Logger::Get().Warn(
@@ -1788,7 +1799,9 @@ bool DLSSNRFilter::ApplyLiveParameters(
 		return false;
 	}
 
-	const DLSSNRSettings candidate = ParseDLSSNRSettings(option);
+	// Preserve the active HDR protocol while validating live SDR parameters.
+	const DLSSNRSettings candidate = ParseDLSSNRSettings(
+		option, _settings.experimentalHdr.enabled);
 	if (candidate.enableInputResolutionScaling !=
 			_settings.enableInputResolutionScaling ||
 		candidate.inputResolutionPercent != _settings.inputResolutionPercent ||
@@ -1871,6 +1884,10 @@ bool DLSSNRFilter::Initialize(
 	D3D11_TEXTURE2D_DESC outputDesc{};
 	input->GetDesc(&inputDesc);
 	output->GetDesc(&outputDesc);
+	const bool experimentalHdrPath = settings.experimentalHdr.enabled &&
+		settings.experimentalHdr.IsVerifiedScale() &&
+		inputDesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT &&
+		outputDesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT;
 	if (inputDesc.Width != outputDesc.Width || inputDesc.Height != outputDesc.Height) {
 		Logger::Get().Error(fmt::format(
 			"DLSSNR requires same-resolution input/output: {}x{} -> {}x{}",
@@ -1879,7 +1896,8 @@ bool DLSSNRFilter::Initialize(
 	}
 	const bool supportedInput = inputDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM ||
 		inputDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM;
-	if (!supportedInput || outputDesc.Format != DXGI_FORMAT_R8G8B8A8_UNORM) {
+	if ((!supportedInput || outputDesc.Format != DXGI_FORMAT_R8G8B8A8_UNORM) &&
+		!experimentalHdrPath) {
 		Logger::Get().Error(fmt::format(
 			"DLSSNR SDR path unsupported formats: input={}, output={}",
 			(uint32_t)inputDesc.Format, (uint32_t)outputDesc.Format));
@@ -1887,7 +1905,11 @@ bool DLSSNRFilter::Initialize(
 	}
 	impl->sourceWidth = inputDesc.Width;
 	impl->sourceHeight = inputDesc.Height;
-	impl->useResolutionScaling = settings.enableInputResolutionScaling;
+	impl->experimentalHdrPath = experimentalHdrPath;
+	impl->experimentalHdrScale = settings.experimentalHdr.scale;
+	// Resolution scaling and residual reconstruction are SDR RGBA8 features.
+	// The experimental FP16 route keeps the tested same-resolution call chain.
+	impl->useResolutionScaling = !experimentalHdrPath && settings.enableInputResolutionScaling;
 	const uint32_t resolutionPercent = std::clamp(
 		settings.inputResolutionPercent, 25u, 100u);
 	impl->width = impl->useResolutionScaling ? std::max(
@@ -1924,7 +1946,8 @@ bool DLSSNRFilter::Initialize(
 	}
 
 	D3D11_TEXTURE2D_DESC sharedDesc = outputDesc;
-	sharedDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	sharedDesc.Format = experimentalHdrPath ?
+		DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
 	sharedDesc.Width = impl->width;
 	sharedDesc.Height = impl->height;
 	if (!CreateSharedTexture(*impl, sharedDesc, true,
@@ -2102,7 +2125,8 @@ bool DLSSNRFilter::Initialize(
 		"residualSaturation={} residualLightness={} shadowStructureMultiplier={} "
 		"reflectionGlowMultiplier={} preset=fixed-0 "
 		"style={} intensity={} localTone={} localStructure={} skinStructure={} "
-		"motionVectorQuality={} autoMask={} uiCorrection={} depth=zero-contract disabled=false",
+		"motionVectorQuality={} autoMask={} uiCorrection={} depth=zero-contract disabled=false "
+		"experimentalHdrPath={} experimentalHdrScale={}",
 		ENABLE_CORE_FEATURE18_DIAGNOSTIC ? "core-diagnostic" : "signed-snippet",
 		impl->sourceWidth, impl->sourceHeight, static_cast<uint32_t>(inputDesc.Format),
 		impl->width, impl->height,
@@ -2114,7 +2138,8 @@ bool DLSSNRFilter::Initialize(
 		_settings.intensity, _settings.localToneStrength,
 		_settings.localStructureStrength, _settings.skinStructureStrength,
 		static_cast<uint32_t>(_settings.motionVectorQuality),
-		_settings.useAutoMask, _settings.uiCorrection));
+		_settings.useAutoMask, _settings.uiCorrection,
+		impl->experimentalHdrPath, impl->experimentalHdrScale));
 	_impl = std::move(impl);
 	return true;
 }

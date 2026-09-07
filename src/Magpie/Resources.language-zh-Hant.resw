@@ -384,6 +384,9 @@
   <data name="Profile_General_3DGameMode.Header" xml:space="preserve">
     <value>3D 遊戲模式</value>
   </data>
+  <data name="Profile_General_HdrCompatibility.Header" xml:space="preserve">
+    <value>HDR 相容</value>
+  </data>
   <data name="Profile_General_AutoScale.Header" xml:space="preserve">
     <value>位於前景時自動啟用效果組</value>
   </data>
@@ -918,6 +921,9 @@
   </data>
   <data name="Profile_General_3DGameMode.Description" xml:space="preserve">
     <value>針對 3D 遊戲最佳化，不支援工具列和視窗模式</value>
+  </data>
+  <data name="Profile_General_HdrCompatibility.Description" xml:space="preserve">
+    <value>啟用實驗性 HDR 擷取到效果相容路徑。除非正在測試 HDR 支援，請保持關閉</value>
   </data>
   <data name="Home_Toolbar_ScreenshotSaveDirectory.Header" xml:space="preserve">
     <value>截圖儲存目錄</value>

@@ -1,5 +1,6 @@
 #pragma once
 #include "NativeEffectBackend.h"
+#include "GroupBEffectProtocol.h"
 
 namespace Magpie {
 
@@ -48,6 +49,7 @@ public:
 	) noexcept override;
 
 	bool Draw(const NativeEffectDrawContext& context) noexcept override;
+	void SetDlssHdrProtocol(const FsrHdrProtocol& protocol) noexcept { _hdrProtocol = protocol; }
 
 private:
 	void _Reset() noexcept;
@@ -70,6 +72,7 @@ private:
 	[[maybe_unused]] uint8_t _lastGuidanceBinding = UINT8_MAX;
 	[[maybe_unused]] FrameGuidanceFrameId _lastGuidanceResetFrameId =
 		std::numeric_limits<FrameGuidanceFrameId>::max();
+	FsrHdrProtocol _hdrProtocol{};
 };
 
 }

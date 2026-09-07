@@ -144,9 +144,7 @@ void OverlayDrawer::Draw(
 	if (_effectParametersWindowLayoutDirty && !ImGui::IsAnyMouseDown()) {
 		const ScalingWindow& scalingWindow = ScalingWindow::Get();
 		const ScalingOptions& options = scalingWindow.Options();
-		if (options.save) {
-			options.save(options, scalingWindow.Handle());
-		}
+		if (options.save) options.save(options, scalingWindow.Handle());
 		_effectParametersWindowLayoutDirty = false;
 	}
 	_isEffectParameterInputActive = _isEffectParametersVisible && ImGui::IsAnyItemActive();
@@ -250,7 +248,6 @@ void OverlayDrawer::RestoreSessionState(const OverlaySessionState& state) noexce
 	_isToolbarVisible = state.toolbarVisible;
 	_isToolbarPinned = state.toolbarPinned;
 	_isEffectParametersVisible = state.effectParametersVisible;
-	// Use the action path so the new backend also starts/stops timing queries.
 	if (_isProfilerVisible != state.profilerVisible) InvokeAction(OverlayAction::Profiler);
 	_overlayDirty = true;
 	_ClearStatesIfNoVisibleWindow();
@@ -1343,8 +1340,6 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		ImGuiCol_ResizeGripActive, ImVec4(0.35f, 0.67f, 0.95f, 1.0f));
 	const bool expanded = ImGui::Begin(title.c_str(), &_isEffectParametersVisible);
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
-	// Use the expanded size even while collapsed. A title-bar double click must
-	// not persist the collapsed height as the preferred panel size.
 	const OverlayWindowRect rect{
 		std::clamp(window->Pos.x, 0.0f, std::max(0.0f, displaySize.x - window->SizeFull.x)),
 		std::clamp(window->Pos.y, 0.0f, std::max(0.0f, displaySize.y - window->SizeFull.y)),
@@ -1359,7 +1354,6 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		const bool resizedY = rect.height != previous.height;
 		if (moved || resizedX || resizedY) {
 			RememberOverlayWindowPosition(windowOption, rect, displaySize.x, displaySize.y, _dpiScale);
-			// Keep the user's preferred size on axes only constrained by a smaller viewport.
 			if (resizedX) windowOption.width = rect.width / _dpiScale;
 			if (resizedY) windowOption.height = rect.height / _dpiScale;
 			_effectParametersWindowLayoutDirty = true;
@@ -1406,8 +1400,6 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	ImGui::TextDisabled("%s", _GetResourceString(L"Overlay_EffectParameters_RestartRequired").c_str());
 	ImGui::SetNextItemWidth(-1.0f);
 	int targetFps = static_cast<int>(std::lround(_draftFrameSync.frameRate));
-	// Only commit on interaction: opening the panel must preserve fractional FPS
-	// values saved by Home or older versions.
 	const std::string targetFpsText = fmt::format("{:g} FPS", _draftFrameSync.frameRate);
 	if (ImGui::SliderInt("##targetFps", &targetFps, 15, 360, targetFpsText.c_str(),
 		ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoInput)) {

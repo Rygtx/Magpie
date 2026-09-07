@@ -11,6 +11,7 @@
 #pragma pop_macro("ShellExecute")
 #include <ShlObj.h>
 #include <wil/token_helpers.h>
+#include <span>
 
 namespace Magpie {
 
@@ -88,12 +89,56 @@ std::vector<DisplayTargetInfo> GetActiveDisplayTargets() noexcept {
 	return result;
 }
 
+float QuerySdrWhiteNits(std::wstring_view gdiDeviceName) noexcept {
+	UINT32 pathCount = 0;
+	UINT32 modeCount = 0;
+	if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount) != ERROR_SUCCESS) {
+		return 0.0f;
+	}
+	std::vector<DISPLAYCONFIG_PATH_INFO> paths(pathCount);
+	std::vector<DISPLAYCONFIG_MODE_INFO> modes(modeCount);
+	if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &pathCount, paths.data(), &modeCount,
+		modes.data(), nullptr) != ERROR_SUCCESS) {
+		return 0.0f;
+	}
+	for (const auto& path : std::span(paths.data(), pathCount)) {
+		DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName{};
+		sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+		sourceName.header.size = sizeof(sourceName);
+		sourceName.header.adapterId = path.sourceInfo.adapterId;
+		sourceName.header.id = path.sourceInfo.id;
+		if (DisplayConfigGetDeviceInfo(&sourceName.header) != ERROR_SUCCESS ||
+			CompareStringOrdinal(sourceName.viewGdiDeviceName, -1,
+				gdiDeviceName.data(), static_cast<int>(gdiDeviceName.size()), TRUE) != CSTR_EQUAL) {
+			continue;
+		}
+		DISPLAYCONFIG_SDR_WHITE_LEVEL white{};
+		white.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SDR_WHITE_LEVEL;
+		white.header.size = sizeof(white);
+		white.header.adapterId = path.targetInfo.adapterId;
+		white.header.id = path.targetInfo.id;
+		if (DisplayConfigGetDeviceInfo(&white.header) == ERROR_SUCCESS && white.SDRWhiteLevel > 0) {
+			const float nits = 80.0f * static_cast<float>(white.SDRWhiteLevel) / 1000.0f;
+			return std::clamp(nits, 40.0f, 1000.0f);
+		}
+	}
+	return 0.0f;
+}
+
 bool EqualDeviceName(std::wstring_view left, std::wstring_view right) noexcept {
 	return CompareStringOrdinal(
 		left.data(), (int)left.size(),
 		right.data(), (int)right.size(), TRUE) == CSTR_EQUAL;
 }
 
+}
+
+float Win32Helper::GetMonitorSdrWhiteNits(HMONITOR monitor) noexcept {
+	if (!monitor) return 0.0f;
+	MONITORINFOEXW info{};
+	info.cbSize = sizeof(info);
+	if (!GetMonitorInfoW(monitor, &info)) return 0.0f;
+	return QuerySdrWhiteNits(info.szDevice);
 }
 
 std::vector<Win32Helper::DisplayMonitorInfo> Win32Helper::GetDisplayMonitors() noexcept {

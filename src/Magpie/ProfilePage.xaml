@@ -56,6 +56,13 @@
 					<ToggleSwitch x:Uid="ToggleSwitch"
 					              IsOn="{x:Bind ViewModel.Is3DGameMode, Mode=TwoWay}" />
 				</local:SettingsCard>
+				<local:SettingsCard x:Uid="Profile_General_HdrCompatibility">
+					<local:SettingsCard.HeaderIcon>
+						<FontIcon Glyph="&#xE706;" />
+					</local:SettingsCard.HeaderIcon>
+					<ToggleSwitch x:Uid="ToggleSwitch"
+					              IsOn="{x:Bind ViewModel.IsHdrCompatibilityEnabled, Mode=TwoWay}" />
+				</local:SettingsCard>
 				<local:SettingsCard x:Name="MultimonitorSettingsCard"
 				                    x:Uid="Profile_General_Multimonitor"
 				                    x:Load="{x:Bind ViewModel.HasMultipleMonitors, Mode=OneTime}"

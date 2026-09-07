@@ -241,7 +241,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 			_windowRect.top,
 			_windowRect.right - _windowRect.left,
 			_windowRect.bottom - _windowRect.top,
-			nullptr, // Associate with the source only after initialization succeeds.
+			nullptr,
 			NULL,
 			wil::GetModuleInstanceHandle(),
 			this
@@ -301,7 +301,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 			_windowRect.top,
 			_windowRect.right - _windowRect.left,
 			_windowRect.bottom - _windowRect.top,
-			nullptr, // An initializing window must not block its source's window messages.
+			nullptr,
 			NULL,
 			wil::GetModuleInstanceHandle(),
 			this
@@ -344,8 +344,6 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 		Logger::Get().Win32Error("Set scaling window owner after initialization failed");
 		return ScalingError::ScalingWindowCreationFailed;
 	}
-	// Restore the existing input behavior only after establishing ownership.
-	// This does not replace removing ownership before a blocking teardown.
 	if (!AttachThreadInput(GetCurrentThreadId(), GetWindowThreadProcessId(hwndSrc, nullptr), FALSE)) {
 		Logger::Get().Win32Warn("Detach source input queue after setting window owner failed");
 	}
@@ -1105,13 +1103,10 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 	}
 	case WM_DESTROY:
 	{
-		// The source can synchronously wait for an owned popup's window thread.
-		// Remove that relationship before joining workers or entering SDK teardown.
 		if (!SetScalingWindowOwner(Handle(), nullptr)) {
 			Logger::Get().Win32Warn("Detach scaling window owner before teardown failed");
 		}
 		const bool ngxWasFaulted = NgxRuntimeGuard::IsFaulted();
-		// Invalidate queued callbacks before any teardown can dispatch messages.
 		++_runId;
 		Logger::Get().Info("缩放结束");
 		if (_renderer) {

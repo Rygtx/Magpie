@@ -36,7 +36,6 @@ public:
 	Renderer(Renderer&&) = delete;
 
 	ScalingError Initialize(HWND hwndAttach, OverlayOptions& overlayOptions) noexcept;
-	// Frontend: cancel new capture/presentation work before cursor teardown.
 	void BeginShutdown() noexcept;
 	const std::string& InitializationContext() const noexcept { return _backendInitContext; }
 	uint32_t InitializationSystemError() const noexcept { return _backendInitSystemError; }
@@ -145,7 +144,9 @@ private:
 	wil::unique_handle _fgInputTimer;
 	winrt::com_ptr<ID3D11Texture2D> _pendingFrameGenerationInput;
 	bool _backendMayDeferFG = false;
-	void _CompleteBackendFrame(ID3D11Texture2D* effectsOutput, bool isNewCaptureFrame) noexcept;
+	void _CompleteBackendFrame(ID3D11Texture2D* effectsOutput, bool isNewCaptureFrame,
+		uint64_t captureSequence) noexcept;
+	void _LogHdrTextureStats(ID3D11Texture2D* texture, std::string_view label) noexcept;
 	struct PendingFrontendFrame {
 		bool stableBaseOnly = false;
 		bool contentFrame = false;
@@ -199,6 +200,8 @@ private:
 
 	ID3D11Texture2D* _BuildEffects() noexcept;
 
+	void _UpdateHdrEffectBoundaryContexts() noexcept;
+
 	void _UpdateActiveEffectDescs() noexcept;
 
 	bool _ShouldAppendBicubic(ID3D11Texture2D* outTexture) noexcept;
@@ -223,7 +226,9 @@ private:
 	bool _PublishBackendTexture(
 		ID3D11Texture2D* texture,
 		bool synchronous,
-		bool generatedFrame = false
+		bool generatedFrame = false,
+		uint64_t captureSequence = 0,
+		uint64_t resourceGeneration = 0
 	) noexcept;
 
 	bool _InitializeDLSSFrameGenerator(
@@ -316,6 +321,11 @@ private:
 
 	std::array<winrt::com_ptr<ID3D11Texture2D>, MAX_SHARED_TEXTURE_SLOTS>
 		_backendSharedTextures;
+	HdrSurfaceAdapter _hdrPresentationAdapter;
+	winrt::com_ptr<ID3D11Texture2D> _hdrPresentationTexture;
+	winrt::com_ptr<ID3D11Texture2D> _dlssFgNormalizedInput;
+	winrt::com_ptr<ID3D11Texture2D> _dlssFgCanonicalGenerated;
+	float _dlssFgHdrNormalizationScale = 1.0f;
 	std::array<winrt::com_ptr<IDXGIKeyedMutex>, MAX_SHARED_TEXTURE_SLOTS>
 		_backendSharedTextureMutexes;
 	std::array<winrt::com_ptr<ID3D11Texture2D>, MAX_SHARED_TEXTURE_SLOTS>
@@ -344,6 +354,19 @@ private:
 		_sharedMotionValid{};
 	std::array<std::atomic<bool>, MAX_SHARED_TEXTURE_SLOTS>
 		_sharedMotionReset{};
+	std::array<std::atomic<uint64_t>, MAX_SHARED_TEXTURE_SLOTS>
+		_sharedTextureCaptureSequences{};
+	std::array<std::atomic<FrameGuidanceFrameId>, MAX_SHARED_TEXTURE_SLOTS>
+		_sharedTextureFrameIds{};
+	std::array<std::atomic<uint64_t>, MAX_SHARED_TEXTURE_SLOTS>
+		_sharedTextureResourceGenerations{};
+	std::array<std::atomic<int64_t>, MAX_SHARED_TEXTURE_SLOTS>
+		_sharedTextureTimestamps{};
+	std::array<HdrFrameMetadata, MAX_SHARED_TEXTURE_SLOTS> _sharedFrameMetadata{};
+	HdrFrameMetadata _frontendFrameMetadata{};
+	HdrFrameMetadata _frontendPresentedFrameMetadata{};
+	std::atomic<uint64_t> _activeCaptureSequence = 0;
+	std::atomic<uint64_t> _activeResourceGeneration = 0;
 	std::atomic<uint32_t> _latestSharedTextureSlot = 0;
 	std::atomic<uint32_t> _sharedTextureGeneration = 0;
 	std::atomic<bool> _synchronousFramePresentationEnabled = false;

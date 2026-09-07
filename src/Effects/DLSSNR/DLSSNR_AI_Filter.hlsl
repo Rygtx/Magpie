@@ -6,6 +6,23 @@
 //!SORT_NAME DLSSNR AI Filter (Experimental)
 
 //!PARAMETER
+//!GROUP HDR Protocol
+//!LABEL HDR Processing Path
+//!DEFAULT 0
+//!OPTION 0 SDR RGBA8 compatibility
+//!OPTION 1 Experimental FP16 value-domain path
+int experimentalHdrPath;
+
+//!PARAMETER
+//!GROUP HDR Protocol
+//!LABEL Experimental HDR Scale
+//!DEFAULT 1
+//!MIN 1
+//!MAX 4.5
+//!STEP 0.5
+float experimentalHdrScale;
+
+//!PARAMETER
 //!GROUP Detail Control
 //!LABEL Adjust Input Resolution\n(Reduces DLSSNR Quality)
 //!DEFAULT 0
