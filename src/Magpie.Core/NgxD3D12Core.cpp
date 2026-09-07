@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "NgxRuntimeGuard.h"
 #include "NgxD3D12Core.h"
 #include "DeviceResources.h"
 #include "Logger.h"
@@ -14,19 +15,13 @@ namespace Magpie {
 
 namespace {
 
-LONG CaptureNgxCoreException(DWORD code, DWORD* sehCode) noexcept {
-	*sehCode = code;
-	return EXCEPTION_EXECUTE_HANDLER;
-}
-
 NVSDK_NGX_Result InitCoreSafely(
 	const wchar_t* applicationDirectory,
 	ID3D12Device* device,
 	const NVSDK_NGX_FeatureCommonInfo* featureInfo,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return NVSDK_NGX_D3D12_Init_with_ProjectID(
 			"7c134ab9-9677-4af5-a2b2-bca943350861",
 			NVSDK_NGX_ENGINE_TYPE_CUSTOM,
@@ -35,57 +30,43 @@ NVSDK_NGX_Result InitCoreSafely(
 			device,
 			featureInfo,
 			NVSDK_NGX_Version_API);
-	} __except (CaptureNgxCoreException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 NVSDK_NGX_Result AllocateParametersSafely(
 	NVSDK_NGX_Parameter** parameters,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return NVSDK_NGX_D3D12_AllocateParameters(parameters);
-	} __except (CaptureNgxCoreException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 NVSDK_NGX_Result GetCapabilityParametersSafely(
 	NVSDK_NGX_Parameter** parameters,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return NVSDK_NGX_D3D12_GetCapabilityParameters(parameters);
-	} __except (CaptureNgxCoreException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 NVSDK_NGX_Result DestroyParametersSafely(
 	NVSDK_NGX_Parameter* parameters,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return NVSDK_NGX_D3D12_DestroyParameters(parameters);
-	} __except (CaptureNgxCoreException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 NVSDK_NGX_Result ShutdownCoreSafely(
 	ID3D12Device* device,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return NVSDK_NGX_D3D12_Shutdown1(device);
-	} __except (CaptureNgxCoreException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 bool LogNgxResult(
@@ -96,8 +77,10 @@ bool LogNgxResult(
 ) noexcept {
 	if (sehCode) {
 		Logger::Get().Error(fmt::format(
-			"NGX D3D12 Core {} for {} raised SEH {:#x}",
-			operation, consumer, sehCode));
+			"NGX D3D12 Core {} for {} raised SEH {:#x} at {:#x}, thread={}; "
+			"NGX disabled until Magpie is restarted",
+			operation, consumer, sehCode, NgxRuntimeGuard::FaultAddress(),
+			NgxRuntimeGuard::FaultThread()));
 		return false;
 	}
 	if (!NVSDK_NGX_SUCCEED(result)) {
@@ -119,6 +102,10 @@ bool NgxD3D12Core::Acquire(
 	DeviceResources& resources,
 	std::string_view consumer
 ) noexcept {
+	if (NgxRuntimeGuard::IsFaulted()) {
+		Logger::Get().Error("NGX initialization blocked after an earlier fault; restart Magpie");
+		return false;
+	}
 	if (!_device) {
 		const HRESULT hr = D3D12CreateDevice(
 			resources.GetGraphicsAdapter(), D3D_FEATURE_LEVEL_11_0,
@@ -205,6 +192,11 @@ bool NgxD3D12Core::DestroyParameters(
 }
 
 void NgxD3D12Core::_Shutdown() noexcept {
+	if (NgxRuntimeGuard::IsFaulted()) {
+		(void)_device.detach();
+		_initialized = false;
+		return;
+	}
 	if (!_initialized) return;
 	if (_activeConsumers || _activeParameterBlocks) {
 		Logger::Get().Warn(fmt::format(
@@ -215,6 +207,9 @@ void NgxD3D12Core::_Shutdown() noexcept {
 	const NVSDK_NGX_Result result = ShutdownCoreSafely(_device.get(), &sehCode);
 	if (LogNgxResult("final Shutdown1", "Renderer", result, sehCode)) {
 		Logger::Get().Info("NGX D3D12 Core final Shutdown1 completed");
+	} else {
+		NgxRuntimeGuard::MarkShutdownFailed();
+		(void)_device.detach();
 	}
 	_initialized = false;
 }

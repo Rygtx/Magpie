@@ -199,6 +199,9 @@ void ImGuiImpl::NewFrame(
 		}
 
 		const char* windowId = GetWindowIDFromName(window->Name);
+		if (std::string_view(windowId) == "effectParameters") {
+			continue;
+		}
 		if (auto it = windowOptions.find(windowId); it != windowOptions.end()) {
 			OverlayWindowOption& option = it->second;
 

@@ -31,8 +31,6 @@ static const char* TOOLBAR_WINDOW_ID = "toolbar";
 static const char* PROFILER_WINDOW_ID = "profiler";
 static const char* EFFECT_PARAMETERS_WINDOW_ID = "effectParameters";
 
-static constexpr float EFFECT_PARAMETERS_DEFAULT_WIDTH = 420.0f;
-static constexpr float EFFECT_PARAMETERS_DEFAULT_HEIGHT = 600.0f;
 static constexpr float EFFECT_PARAMETERS_MIN_WIDTH = 360.0f;
 static constexpr float EFFECT_PARAMETERS_MIN_HEIGHT = 400.0f;
 
@@ -143,6 +141,12 @@ void OverlayDrawer::Draw(
 	if (_isEffectParametersVisible && _DrawEffectParameters(itemId)) {
 		needRedraw = true;
 	}
+	if (_effectParametersWindowLayoutDirty && !ImGui::IsAnyMouseDown()) {
+		const ScalingWindow& scalingWindow = ScalingWindow::Get();
+		const ScalingOptions& options = scalingWindow.Options();
+		if (options.save) options.save(options, scalingWindow.Handle());
+		_effectParametersWindowLayoutDirty = false;
+	}
 	_isEffectParameterInputActive = _isEffectParametersVisible && ImGui::IsAnyItemActive();
 	const float comparisonAlpha = _CalcComparisonStatusAlpha();
 	_lastComparisonStatusAlpha = comparisonAlpha;
@@ -234,6 +238,19 @@ void OverlayDrawer::ToolbarState(Magpie::ToolbarState value) noexcept {
 	}
 
 	_overlayDirty = true;
+}
+
+OverlaySessionState OverlayDrawer::CaptureSessionState() const noexcept {
+	return { _isToolbarVisible, _isToolbarPinned, _isProfilerVisible, _isEffectParametersVisible };
+}
+
+void OverlayDrawer::RestoreSessionState(const OverlaySessionState& state) noexcept {
+	_isToolbarVisible = state.toolbarVisible;
+	_isToolbarPinned = state.toolbarPinned;
+	_isEffectParametersVisible = state.effectParametersVisible;
+	if (_isProfilerVisible != state.profilerVisible) InvokeAction(OverlayAction::Profiler);
+	_overlayDirty = true;
+	_ClearStatesIfNoVisibleWindow();
 }
 
 void OverlayDrawer::InvokeAction(OverlayAction action) noexcept {
@@ -1292,22 +1309,24 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	const ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	const float viewportMargin = 16.0f * _dpiScale;
 	const ImVec2 maxWindowSize{
-		std::max(160.0f * _dpiScale, displaySize.x - viewportMargin),
-		std::max(120.0f * _dpiScale, displaySize.y - viewportMargin)
+		std::max(1.0f, displaySize.x - viewportMargin),
+		std::max(1.0f, displaySize.y - viewportMargin)
 	};
 	const ImVec2 minWindowSize{
 		std::min(EFFECT_PARAMETERS_MIN_WIDTH * _dpiScale, maxWindowSize.x),
 		std::min(EFFECT_PARAMETERS_MIN_HEIGHT * _dpiScale, maxWindowSize.y)
 	};
 	ImGui::SetNextWindowSizeConstraints(minWindowSize, maxWindowSize);
-	if (!_effectParametersWindowSizeInitialized) {
-		ImGui::SetNextWindowSize({
-			std::clamp(EFFECT_PARAMETERS_DEFAULT_WIDTH * _dpiScale,
-				minWindowSize.x, maxWindowSize.x),
-			std::clamp(EFFECT_PARAMETERS_DEFAULT_HEIGHT * _dpiScale,
-				minWindowSize.y, maxWindowSize.y)
-		});
-		_effectParametersWindowSizeInitialized = true;
+	OverlayWindowOption& windowOption = _overlayOptions->windows.at(EFFECT_PARAMETERS_WINDOW_ID);
+	const bool restoreLayout = !_effectParametersWindowLayoutInitialized ||
+		_effectParametersViewport.x != displaySize.x || _effectParametersViewport.y != displaySize.y;
+	if (restoreLayout) {
+		const auto rect = RestoreEffectParametersWindow(
+			windowOption, displaySize.x, displaySize.y, _dpiScale);
+		ImGui::SetNextWindowSize({ rect.width, rect.height });
+		ImGui::SetNextWindowPos({ rect.x, rect.y });
+		_effectParametersWindowLayoutInitialized = true;
+		_effectParametersViewport = displaySize;
 	}
 
 	const std::string title = StrHelper::Concat(
@@ -1319,7 +1338,29 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		ImGuiCol_ResizeGripHovered, ImVec4(0.35f, 0.67f, 0.95f, 0.72f));
 	ImGui::PushStyleColor(
 		ImGuiCol_ResizeGripActive, ImVec4(0.35f, 0.67f, 0.95f, 1.0f));
-	if (!ImGui::Begin(title.c_str(), &_isEffectParametersVisible)) {
+	const bool expanded = ImGui::Begin(title.c_str(), &_isEffectParametersVisible);
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	const OverlayWindowRect rect{
+		std::clamp(window->Pos.x, 0.0f, std::max(0.0f, displaySize.x - window->SizeFull.x)),
+		std::clamp(window->Pos.y, 0.0f, std::max(0.0f, displaySize.y - window->SizeFull.y)),
+		window->SizeFull.x, window->SizeFull.y
+	};
+	ImGui::SetWindowPos(window, { rect.x, rect.y });
+	if (!restoreLayout && !_imguiImpl.FrameInputCanceled() &&
+		(ImGui::IsMouseDown(ImGuiMouseButton_Left) || ImGui::IsMouseReleased(ImGuiMouseButton_Left))) {
+		const auto& previous = _effectParametersWindowRect;
+		const bool moved = rect.x != previous.x || rect.y != previous.y;
+		const bool resizedX = rect.width != previous.width;
+		const bool resizedY = rect.height != previous.height;
+		if (moved || resizedX || resizedY) {
+			RememberOverlayWindowPosition(windowOption, rect, displaySize.x, displaySize.y, _dpiScale);
+			if (resizedX) windowOption.width = rect.width / _dpiScale;
+			if (resizedY) windowOption.height = rect.height / _dpiScale;
+			_effectParametersWindowLayoutDirty = true;
+		}
+	}
+	_effectParametersWindowRect = rect;
+	if (!expanded) {
 		ImGui::End();
 		ImGui::PopStyleColor(3);
 		_parameterResetGesture.Clear();
@@ -1357,8 +1398,11 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	ImGui::SameLine();
 	ImGui::TextDisabled("%s", _GetResourceString(L"Overlay_EffectParameters_RestartRequired").c_str());
 	ImGui::SetNextItemWidth(-1.0f);
-	if (ImGui::InputFloat("##targetFps", &_draftFrameSync.frameRate, 1.0f, 10.0f, "%.3f")) {
-		_draftFrameSync.frameRate = SanitizePresentationFrameRate(_draftFrameSync.frameRate);
+	int targetFps = static_cast<int>(std::lround(_draftFrameSync.frameRate));
+	const std::string targetFpsText = fmt::format("{:g} FPS", _draftFrameSync.frameRate);
+	if (ImGui::SliderInt("##targetFps", &targetFps, 15, 360, targetFpsText.c_str(),
+		ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoInput)) {
+		_draftFrameSync.frameRate = static_cast<float>(targetFps);
 		parameterEdited = needRedraw = true;
 	}
 	ImGui::TextWrapped("%s", _GetResourceString(L"Overlay_FrameSync_Help").c_str());

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "NativeEffectBackendFactory.h"
 #include "NgxD3D12Core.h"
+#include "NgxRuntimeGuard.h"
 #include "DLSSNRFilter.h"
 #include "DLSSSRUpscaler.h"
 #include "FSR2ZeroMVUpscaler.h"
@@ -69,6 +70,9 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 		const DLSSNRSettings settings = ParseDLSSNRSettings(option, hdrEnabled);
 		auto backend = std::make_unique<DLSSNRFilter>();
 		if (!backend->Initialize(resources, ngxCore, input, output, settings)) {
+			if (NgxRuntimeGuard::IsFaulted()) {
+				return { true, nullptr, ScalingError::NgxRestartRequired };
+			}
 			const char status[] =
 				"DLSSNR STATUS: Feature=18 created=false path=unavailable "
 				"fallback=pass-through\n";

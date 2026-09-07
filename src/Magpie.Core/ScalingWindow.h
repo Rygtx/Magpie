@@ -124,7 +124,9 @@ public:
 	}
 
 	void ShowError(ScalingError error) const noexcept {
-		_options.showError(_srcTracker.Handle(), error);
+		if (const auto showError = _options.showError) {
+			showError(_srcTracker.Handle(), error);
+		}
 	}
 
 protected:
@@ -222,7 +224,7 @@ private:
 		EffectParameterApplyMode applyMode;
 	};
 	std::vector<std::vector<RestartParameter>> _restartParameters;
-	bool _reopenEffectParameters = false;
+	OverlaySessionState _restartOverlayState;
 	std::unique_ptr<class Renderer> _renderer;
 	std::unique_ptr<class CursorManager> _cursorManager;
 

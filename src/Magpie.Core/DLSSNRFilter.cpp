@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "NgxRuntimeGuard.h"
 #include "DLSSNRFilter.h"
 #include "DeviceResources.h"
 #include "DirectXHelper.h"
@@ -708,11 +709,6 @@ std::atomic<HMODULE> g_snippetCallerModule = nullptr;
 std::atomic<DLSSNRFilter::Impl::GetModuleFileNameWFn>
 	g_snippetOriginalGetModuleFileNameW = nullptr;
 
-LONG CaptureNgxException(DWORD code, DWORD* sehCode) noexcept {
-	*sehCode = code;
-	return EXCEPTION_EXECUTE_HANDLER;
-}
-
 NVSDK_NGX_Result CallCreateFeatureSafely(
 	DLSSNRFilter::Impl::CreateFeatureFn function,
 	ID3D12GraphicsCommandList* commandList,
@@ -721,12 +717,9 @@ NVSDK_NGX_Result CallCreateFeatureSafely(
 	NVSDK_NGX_Handle** feature,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return function(commandList, featureId, parameters, feature);
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 NVSDK_NGX_Result CallEvaluateFeatureSafely(
@@ -736,12 +729,9 @@ NVSDK_NGX_Result CallEvaluateFeatureSafely(
 	const NVSDK_NGX_Parameter* parameters,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return function(commandList, feature, parameters, nullptr);
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 NVSDK_NGX_Result CallReleaseFeatureSafely(
@@ -749,12 +739,9 @@ NVSDK_NGX_Result CallReleaseFeatureSafely(
 	NVSDK_NGX_Handle* feature,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return function(feature);
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 NVSDK_NGX_Result CallShutdownSafely(
@@ -762,12 +749,9 @@ NVSDK_NGX_Result CallShutdownSafely(
 	ID3D12Device* device,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return function(device);
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 NVSDK_NGX_Result CallSnippetInitSafely(
@@ -776,14 +760,11 @@ NVSDK_NGX_Result CallSnippetInitSafely(
 	ID3D12Device* device,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		return function(
 			DLSSNR_SIGNED_SNIPPET_APPLICATION_ID, applicationDataPath,
 			device, NVSDK_NGX_Version_API, nullptr);
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return NVSDK_NGX_Result_FAIL_PlatformError;
-	}
+	}, NVSDK_NGX_Result_FAIL_PlatformError, sehCode);
 }
 
 DWORD WINAPI SnippetGetModuleFileNameW(
@@ -1083,14 +1064,14 @@ DLSSNRFilter::Impl::~Impl() {
 	const bool callerCompatibilityRestored =
 		RestoreSnippetCallerCompatibility(*this);
 	if (snippetModule) {
-		if (callerCompatibilityRestored) {
+		if (callerCompatibilityRestored && !NgxRuntimeGuard::IsFaulted()) {
 			if (!FreeLibrary(snippetModule)) {
 				Logger::Get().Win32Error(
-					"Release DLSSNR signed snippet DLL failed");
+				"Release DLSSNR signed snippet DLL failed");
 			}
 		} else {
 			Logger::Get().Warn(
-				"DLSSNR signed snippet DLL retained because caller IAT restoration failed");
+				"DLSSNR signed snippet DLL retained after NGX fault or caller IAT restoration failure");
 		}
 		snippetModule = nullptr;
 	}
@@ -1380,13 +1361,10 @@ static bool SetCreateParametersSafely(
 	DLSSNRFilter::Impl& impl,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		SetCreateParametersUnsafe(impl);
 		return true;
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return false;
-	}
+	}, false, sehCode);
 }
 
 static bool InitializeSignedSnippet(
@@ -1482,13 +1460,10 @@ static bool SetEvaluateParametersSafely(
 	bool guidanceReset,
 	DWORD* sehCode
 ) noexcept {
-	*sehCode = 0;
-	__try {
+	return NgxRuntimeGuard::Invoke([&]() {
 		SetEvaluateParametersUnsafe(impl, settings, guidance, guidanceReset);
 		return true;
-	} __except (CaptureNgxException(GetExceptionCode(), sehCode)) {
-		return false;
-	}
+	}, false, sehCode);
 }
 
 static bool PrepareInput(
@@ -2221,6 +2196,11 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 				context.frameId, impl.duplicateFrameReuseCount));
 		}
 		return true;
+	}
+	// A live upstream edit can change this input even for the same capture ID.
+	// Re-evaluate with fresh history instead of mixing it with the old image.
+	if (impl.lastEvaluatedInputRevision != context.inputRevision) {
+		impl.resetHistory = true;
 	}
 	auto fail = [&](std::string_view stage) noexcept {
 		impl.disabled = true;

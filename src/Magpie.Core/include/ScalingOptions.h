@@ -4,6 +4,7 @@
 #include <memory>
 #include "EffectParameterPersistence.h"
 #include "FramePacingOptions.h"
+#include "OverlayWindowGeometry.h"
 #include <mutex>
 
 namespace Magpie {
@@ -260,17 +261,11 @@ enum class ToolbarState {
 	COUNT
 };
 
-struct OverlayWindowOption {
-	// 0: 位于左侧，hPos 是窗口左边界和画面左边界距离（所有距离都是应用 DPI 缩放前的值）
-	// 1: 位于中侧，hPos 是窗口中心点和画面左边界距离与画面宽度之比
-	// 2: 位于右侧，hPos 是窗口右边界和画面右边界距离
-	uint16_t hArea = 0;
-	// 0: 位于上侧，vPos 是窗口上边界和画面上边界距离
-	// 1: 位于中侧，vPos 是窗口中心点和画面上边界距离与画面高度之比
-	// 3: 位于下侧，vPos 是窗口下边界和画面下边界距离
-	uint16_t vArea = 0;
-	float hPos = 0.0f;
-	float vPos = 0.0f;
+struct OverlaySessionState {
+	bool toolbarVisible = false;
+	bool toolbarPinned = false;
+	bool profilerVisible = false;
+	bool effectParametersVisible = false;
 };
 
 struct OverlayOptions {
@@ -365,7 +360,8 @@ enum class ScalingError {
 	ImportIncompatible,
 	ExportWriteFailed,
 	FileDialogFailed,
-	PassThroughUnavailable
+	PassThroughUnavailable,
+	NgxRestartRequired
 };
 
 struct ScalingFlags {
