@@ -204,22 +204,35 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 		if (effectName == "DLSS\\DLSS_SR") {
 			auto backend = std::make_unique<DLSSSRUpscaler>();
 			backend->SetDlssHdrProtocol(hdrProtocol);
+			Logger::DiagnosticCapture diagnostic;
 			if (!backend->Initialize(resources, input, output,
-				DLSSSRSettings{ .motionRequest = motion })) return { true, nullptr };
+				DLSSSRSettings{ .motionRequest = motion })) {
+				return { true, nullptr, NgxRuntimeGuard::IsFaulted() ?
+					ScalingError::NgxRestartRequired : ScalingError::NoError,
+					DescribeNativeFailure(resources, input, output, diagnostic), diagnostic.SystemError() };
+			}
 			return { true, std::move(backend) };
 		}
 		if (effectName == "FSR2\\FSR2_SR") {
 			auto backend = std::make_unique<FSR2Upscaler>();
 			backend->SetFsrHdrProtocol(hdrProtocol);
-			if (!backend->Initialize(resources, input, output, motion)) return { true, nullptr };
+			Logger::DiagnosticCapture diagnostic;
+			if (!backend->Initialize(resources, input, output, motion)) {
+				return { true, nullptr, ScalingError::NoError,
+					DescribeNativeFailure(resources, input, output, diagnostic), diagnostic.SystemError() };
+			}
 			return { true, std::move(backend) };
 		}
 		if (effectName == "XeSS\\XeSS_SR")
 			return CreateBackend<XeSSUpscaler>(effectName, resources, input, output, motion);
 		auto backend = std::make_unique<FSR3Upscaler>();
 		backend->SetFsrHdrProtocol(hdrProtocol);
+		Logger::DiagnosticCapture diagnostic;
 		if (!backend->Initialize(resources, input, output, motion,
-			effectName == "FSR4\\FSR4_SR")) return { true, nullptr };
+			effectName == "FSR4\\FSR4_SR")) {
+			return { true, nullptr, ScalingError::NoError,
+				DescribeNativeFailure(resources, input, output, diagnostic), diagnostic.SystemError() };
+		}
 		return { true, std::move(backend) };
 	}
 
