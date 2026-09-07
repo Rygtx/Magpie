@@ -153,7 +153,8 @@ bool DLSSSRUpscaler::Initialize(
 		},
 		.InFeatureCreateFlags = uint32_t(
 			NVSDK_NGX_DLSS_Feature_Flags_MVLowRes |
-			NVSDK_NGX_DLSS_Feature_Flags_AutoExposure),
+			NVSDK_NGX_DLSS_Feature_Flags_AutoExposure |
+			(_hdrProtocol.hdrColorInput ? NVSDK_NGX_DLSS_Feature_Flags_IsHDR : 0)),
 		.InEnableOutputSubrects = false
 	};
 

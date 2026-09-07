@@ -96,7 +96,12 @@ static FrameGuidanceRequirements CollectFrameGuidanceRequirements(
 }
 
 // 大多数时候会在最后添加 Bicubic 来降采样或升采样，因此缓存在内存中
-static EffectDesc bicubicDesc;
+// Surface declarations and compile flags differ between SDR and HDR sessions.
+static EffectDesc bicubicDescs[2];
+
+static EffectDesc& GetBicubicDesc(bool hdrEnabled) noexcept {
+	return bicubicDescs[hdrEnabled ? 1 : 0];
+}
 
 static bool IsDLSSFrameGenerationEffect(std::string_view name) noexcept {
 	return ClassifyFrameGenerationEffect(name) ==
@@ -123,6 +128,9 @@ static HdrFormatRoutes GetHdrRoutesForEffect(
 	// while the profile option is disabled.
 	if (!hdrEnabled) {
 		return {};
+	}
+	if (effect.name == "Bicubic") {
+		return EffectProtocolC::Bicubic();
 	}
 	const size_t separator = effect.name.find('\\');
 	const std::string_view group = separator == std::string::npos
@@ -153,8 +161,8 @@ static HdrFormatRoutes GetHdrRoutesForEffect(
 			? EffectProtocolC::RTXVideoVsr()
 			: EffectProtocolC::RTXVideoDenoiser();
 	}
-	if (group == "DLSSFG" || group == "FSR3FG") {
-		return EffectProtocolC::GetGroupCHdrRoutes(group);
+	if (group == "DLSSFG" || group == "XeSSFG" || group == "FSR3FG") {
+		return EffectProtocolC::FrameGenerationMarker(group);
 	}
 	return EffectProtocolC::GetGroupCHdrRoutes(group);
 }
@@ -1625,9 +1633,9 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 			if (options.IsHdrCompatibilityEnabled()) {
 				const HdrFormatRoutes routes = GetHdrRoutesForEffect(
 					effects[id], options.IsHdrCompatibilityEnabled());
-				if (!routes.empty() && routes.front().inputFormat != DXGI_FORMAT_UNKNOWN) {
-					routeInput = routes.front().inputFormat;
-					routeOutput = routes.front().outputFormat;
+				if (const auto* route = HdrEffectBoundary::SelectRoute(true, routes)) {
+					routeInput = route->inputFormat;
+					routeOutput = route->outputFormat;
 				}
 			}
 			std::optional<EffectDesc> desc = CompileEffect(
@@ -1810,8 +1818,11 @@ void Renderer::_UpdateHdrEffectBoundaryContexts() noexcept {
 	inputFrame.metadata = _frameSource->GetHdrFrameMetadata();
 	inputFrame.workingFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
+	// The automatically appended downsampler has a drawer but no user option.
+	const EffectOption bicubicOption{ .name = "Bicubic" };
 	for (size_t i = 0; i < _effectDrawers.size(); ++i) {
-		const EffectOption& effectOption = _runtimeEffectOptions[i];
+		const EffectOption& effectOption = i < _runtimeEffectOptions.size()
+			? _runtimeEffectOptions[i] : bicubicOption;
 		const HdrFormatRoutes routes = GetHdrRoutesForEffect(effectOption, options.IsHdrCompatibilityEnabled());
 		HdrEffectBoundaryContext context = HdrEffectBoundary::Prepare(
 			true, inputFrame, routes, inputFrame.metadata.color);
@@ -1830,7 +1841,7 @@ void Renderer::_UpdateHdrEffectBoundaryContexts() noexcept {
 		_effectDrawers[i].SetHdrBoundary(context);
 		if (i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) {
 			_nativeEffectBackends[i]->SetHdrBoundary(std::move(context));
-			ConfigureHdrBackendProtocol(_runtimeEffectOptions[i].name,
+			ConfigureHdrBackendProtocol(effectOption.name,
 				*_nativeEffectBackends[i], inputFrame.metadata, true);
 		}
 	}
@@ -2067,7 +2078,8 @@ void Renderer::_UpdateActiveEffectDescs() noexcept {
 	if (drawerCount > effectCount) {
 		// 已追加 Bicubic
 		assert(drawerCount == effectCount + 1);
-		_activeEffectDescs[effectCount] = &bicubicDesc;
+		_activeEffectDescs[effectCount] = &GetBicubicDesc(
+			ScalingWindow::Get().Options().IsHdrCompatibilityEnabled());
 	}
 }
 
@@ -2090,6 +2102,8 @@ bool Renderer::_ShouldAppendBicubic(ID3D11Texture2D* outTexture) noexcept {
 
 bool Renderer::_AppendBicubic(ID3D11Texture2D** inOutTexture) noexcept {
 	const ScalingOptions& options = ScalingWindow::Get().Options();
+	const bool hdrEnabled = options.IsHdrCompatibilityEnabled();
+	EffectDesc& bicubicDesc = GetBicubicDesc(hdrEnabled);
 
 	const EffectOption bicubicOption{
 		.name = "Bicubic",
@@ -2102,7 +2116,11 @@ bool Renderer::_AppendBicubic(ID3D11Texture2D** inOutTexture) noexcept {
 
 	if (bicubicDesc.name.empty()) {
 		// 参数不会改变，因此可以内联
-		std::optional<EffectDesc> desc = CompileEffect(bicubicOption, true, true);
+		const HdrFormatRoutes routes = GetHdrRoutesForEffect(bicubicOption, hdrEnabled);
+		const HdrFormatRoute* route = HdrEffectBoundary::SelectRoute(hdrEnabled, routes);
+		std::optional<EffectDesc> desc = CompileEffect(bicubicOption, true, true,
+			route ? route->inputFormat : DXGI_FORMAT_UNKNOWN,
+			route ? route->outputFormat : DXGI_FORMAT_UNKNOWN);
 		if (!desc) {
 			Logger::Get().Error("编译降采样效果失败");
 			return false;
@@ -2112,6 +2130,16 @@ bool Renderer::_AppendBicubic(ID3D11Texture2D** inOutTexture) noexcept {
 	}
 
 	EffectDrawer& bicubicDrawer = _effectDrawers.emplace_back();
+	if (hdrEnabled) {
+		HdrFrame inputFrame = _frameSource->GetCanonicalFrame();
+		inputFrame.texture = *inOutTexture;
+		D3D11_TEXTURE2D_DESC inputDesc{};
+		inputFrame.texture->GetDesc(&inputDesc);
+		inputFrame.metadata.width = inputDesc.Width;
+		inputFrame.metadata.height = inputDesc.Height;
+		bicubicDrawer.SetHdrBoundary(HdrEffectBoundary::Prepare(true, inputFrame,
+			GetHdrRoutesForEffect(bicubicOption, true), inputFrame.metadata.color));
+	}
 	if (!bicubicDrawer.Initialize(
 		bicubicDesc,
 		bicubicOption,
@@ -2205,7 +2233,7 @@ ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
 			};
 
 			if (!_effectDrawers.back().ResizeTextures(
-				bicubicDesc,
+				GetBicubicDesc(ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()),
 				bicubicOption,
 				_backendResources,
 				&inOutTexture
@@ -2214,7 +2242,7 @@ ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
 				return nullptr;
 			}
 		} else {
-			_AppendBicubic(&inOutTexture);
+			if (!_AppendBicubic(&inOutTexture)) return nullptr;
 			changed = true;
 		}
 	} else {

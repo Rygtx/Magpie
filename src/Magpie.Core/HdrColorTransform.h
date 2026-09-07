@@ -38,6 +38,9 @@ public:
     ) noexcept;
     static float DecodeTransfer(float value, HdrTransferFunction transfer) noexcept;
     static float EncodeTransfer(float value, HdrTransferFunction transfer) noexcept;
+    // Paired effect bridge on [0, display peak]. SDR white is compressed to
+    // reserve highlight codes. R8 storage is lossy; the inverse cannot undo
+    // quantization, clipping beyond the declared peak, or changes by an effect.
     static float MapHdrToSdr(float value, const HdrTransformParameters& parameters) noexcept;
     static float MapSdrToHdr(float value, const HdrTransformParameters& parameters) noexcept;
     static HdrColor Transform(

@@ -54,6 +54,15 @@ inline HdrFormatRoute ConditionalFp16Route(
 	};
 }
 
+inline HdrFormatRoutes Bicubic() {
+	// Bicubic is a linear weighted sum with no normalized-color operations.
+	HdrFormatRoute route = ConditionalFp16Route("Bicubic", "linear-fp16");
+	route.adapterProfile = HdrAdapterProfile::DirectFP16;
+	route.hdrNative = true;
+	route.defaultForHdr = true;
+	return { route };
+}
+
 inline HdrFormatRoutes NNEDI3() {
 	return { SdrRoute("NNEDI3", "luma-r16", DXGI_FORMAT_R8G8B8A8_UNORM) };
 }
@@ -134,6 +143,16 @@ inline HdrFormatRoutes XeSS() {
 	HdrFormatRoute r8 = SdrRoute("XeSS", "R8G8B8A8_UNORM", DXGI_FORMAT_R8G8B8A8_UNORM);
 	r8.evidenceLevel = HdrEvidenceLevel::PublicApiContract;
 	return { hdr10, fp16, r11, r8 };
+}
+
+// Effect-list FG entries are identity markers. Actual encoding is performed
+// once by the FG/presenter boundary, whose terminal routes remain below.
+inline HdrFormatRoutes FrameGenerationMarker(std::string_view effect) {
+	HdrFormatRoute route = ConditionalFp16Route(effect, "canonical-marker", HdrAlphaMode::Preserve);
+	route.adapterProfile = HdrAdapterProfile::DirectFP16;
+	route.hdrNative = true;
+	route.defaultForHdr = true;
+	return { route };
 }
 
 inline HdrFormatRoutes XeSSFG() {

@@ -100,31 +100,28 @@ float HdrColorTransform::EncodeTransfer(float value, HdrTransferFunction transfe
 
 float HdrColorTransform::MapHdrToSdr(float value, const HdrTransformParameters& parameters) noexcept {
     const HdrTransformParameters valid = parameters.IsValid() ? parameters : HdrTransformParameters{};
-    const float normalized = std::max(value, 0.0f) * valid.exposure /
-        (valid.sdrWhiteNits / 80.0f);
-    if (normalized <= 1.0f) return normalized;
-    const float excess = normalized - 1.0f;
-    // SDR-compatible routes must stay inside the SDR display domain. The
-    // previous curve returned values above one and relied on sRGB saturation,
-    // turning HDR headroom into clipped white. Compress excess using the
-    // source display headroom while keeping the SDR white point continuous.
-    const float headroom = std::max(valid.hdrPeakNits / 80.0f - 1.0f, 1.0f);
-    return std::clamp(1.0f - excess /
-        (excess + headroom * std::max(valid.shoulder, 0.001f) + 1.0f), 0.0f, 1.0f);
+    const float whiteScale = valid.sdrWhiteNits / 80.0f;
+    const float peak = std::max(valid.hdrPeakNits / 80.0f, whiteScale);
+    const float normalizedPeak = peak * valid.exposure / whiteScale;
+    const float normalized = std::clamp(value, 0.0f, peak) * valid.exposure / whiteScale;
+    const float shoulder = std::max(valid.shoulder, 0.001f);
+    // Peak-normalized logarithmic bridge. White must be below 1 when HDR
+    // headroom exists; mapping white to 1 leaves no ordered SDR codes for
+    // highlights. This is paired with MapSdrToHdr, not a display tone map.
+    return std::clamp(std::log1p(normalized / shoulder) /
+        std::log1p(normalizedPeak / shoulder), 0.0f, 1.0f);
 }
 
 float HdrColorTransform::MapSdrToHdr(float value, const HdrTransformParameters& parameters) noexcept {
     const HdrTransformParameters valid = parameters.IsValid() ? parameters : HdrTransformParameters{};
-    const float mapped = std::max(value, 0.0f);
-    if (mapped <= 1.0f) {
-        return mapped * (valid.sdrWhiteNits / 80.0f) / valid.exposure;
-    }
-    const float excess = mapped - 1.0f;
-    const float denominator = 1.0f - valid.shoulder * excess;
-    const float reconstructed = denominator > 0.0f
-        ? (1.0f + excess / denominator) * (valid.sdrWhiteNits / 80.0f) / valid.exposure
-        : valid.hdrPeakNits / 80.0f;
-    return std::min(reconstructed, valid.hdrPeakNits / 80.0f);
+    const float whiteScale = valid.sdrWhiteNits / 80.0f;
+    const float peak = std::max(valid.hdrPeakNits / 80.0f, whiteScale);
+    const float normalizedPeak = peak * valid.exposure / whiteScale;
+    const float mapped = std::clamp(value, 0.0f, 1.0f);
+    const float shoulder = std::max(valid.shoulder, 0.001f);
+    const float normalized = shoulder * std::expm1(mapped *
+        std::log1p(normalizedPeak / shoulder));
+    return std::min(normalized * whiteScale / valid.exposure, peak);
 }
 
 HdrColor HdrColorTransform::Transform(

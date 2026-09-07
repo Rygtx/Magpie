@@ -93,22 +93,25 @@ float EncodeTransfer(float value, uint transfer) {
     return value;
 }
 float3 MapHdrToSdr(float3 value) {
-    float referenceWhiteScale = max(sdrWhiteNits / 80.0, 1e-4);
-    float3 normalized = max(value, 0.0) * exposure / referenceWhiteScale;
-    float3 excess = max(normalized - 1.0, 0.0);
-    float headroom = max(hdrPeakNits / 80.0 - 1.0, 1.0);
-    float3 compressed = 1.0 - excess /
-        (excess + headroom * max(shoulder, 1e-3) + 1.0);
-    return normalized <= 1.0 ? normalized : saturate(compressed);
+    float whiteScale = sdrWhiteNits / 80.0;
+    float peak = max(hdrPeakNits / 80.0, whiteScale);
+    float normalizedPeak = peak * exposure / whiteScale;
+    float3 normalized = clamp(value, 0.0, peak) * exposure / whiteScale;
+    float curveShoulder = max(shoulder, 0.001);
+    // Keep this peak-normalized logarithmic bridge paired with the CPU version.
+    // White occupies less than 1 when the source has HDR headroom.
+    return saturate(log(1.0 + normalized / curveShoulder) /
+        log(1.0 + normalizedPeak / curveShoulder));
 }
 float3 MapSdrToHdr(float3 value) {
-    float3 mapped = max(value, 0.0);
-    float3 excess = max(mapped - 1.0, 0.0);
-    float3 denominator = max(1.0 - shoulder * excess, 1e-4);
-    float3 normalized = min(mapped, 1.0) + excess / denominator;
-    float referenceWhiteScale = max(sdrWhiteNits / 80.0, 1e-4);
-    float peakScale = max(hdrPeakNits / 80.0, referenceWhiteScale);
-    return min(normalized * referenceWhiteScale * inverseExposure, peakScale);
+    float whiteScale = sdrWhiteNits / 80.0;
+    float peak = max(hdrPeakNits / 80.0, whiteScale);
+    float normalizedPeak = peak * exposure / whiteScale;
+    float3 mapped = saturate(value);
+    float curveShoulder = max(shoulder, 0.001);
+    float3 normalized = curveShoulder * (exp(mapped *
+        log(1.0 + normalizedPeak / curveShoulder)) - 1.0);
+    return min(normalized * whiteScale * inverseExposure, peak);
 }
 [numthreads(8, 8, 1)]
 void Main(uint3 id : SV_DispatchThreadID) {
