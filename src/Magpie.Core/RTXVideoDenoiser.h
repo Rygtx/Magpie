@@ -36,8 +36,8 @@ public:
 
 private:
 	struct Impl;
-	std::unique_ptr<Impl> _impl;
-	uint32_t _qualityLevel = 8;
+	[[maybe_unused]] std::unique_ptr<Impl> _impl;
+	[[maybe_unused]] uint32_t _qualityLevel = 8;
 	RtxVideoEffectKind _kind = RtxVideoEffectKind::Vsr;
 	ScalingError _initializationError = ScalingError::NoError;
 };

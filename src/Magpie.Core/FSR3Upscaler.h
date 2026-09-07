@@ -37,8 +37,8 @@ public:
 
 private:
 	MotionVectorRequest _motionRequest{};
-	std::unique_ptr<Impl> _impl;
-	bool _useFsr4 = false;
+	[[maybe_unused]] std::unique_ptr<Impl> _impl;
+	[[maybe_unused]] bool _useFsr4 = false;
 	FsrHdrProtocol _hdrProtocol{};
 };
 

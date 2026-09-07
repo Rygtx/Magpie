@@ -2906,7 +2906,7 @@ HANDLE Renderer::_InitBackend() noexcept {
 	}
 
 	if (guidanceRequirements.Any()) {
-		guidanceRequirements.ForEachMotion([&](MotionVectorRequest request) {
+		guidanceRequirements.ForEachMotion([&]([[maybe_unused]] MotionVectorRequest request) {
 #ifdef MP_ENABLE_NVIDIA_OPTICAL_FLOW
 			if (request.method == OpticalFlowMethod::Nvidia)
 				_frameGuidanceService.SetMotionVectorProvider(request,
