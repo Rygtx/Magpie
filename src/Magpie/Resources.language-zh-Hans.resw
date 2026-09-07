@@ -812,13 +812,13 @@
     <value>效果组初始化失败。请停用效果组、重新打开目标窗口并重试；如果仍然失败，请重新启动 Magpie。</value>
   </data>
   <data name="Message_CaptureFailed" xml:space="preserve">
-    <value>无法捕获这个窗口。请确认窗口没有最小化，并在当前配置中将捕获方式改为“默认”或 Graphics Capture 后重试。</value>
+    <value>请还原目标窗口，再启用效果组。若仍无法捕获，请打开“查看详情”，核对捕获步骤和错误码。</value>
   </data>
   <data name="Message_CreateFenceFailed" xml:space="preserve">
-    <value>所选显卡或驱动不支持效果处理所需的同步功能。请在当前配置的“性能”中切换显卡，或更新显卡驱动后重试。</value>
+    <value>所选显示卡未能创建同步资源。请打开下方配置 → 性能 → 显示卡，选择另一张可用显示卡后重试；若仍失败，可更新对应驱动，并提供详情和日志。</value>
   </data>
   <data name="Message_NvidiaVsrPathUnsupported" xml:space="preserve">
-    <value>NVIDIA VSR 初始化失败（错误 -2）。请将 Magpie 完整解压到仅含英文字母和数字的路径，所有上级目录都不要包含中文或特殊字符，例如 C:\Magpie\，然后重新运行。</value>
+    <value>NVIDIA VSR 暂未启动（错误 -2）。请退出 Magpie，把完整发行包重新解压到例如 C:\Magpie\ 的目录，再从该目录运行 Magpie.exe 并重试。路径兼容性是可能原因；若仍失败，请复制详情并附上日志。</value>
   </data>
   <data name="Message_ScalingFailed" xml:space="preserve">
     <value>无法启用效果组</value>
@@ -941,7 +941,7 @@
     <value>性能分析器窗口</value>
   </data>
   <data name="Message_Windowed3DGameMode" xml:space="preserve">
-    <value>当前配置启用了 3D 游戏模式，无法使用窗口模式。请关闭 3D 游戏模式，或改用全屏模式。</value>
+    <value>要使用窗口模式，请先在下方配置中关闭“3D 游戏模式”，再启用效果组。也可以保留此设置，使用主页的全屏模式快捷键启用。</value>
   </data>
   <data name="Profile_General_3DGameMode.Description" xml:space="preserve">
     <value>针对 3D 游戏优化，不支持工具栏和窗口模式</value>
@@ -1022,10 +1022,10 @@
     <value>打开日志位置</value>
   </data>
   <data name="Message_WindowedDesktopDuplication" xml:space="preserve">
-    <value>Desktop Duplication 不支持窗口模式。请将捕获方式改为“默认”或 Graphics Capture，或改用全屏模式。</value>
+    <value>要使用窗口模式，请在下方配置的“捕获方式”中选择 Graphics Capture，再启用效果组。要保留 Desktop Duplication，可使用主页的全屏模式快捷键启用。</value>
   </data>
   <data name="Profile_General_DesktopDuplicationWarning.Title" xml:space="preserve">
-    <value>Desktop Duplication 不支持窗口模式。请改用“默认”或 Graphics Capture，或使用全屏模式。</value>
+    <value>要使用窗口模式，请在上方“捕获方式”中选择 Graphics Capture；保留 Desktop Duplication 时，请使用全屏模式。</value>
   </data>
   <data name="Settings_Launch_RunAtStartup.Description" xml:space="preserve">
     <value>启用了“在系统托盘上显示应用程序”时将不会显示主窗口</value>
@@ -1104,23 +1104,23 @@
   <data name="Overlay_EffectParameters_ApplyAndRestart" xml:space="preserve"><value>应用并重新启用效果组</value></data>
   <data name="Overlay_EffectParameters_NoParameters" xml:space="preserve"><value>当前效果链没有暴露参数。</value></data>
   <data name="Overlay_EffectParameters_Saved" xml:space="preserve"><value>效果参数已保存。</value></data>
-  <data name="Overlay_EffectParameters_LiveApplyFailed" xml:space="preserve"><value>实时参数应用失败，画面继续使用上一次成功的值。</value></data>
-  <data name="Overlay_EffectParameters_SessionExpired" xml:space="preserve"><value>运行会话已变化，参数未保存。</value></data>
-  <data name="Overlay_EffectParameters_SourceUnavailable" xml:space="preserve"><value>源窗口已不可用。</value></data>
-  <data name="Overlay_EffectParameters_ScalingModeConflict" xml:space="preserve"><value>运行期间效果组结构已变化，未覆盖任何配置。</value></data>
-  <data name="Overlay_EffectParameters_SaveFailed" xml:space="preserve"><value>自动保存失败，修改参数可重试。</value></data>
-  <data name="Overlay_EffectParameters_Invalid" xml:space="preserve"><value>此参数的元数据或运行时绑定无效，当前无法调节。</value></data>
+  <data name="Overlay_EffectParameters_LiveApplyFailed" xml:space="preserve"><value>此参数暂未应用到画面，仍使用上一次成功值。请恢复此前可用值，或点击“应用并重新启用效果组”。</value></data>
+  <data name="Overlay_EffectParameters_SessionExpired" xml:space="preserve"><value>当前运行已更新，本次请求未保存。请重新打开效果参数面板，确认最新值后再调整。</value></data>
+  <data name="Overlay_EffectParameters_SourceUnavailable" xml:space="preserve"><value>目标窗口已不可用，本次重新启用未完成。请打开目标程序并切到前台，再启用效果组并确认参数。</value></data>
+  <data name="Overlay_EffectParameters_ScalingModeConflict" xml:space="preserve"><value>效果组或参数已在其他位置更新，本面板修改未保存。请停用并重新启用效果组，载入最新配置后再调整。</value></data>
+  <data name="Overlay_EffectParameters_SaveFailed" xml:space="preserve"><value>参数尚未保存。请到主页 → 最近一次问题 → 查看详情，处理原因后点击“重试保存”。</value></data>
+  <data name="Overlay_EffectParameters_Invalid" xml:space="preserve"><value>此参数暂不可调节。请重新启用效果组后再打开面板；若仍无效，请从完整发行包恢复该效果器，并提供效果器名称和日志。</value></data>
   <data name="Overlay_EffectParameters_Reason_Inline" xml:space="preserve"><value>此参数已编译进着色器。</value></data>
   <data name="Overlay_EffectParameters_Reason_Native" xml:space="preserve"><value>此原生效果只在启动时读取该参数。</value></data>
   <data name="Overlay_EffectParameters_Reason_Resources" xml:space="preserve"><value>此参数会改变效果资源或处理尺寸。</value></data>
   <data name="Overlay_EffectParameters_Reason_Guidance" xml:space="preserve"><value>此参数会改变帧引导提供器。</value></data>
   <data name="Overlay_EffectParameters_Reason_FrameGeneration" xml:space="preserve"><value>此参数会改变帧生成 Feature 或呈现环。</value></data>
-  <data name="Message_OpticalFlowProviderUnavailable" xml:space="preserve"><value>当前版本未提供所选光流提供者。请选择其他光流方法或“无”。</value></data>
-  <data name="Message_NvidiaOpticalFlowUnsupported" xml:space="preserve"><value>当前 GPU 或驱动无法初始化 NVIDIA 光流。请选择 AMD OF 或“无”。</value></data>
-  <data name="Message_NvidiaOpticalFlowQualityUnsupported" xml:space="preserve"><value>所选 NVIDIA 光流质量需要当前 GPU 或驱动不支持的输出网格。请选择较低质量、AMD OF 或“无”。</value></data>
-  <data name="Message_AmdOpticalFlowUnsupported" xml:space="preserve"><value>当前 GPU 不满足 AMD FidelityFX 光流所需的 D3D12、着色器模型、Wave 运算或格式能力。请选择界面中其他可用的光流方法，或选择“无”。</value></data>
-  <data name="Message_OpticalFlowInteropFailed" xml:space="preserve"><value>所选光流方法无法创建 D3D11/D3D12 共享资源。请选择其他光流方法或“无”。</value></data>
-  <data name="Message_ConflictingFrameGenerationEffects" xml:space="preserve"><value>同一效果组只能包含一个帧生成效果器。请移除 DLSSFG、XeSSFG x2 或 XeSS 多帧生成中的冲突项后重试。</value></data>
+  <data name="Message_OpticalFlowProviderUnavailable" xml:space="preserve"><value>请打开详情所列效果器，将光流改为界面中其他可选方法，或选择“无／不使用”后重新启用。当前构建未提供所请求的光流方法。</value></data>
+  <data name="Message_NvidiaOpticalFlowUnsupported" xml:space="preserve"><value>NVIDIA 光流暂未启动。请在详情中确认受影响的效果器，打开该效果组，把对应光流选项设为“无”或“不使用”，再启用。需要光流时，可尝试界面中可选的 AMD 光流。</value></data>
+  <data name="Message_NvidiaOpticalFlowQualityUnsupported" xml:space="preserve"><value>请打开详情所列效果器，降低其 NVIDIA 光流质量后重新启用效果组；也可先将光流设为“无”或“不使用”。当前档位未能通过显卡或驱动的能力检查。</value></data>
+  <data name="Message_AmdOpticalFlowUnsupported" xml:space="preserve"><value>AMD 光流暂未启动。请打开详情所列效果器，将光流设为“无”或“不使用”后重新启用；需要光流时，可尝试该效果器提供的其他方法。具体能力检查结果见详情和日志。</value></data>
+  <data name="Message_OpticalFlowInteropFailed" xml:space="preserve"><value>光流所需的共享资源创建失败。请打开详情所列效果器，将光流设为“无”或“不使用”后重新启用；需要光流时，可尝试该效果器提供的其他方法。</value></data>
+  <data name="Message_ConflictingFrameGenerationEffects" xml:space="preserve"><value>下方效果组包含多个补帧效果器。请在详情中查看实际冲突项，再打开该效果组，保留要使用的一项并移除其余补帧项，然后重新启用。</value></data>
   <data name="Message_XeSSMfgRequiresIntel" xml:space="preserve"><value>XeSS 多帧生成 x3/x4 需要受支持的 Intel Arc 显卡。请在当前显卡上改用 XeSS 帧生成 x2。</value></data>
   <data name="Message_XeSSMfgUnsupported" xml:space="preserve"><value>当前 Intel 显卡或驱动无法初始化 XeSS 多帧生成。请更新驱动，或改用 XeSS 帧生成 x2。</value></data>
   <data name="Message_XeSSMfgMultiplierUnsupported" xml:space="preserve"><value>当前显卡或驱动不支持所选 XeSS 多帧生成倍率。请选择较低的 MFG 倍率，或改用 XeSS 帧生成 x2。</value></data>
@@ -1320,7 +1320,7 @@
   <data name="ErrorDetails_Time" xml:space="preserve"><value>时间</value></data>
   <data name="ErrorDetails_Code" xml:space="preserve"><value>问题编号</value></data>
   <data name="ErrorDetails_Version" xml:space="preserve"><value>版本</value></data>
-  <data name="ErrorDetails_Context" xml:space="preserve"><value>相关效果器或路径</value></data>
+  <data name="ErrorDetails_Context" xml:space="preserve"><value>失败步骤、相关项目或路径</value></data>
   <data name="ErrorDetails_SystemCode" xml:space="preserve"><value>系统错误码</value></data>
   <data name="ErrorDetails_Count" xml:space="preserve"><value>连续发生次数</value></data>
   <data name="ErrorDetails_Logs" xml:space="preserve"><value>日志目录</value></data>
@@ -1328,25 +1328,25 @@
   <data name="ErrorAdvice_FileBusy" xml:space="preserve"><value>文件正被其他程序占用。请关闭正在编辑该文件的程序或等待同步完成后重试。</value></data>
   <data name="ErrorAdvice_DiskFull" xml:space="preserve"><value>目标磁盘空间不足。请释放空间，或选择其他磁盘上的目录后重试。</value></data>
   <data name="ErrorAdvice_PathMissing" xml:space="preserve"><value>文件或目录已不存在。请重新连接对应磁盘，或选择现有位置后重试。</value></data>
-  <data name="Message_ScalingModeNotSelected" xml:space="preserve"><value>此配置尚未选择有效的效果组。请在配置中选择已有的效果组，然后重新启用效果组。</value></data>
-  <data name="Message_ScalingModeEmpty" xml:space="preserve"><value>当前效果组没有效果器。请在效果组中添加效果器，或选择其他效果组。</value></data>
-  <data name="Message_ScalingModeUnknownEffect" xml:space="preserve"><value>效果组引用了不可用的效果器。请从完整发行包恢复对应的 effects 文件，或替换该效果器。</value></data>
+  <data name="Message_ScalingModeNotSelected" xml:space="preserve"><value>请打开下方配置，选择一个有效的效果组，再启用效果组。此配置目前尚未选择可用的效果组。</value></data>
+  <data name="Message_ScalingModeEmpty" xml:space="preserve"><value>下方效果组目前为空。请打开“效果组”，找到该组并添加效果器；也可以在程序配置中选择其他效果组。</value></data>
+  <data name="Message_ScalingModeUnknownEffect" xml:space="preserve"><value>请在“查看详情”中确认不可用效果器的名称和序号，再打开下方效果组，替换对应项；如需保留它，请从当前版本的完整发行包恢复对应 effects 文件后重启 Magpie。</value></data>
   <data name="Message_GraphicsDeviceInitFailed" xml:space="preserve"><value>无法初始化图形设备。请检查所选显卡，关闭其他占用显卡较多的程序后重试；若仍失败，请更新显卡驱动并重启 Windows。</value></data>
   <data name="Message_PresentationInitFailed" xml:space="preserve"><value>无法创建画面输出。请尝试切换窗口或全屏模式；若使用了补帧，请先尝试不含补帧的效果组。</value></data>
   <data name="Message_EffectCompileFailed" xml:space="preserve"><value>效果器编译失败。请在详情中查看名称，从对应发行包恢复该效果器，或将其移出效果组后重试。具体编译错误见日志。</value></data>
   <data name="Message_EffectResourceFailed" xml:space="preserve"><value>效果器无法创建纹理或渲染资源。请尝试降低输出尺寸、减少效果器数量，并检查详情所列效果器的文件。</value></data>
-  <data name="Message_NativeEffectInitFailed" xml:space="preserve"><value>AI 效果器初始化失败。请确认该效果器支持当前显卡、完整发行包已解压；可更新显卡驱动，或改用其他效果器。</value></data>
-  <data name="Message_FrameGenerationInitFailed" xml:space="preserve"><value>补帧初始化失败。请尝试降低倍率或关闭光流，确认显卡支持情况和驱动版本；也可先使用不含补帧的模式。</value></data>
+  <data name="Message_NativeEffectInitFailed" xml:space="preserve"><value>下方效果器未能启动。请打开详情查看本次初始化的失败步骤，再按所列文件或错误码排查；也可打开效果组，先替换该效果器以继续使用。原因不明确时，请复制详情并附上日志。</value></data>
+  <data name="Message_FrameGenerationInitFailed" xml:space="preserve"><value>补帧暂未启动。请打开详情查看失败步骤；可在下方效果组中关闭补帧效果器的光流，或在倍率可调时降低倍率后重试。也可先使用不含补帧的效果组。</value></data>
   <data name="Message_OverlayInitFailed" xml:space="preserve"><value>工具栏或光标叠加层初始化失败。请重新解压完整发行包后再次启用效果组；若仍失败，请提供详情和日志。</value></data>
   <data name="Message_SharedTextureOpenFailed" xml:space="preserve"><value>图形设备无法共享输出画面。请尝试让捕获和输出使用同一显卡，或关闭补帧；若仍失败，请更新显卡驱动。</value></data>
-  <data name="Message_DlssNrUnavailable" xml:space="preserve"><value>DLSSNR 初始化失败，当前画面仅透传，未进行 NR 处理。运行中参数暂不可用。请检查显卡支持情况和完整发行文件，然后重新启用效果组。</value></data>
+  <data name="Message_DlssNrUnavailable" xml:space="preserve"><value>DLSSNR 暂未参与图像处理，画面会继续显示，其他效果按原顺序处理。请打开详情查看 DLSSNR 的失败步骤，处理后重新启用效果组；恢复前，DLSSNR 参数暂不可调节。</value></data>
   <data name="Message_FrameGenerationDisabled" xml:space="preserve"><value>补帧连续失败，已在本次运行中停用，原始帧会继续显示。请尝试降低倍率或更换光流设置，然后重新启用效果组。</value></data>
-  <data name="Message_ConfigurationWriteFailed" xml:space="preserve"><value>最近的修改未能写入配置文件。请根据详情检查路径、写入权限和磁盘空间；先保持 Magpie 打开，处理后修改一项设置以重试保存。</value></data>
-  <data name="Message_EffectParameterConflict" xml:space="preserve"><value>同一参数已在其他位置被修改，本面板的修改未覆盖保存。请结束并重新启用效果组以载入最新保存值，再进行调整。</value></data>
+  <data name="Message_ConfigurationWriteFailed" xml:space="preserve"><value>最近的修改尚未保存到磁盘。请先保持 Magpie 打开，在“查看详情”中核对配置路径和失败原因；处理后点击“重试保存”。保存成功后再退出。</value></data>
+  <data name="Message_EffectParameterConflict" xml:space="preserve"><value>效果组或参数已在其他位置更新，本面板的修改未覆盖保存。请停用并重新启用效果组，载入最新配置后再调整。</value></data>
   <data name="Message_EffectParameterLiveFailed" xml:space="preserve"><value>效果器拒绝了本次实时更新，仍使用此前的运行值。已保存的设置可能与运行值不同；请重新启用效果组以应用，或恢复此前可用的参数值。</value></data>
   <data name="Message_ScreenshotDirectoryFailed" xml:space="preserve"><value>无法创建截图目录。请根据详情检查路径和权限，或在主页的“截图保存目录”中选择可写入的目录后重试。</value></data>
   <data name="Message_ScreenshotWriteFailed" xml:space="preserve"><value>无法写入截图文件。请检查磁盘空间、文件是否只读或被占用，也可更换截图保存目录后重试。</value></data>
-  <data name="Message_ScreenshotEncodeFailed" xml:space="preserve"><value>图像编码失败。请尝试将效果器的最终输出截为 PNG；若仍失败，请提供详情、日志及效果器名称。</value></data>
+  <data name="Message_ScreenshotEncodeFailed" xml:space="preserve"><value>当前画面暂未能编码为截图。请重新启用效果组后再次点击工具栏“截图”；若仍失败，请复制详情并附上日志。</value></data>
   <data name="Message_ScreenshotReadbackFailed" xml:space="preserve"><value>无法从显卡读取截图画面。请重新启用效果组后重试；若仍失败，可尝试降低输出尺寸、减少效果器，并提供详情和日志。</value></data>
   <data name="Overlay_EffectParameters_Unavailable" xml:space="preserve"><value>不可用</value></data>
   <data name="Overlay_EffectParameters_BackendUnavailable" xml:space="preserve"><value>DLSSNR 后端未初始化，当前仅透传。请查看主页 → 最近一次问题，处理后重新启用效果组。</value></data>
@@ -1362,7 +1362,7 @@
   <data name="Message_ImportReadFailed" xml:space="preserve"><value>无法读取所选文件。请确认路径可访问、文件已完成下载或同步，然后重新选择。</value></data>
   <data name="Message_ImportEmpty" xml:space="preserve"><value>所选文件为空或不包含任何效果组。请从 Magpie 导出效果组，或取得完整的效果组文件后重试。</value></data>
   <data name="Message_ImportInvalidJson" xml:space="preserve"><value>文件不是有效的 JSON。请重新下载或导出；详情提供出错字节位置和解析原因，便于定位损坏内容。</value></data>
-  <data name="Message_ImportWrongFileType" xml:space="preserve"><value>此 JSON 不包含 scalingModes 数组。请选择由 Magpie 导出的效果组文件；将其他文件改名为 .json 不会转换其格式。</value></data>
+  <data name="Message_ImportWrongFileType" xml:space="preserve"><value>所选文件不是 Magpie 效果组文件。请在导出方的 Magpie“效果组”页面使用“导出”，取得导出的 JSON 文件后再导入；文件由他人提供时，请向对方索取该文件。</value></data>
   <data name="Message_ImportIncompatible" xml:space="preserve"><value>效果组条目的结构不兼容。请使用兼容的 Magpie 版本重新导出。本次未导入该文件中的任何效果组。</value></data>
   <data name="Message_ExportWriteFailed" xml:space="preserve"><value>效果组文件未能完整写入。请检查路径、磁盘空间和写入权限，并重新导出到可写入的目录。</value></data>
   <data name="Message_FileDialogFailed" xml:space="preserve"><value>Windows 文件选择器无法打开或返回位置。请重新运行 Magpie 后重试；若仍失败，请提供详情和日志。</value></data>
@@ -1478,4 +1478,35 @@
   <data name="Message_NgxRestartRequired" xml:space="preserve">
     <value>NVIDIA 效果运行异常。请从托盘完全退出 Magpie 并重新打开，再启用 DLSSNR 或 DLSS 补帧。</value>
   </data>
+  <data name="Message_CaptureFailed_TryGraphicsCapture" xml:space="preserve"><value>请还原目标窗口，再打开下方配置，将“捕获方式”改为 Graphics Capture 后重新启用效果组。仍失败时，请复制详情并附上日志。</value></data>
+  <data name="Message_CaptureFailed_AlreadyGraphicsCapture" xml:space="preserve"><value>当前已使用 Graphics Capture。请还原目标窗口并重新启用效果组；若仍失败，请在详情中核对失败步骤和错误码，复制详情并附上日志。</value></data>
+  <data name="Message_CreateFenceFailed_SingleAdapter" xml:space="preserve"><value>显示卡未能创建同步资源。请更新该显示卡驱动，重新启动 Magpie 后重试；若仍失败，请复制详情并附上日志。</value></data>
+  <data name="Message_ScreenshotIntermediateEncodeFailed" xml:space="preserve"><value>此中间结果暂未能保存。请直接点击工具栏“截图”，尝试保存当前画面；当前画面会自动保存为 PNG。若仍失败，请复制详情并附上日志。</value></data>
+  <data name="Message_ConfigurationRecoveredBackup" xml:space="preserve"><value>配置文件出现损坏，已载入备份。请检查效果组和程序配置是否符合预期；损坏原件已保留，具体路径见详情，可点击“打开配置目录”查看。</value></data>
+  <data name="Message_ConfigurationRecoveredPartial" xml:space="preserve"><value>配置文件出现损坏，已载入能够恢复的项目，其余设置使用默认值。请检查效果组和快捷键；损坏原件已保留，具体路径见详情，可点击“打开配置目录”查看。</value></data>
+  <data name="ErrorAdvice_ReadAccessDenied" xml:space="preserve"><value>Windows 拒绝读取此文件。请在文件资源管理器中确认当前账户有读取权限，并确认文件已下载到本机后重新选择。</value></data>
+  <data name="ErrorAdvice_OperationAccessDenied" xml:space="preserve"><value>Windows 拒绝了此步骤的访问请求。请按上方提示重试，并在仍失败时提供下方操作步骤和错误码。</value></data>
+  <data name="ErrorDetails_Profile" xml:space="preserve"><value>配置</value></data>
+  <data name="ErrorDetails_Group" xml:space="preserve"><value>效果组</value></data>
+  <data name="ErrorDetails_Window" xml:space="preserve"><value>目标窗口</value></data>
+  <data name="ErrorDetails_Capture" xml:space="preserve"><value>捕获方式</value></data>
+  <data name="ErrorDetails_RetrySave" xml:space="preserve"><value>重试保存</value></data>
+  <data name="ErrorDetails_OpenProfile" xml:space="preserve"><value>打开此配置</value></data>
+  <data name="ErrorDetails_OpenEffects" xml:space="preserve"><value>打开效果组</value></data>
+  <data name="ErrorDetails_OpenConfigDirectory" xml:space="preserve"><value>打开配置目录</value></data>
+  <data name="ErrorDetails_OpenConfigFailed" xml:space="preserve"><value>目录暂未能打开。请把配置路径复制到文件资源管理器，查看其所在目录。</value></data>
+  <data name="ErrorDetails_ProfileChanged" xml:space="preserve"><value>该配置已被删除、改名或更换匹配规则。请关闭详情，在左侧配置列表中选择要调整的配置。</value></data>
+  <data name="ErrorDetails_Saving" xml:space="preserve"><value>正在保存当前修改…</value></data>
+  <data name="ErrorDetails_SaveSucceeded" xml:space="preserve"><value>本次修改已保存到磁盘。</value></data>
+  <data name="ErrorDetails_SaveStillFailed" xml:space="preserve"><value>保存仍未完成。请关闭并重新打开详情，查看最新原因；处理后可再次点击“重试保存”。</value></data>
+  <data name="ErrorDetails_PreviousRun" xml:space="preserve"><value>上次运行：{}</value></data>
+  <data name="ErrorDetails_PreviousRunHint" xml:space="preserve"><value>以下是上次运行保留的诊断。旧会话的未保存修改不会随此记录恢复；请先核对当前状态，再参考下方步骤。日志仍保留在所列目录。</value></data>
+  <data name="ErrorDetails_SaveFailedToast" xml:space="preserve"><value>修改尚未保存，请保持 Magpie 打开并到主页重试保存。</value></data>
+  <data name="ErrorDetails_RecoveryToast" xml:space="preserve"><value>已从损坏配置中恢复设置，请到主页检查恢复说明。</value></data>
+  <data name="Home_RecentIssue_Reopen.Content" xml:space="preserve"><value>查看最近问题</value></data>
+  <data name="AppSettings_ReadFailedGuidance" xml:space="preserve"><value>请在文件资源管理器中打开下方位置，确认磁盘已连接、文件已下载到本机且当前账户可以读取，然后重新启动 Magpie。原配置未被修改。</value></data>
+  <data name="AppSettings_ReadAccessDenied" xml:space="preserve"><value>请在文件资源管理器中打开下方位置，确认当前账户具有该文件的读取权限，然后重新启动 Magpie。原配置未被修改。</value></data>
+  <data name="AppSettings_CopyFailed" xml:space="preserve"><value>暂未能复制。请记录下方路径和错误码，处理后重新启动 Magpie。</value></data>
+  <data name="AppSettings_ConfigLocationFailed" xml:space="preserve"><value>暂未能访问配置位置。请确认配置所在磁盘已连接、当前账户有访问和写入权限，然后重新启动 Magpie。相关位置：</value></data>
+  <data name="AppSettings_BackupFailed" xml:space="preserve"><value>配置文件损坏，但暂未能保留原件，恢复尚未开始。请检查下方备份路径的写入权限和磁盘空间，再重新启动 Magpie。原配置保持原样。备份目标：</value></data>
 </root>

@@ -87,9 +87,10 @@ fire_and_forget ScalingModesViewModel::Export() noexcept {
 	ScalingModesService::Get().Export(writer);
 	writer.EndObject();
 
-	if (!Win32Helper::WriteTextFile(fileName->c_str(), { json.GetString(), json.GetLength() })) {
+	uint32_t systemError = 0;
+	if (!Win32Helper::WriteTextFile(fileName->c_str(), { json.GetString(), json.GetLength() }, &systemError)) {
 		ErrorService::Get().Report(ScalingError::ExportWriteFailed,
-			StrHelper::UTF16ToUTF8(fileName->native()));
+			StrHelper::UTF16ToUTF8(fileName->native()), nullptr, systemError);
 	}
 }
 
@@ -121,9 +122,10 @@ fire_and_forget ScalingModesViewModel::Import() {
 	}
 
 	std::string json;
-	if (!Win32Helper::ReadTextFile(fileName->c_str(), json)) {
+	uint32_t systemError = 0;
+	if (!Win32Helper::ReadTextFile(fileName->c_str(), json, &systemError)) {
 		ErrorService::Get().Report(ScalingError::ImportReadFailed,
-			StrHelper::UTF16ToUTF8(fileName->native()));
+			StrHelper::UTF16ToUTF8(fileName->native()), nullptr, systemError);
 		co_return;
 	}
 
@@ -148,7 +150,8 @@ fire_and_forget ScalingModesViewModel::Import() {
 		co_return;
 	}
 	if (!doc.IsObject() || !doc.HasMember("scalingModes") || !doc["scalingModes"].IsArray()) {
-		ErrorService::Get().Report(ScalingError::ImportWrongFileType, path);
+		ErrorService::Get().Report(ScalingError::ImportWrongFileType,
+			path + " / Expected a JSON object containing a scalingModes array");
 		co_return;
 	}
 	if (doc["scalingModes"].Empty()) {

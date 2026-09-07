@@ -528,45 +528,67 @@ bool Win32Helper::WriteFile(const wchar_t* fileName, std::span<uint8_t> buffer) 
 	return true;
 }
 
-bool Win32Helper::ReadTextFile(const wchar_t* fileName, std::string& result) noexcept {
+static void CaptureCrtFileError(uint32_t* systemError, DWORD fallback) noexcept {
+	if (!systemError) return;
+	unsigned long error = 0;
+	_get_doserrno(&error);
+	*systemError = error ? static_cast<uint32_t>(error) : fallback;
+}
+
+bool Win32Helper::ReadTextFile(const wchar_t* fileName, std::string& result, uint32_t* systemError) noexcept {
+	if (systemError) *systemError = 0;
 	Logger::Get().Info(StrHelper::Concat("读取文本文件: ", StrHelper::UTF16ToUTF8(fileName)));
 
 	wil::unique_file hFile;
+	_set_doserrno(0);
 	if (_wfopen_s(hFile.put(), fileName, L"rt") || !hFile) {
+		CaptureCrtFileError(systemError, ERROR_READ_FAULT);
 		Logger::Get().Error(StrHelper::Concat("打开文件 ", StrHelper::UTF16ToUTF8(fileName), " 失败"));
 		return false;
 	}
 
 	// 获取文件长度
 	int fd = _fileno(hFile.get());
+	_set_doserrno(0);
 	long size = _filelength(fd);
-	if (size < 0) return false;
+	if (size < 0) { CaptureCrtFileError(systemError, ERROR_READ_FAULT); return false; }
 
 	result.clear();
 	result.resize(static_cast<size_t>(size) + 1, 0);
 
+	_set_doserrno(0);
 	size_t readed = fread(result.data(), 1, size, hFile.get());
 	result.resize(readed);
 
-	return ferror(hFile.get()) == 0;
+	const bool succeeded = ferror(hFile.get()) == 0;
+	if (!succeeded) CaptureCrtFileError(systemError, ERROR_READ_FAULT);
+	return succeeded;
 }
 
-bool Win32Helper::WriteTextFile(const wchar_t* fileName, std::string_view text) noexcept {
+bool Win32Helper::WriteTextFile(const wchar_t* fileName, std::string_view text, uint32_t* systemError) noexcept {
+	if (systemError) *systemError = 0;
 	Logger::Get().Info(StrHelper::Concat("写入文本文件: ", StrHelper::UTF16ToUTF8(fileName)));
 
 	wil::unique_file hFile;
+	_set_doserrno(0);
 	if (_wfopen_s(hFile.put(), fileName, L"wt") || !hFile) {
+		CaptureCrtFileError(systemError, ERROR_WRITE_FAULT);
 		Logger::Get().Error(StrHelper::Concat("打开文件 ", StrHelper::UTF16ToUTF8(fileName), " 失败"));
 		return false;
 	}
 
+	_set_doserrno(0);
 	if (fwrite(text.data(), 1, text.size(), hFile.get()) != text.size() ||
 		fflush(hFile.get()) != 0) {
+		CaptureCrtFileError(systemError, ERROR_WRITE_FAULT);
 		Logger::Get().Error("Writing text file or flushing buffered data failed");
 		return false;
 	}
 	// Buffered writes may fail only when closing the file.
-	return fclose(hFile.release()) == 0;
+	_set_doserrno(0);
+	const bool succeeded = fclose(hFile.release()) == 0;
+	if (!succeeded) CaptureCrtFileError(systemError, ERROR_WRITE_FAULT);
+	return succeeded;
 }
 
 bool Win32Helper::FileExists(const wchar_t* fileName) noexcept {

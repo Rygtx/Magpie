@@ -40,12 +40,16 @@
 			              IsOpen="{x:Bind ViewModel.ShowRecentIssue, Mode=TwoWay}"
 			              IsClosable="True"
 			              Message="{x:Bind ViewModel.RecentIssueSummary, Mode=OneWay}"
-			              Severity="Warning"
+			              Severity="{x:Bind ViewModel.RecentIssueSeverity, Mode=OneWay}"
 			              SizeChanged="InfoBar_SizeChanged">
 				<Button x:Uid="Home_RecentIssue_Details"
 				        Margin="0,0,0,12"
 				        Click="{x:Bind ViewModel.ShowRecentIssueDetails}" />
 			</muxc:InfoBar>
+			<Button x:Name="RecentIssueHistoryButton"
+			        x:Uid="Home_RecentIssue_Reopen"
+			        x:Load="{x:Bind ViewModel.ShowIssueHistory, Mode=OneWay}"
+			        Click="{x:Bind ViewModel.ShowRecentIssueDetails}" />
 			<local:SettingsGroup x:Uid="Home_Activation">
 				<local:SettingsCard x:Uid="Home_Activation_FullscreenScaling"
 				                    IsWrapEnabled="True">

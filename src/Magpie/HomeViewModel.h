@@ -9,6 +9,8 @@ struct HomeViewModel : HomeViewModelT<HomeViewModel>, wil::notify_property_chang
 	bool ShowRecentIssue() const noexcept;
 	void ShowRecentIssue(bool value);
 	hstring RecentIssueSummary() const noexcept;
+	MUXC::InfoBarSeverity RecentIssueSeverity() const noexcept;
+	bool ShowIssueHistory() const noexcept;
 	fire_and_forget ShowRecentIssueDetails() noexcept;
 
 	hstring TimerDescription() const noexcept;

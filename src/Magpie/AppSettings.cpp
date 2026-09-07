@@ -18,6 +18,7 @@
 #include <rapidjson/prettywriter.h>
 #include <ShellScalingApi.h>
 #include <ShlObj.h>
+#include <winrt/Windows.ApplicationModel.DataTransfer.h>
 
 using namespace winrt;
 using namespace winrt::Magpie;
@@ -164,13 +165,42 @@ static void ReplaceIcon(HINSTANCE hInst, HWND hWnd, bool large) noexcept {
 	}
 }
 
+struct StartupDiagnostic {
+	std::filesystem::path path;
+	std::wstring details;
+	std::wstring copied;
+	std::wstring copyFailed;
+	std::wstring openFailed;
+};
+
 static HRESULT CALLBACK TaskDialogCallback(
 	HWND hWnd,
 	UINT msg,
-	WPARAM /*wParam*/,
+	WPARAM wParam,
 	LPARAM /*lParam*/,
-	LONG_PTR /*lpRefData*/
+	LONG_PTR lpRefData
 ) {
+	if (msg == TDN_BUTTON_CLICKED && (wParam == 100 || wParam == 101)) {
+		auto& diagnostic = *reinterpret_cast<StartupDiagnostic*>(lpRefData);
+		std::wstring feedback;
+		try {
+			if (wParam == 100) {
+				if (!Win32Helper::ShellOpen(diagnostic.path.parent_path().c_str())) feedback = diagnostic.openFailed;
+			} else {
+				Windows::ApplicationModel::DataTransfer::DataPackage data;
+				data.SetText(diagnostic.details);
+				Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(data);
+				feedback = diagnostic.copied;
+			}
+		} catch (...) {
+			feedback = diagnostic.copyFailed;
+		}
+		if (!feedback.empty()) {
+			const auto content = diagnostic.details + L"\n\n" + feedback;
+			SendMessageW(hWnd, TDM_SET_ELEMENT_TEXT, TDE_CONTENT, reinterpret_cast<LPARAM>(content.c_str()));
+		}
+		return S_FALSE;
+	}
 	if (msg == TDN_CREATED) {
 		// 将任务栏图标替换为 Magpie 的图标
 		// GetModuleHandle 获取 exe 文件的句柄
@@ -186,23 +216,33 @@ static HRESULT CALLBACK TaskDialogCallback(
 	return S_OK;
 }
 
-static void ShowErrorMessage(const wchar_t* mainInstruction, const wchar_t* content) noexcept {
+static void ShowErrorMessage(const wchar_t* mainInstruction, const wchar_t* content,
+	const std::filesystem::path& path, uint32_t systemError = 0) noexcept {
 	ResourceLoader resourceLoader =
 		ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
 	const hstring errorStr = resourceLoader.GetString(L"AppSettings_Dialog_Error");
 	const hstring exitStr = resourceLoader.GetString(L"AppSettings_Dialog_Exit");
-
-	TASKDIALOG_BUTTON button{ IDCANCEL, exitStr.c_str() };
+	const hstring openStr = resourceLoader.GetString(L"ErrorDetails_OpenConfigDirectory");
+	const hstring copyStr = resourceLoader.GetString(L"ErrorDetails_Copy");
+	StartupDiagnostic diagnostic{ path, content,
+		std::wstring(resourceLoader.GetString(L"ErrorDetails_Copied")),
+		std::wstring(resourceLoader.GetString(L"AppSettings_CopyFailed")),
+		std::wstring(resourceLoader.GetString(L"ErrorDetails_OpenConfigFailed")) };
+	if (systemError) diagnostic.details += L"\n" + std::wstring(resourceLoader.GetString(L"ErrorDetails_SystemCode")) +
+		fmt::format(L": {} (0x{:08X})", systemError, systemError);
+	TASKDIALOG_BUTTON buttons[] = { { 100, openStr.c_str() }, { 101, copyStr.c_str() }, { IDCANCEL, exitStr.c_str() } };
 	TASKDIALOGCONFIG tdc{
 		.cbSize = sizeof(TASKDIALOGCONFIG),
 		.dwFlags = TDF_SIZE_TO_CONTENT,
 		.pszWindowTitle = errorStr.c_str(),
 		.pszMainIcon = TD_ERROR_ICON,
 		.pszMainInstruction = mainInstruction,
-		.pszContent = content,
-		.cButtons = 1,
-		.pButtons = &button,
-		.pfCallback = TaskDialogCallback
+		.pszContent = diagnostic.details.c_str(),
+		.cButtons = static_cast<UINT>(std::size(buttons)),
+		.pButtons = buttons,
+		.nDefaultButton = IDCANCEL,
+		.pfCallback = TaskDialogCallback,
+		.lpCallbackData = reinterpret_cast<LONG_PTR>(&diagnostic)
 	};
 	TaskDialogIndirect(&tdc, nullptr, nullptr, nullptr);
 }
@@ -219,6 +259,10 @@ bool AppSettings::Initialize() noexcept {
 	std::filesystem::path existingConfigPath;
 	if (!_UpdateConfigPath(&existingConfigPath)) {
 		logger.Error("_UpdateConfigPath 失败");
+		const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
+		const auto path = _configPath.empty() ? Win32Helper::GetExePath() : _configPath;
+		const auto content = std::wstring(loader.GetString(L"AppSettings_ConfigLocationFailed")) + L"\n" + path.native();
+		ShowErrorMessage(loader.GetString(L"AppSettings_ErrorDialog_ReadFailed").c_str(), content.c_str(), path);
 		return false;
 	}
 
@@ -235,14 +279,18 @@ bool AppSettings::Initialize() noexcept {
 	// 此时 ResourceLoader 使用“首选语言”
 	
 	std::string configText;
-	if (!Win32Helper::ReadTextFile(existingConfigPath.c_str(), configText)) {
+	uint32_t readError = 0;
+	if (!Win32Helper::ReadTextFile(existingConfigPath.c_str(), configText, &readError)) {
 		logger.Error("读取配置文件失败");
 		ResourceLoader resourceLoader =
 			ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
 		hstring title = resourceLoader.GetString(L"AppSettings_ErrorDialog_ReadFailed");
 		hstring content = resourceLoader.GetString(L"AppSettings_ErrorDialog_ConfigLocation");
-		ShowErrorMessage(title.c_str(),
-			fmt::format(fmt::runtime(std::wstring_view(content)), existingConfigPath.native()).c_str());
+		const auto guidance = resourceLoader.GetString(readError == ERROR_ACCESS_DENIED ?
+			L"AppSettings_ReadAccessDenied" : L"AppSettings_ReadFailedGuidance");
+		const auto details = std::wstring(guidance) + L"\n\n" +
+			fmt::format(fmt::runtime(std::wstring_view(content)), existingConfigPath.native());
+		ShowErrorMessage(title.c_str(), details.c_str(), existingConfigPath, readError);
 		return false;
 	}
 
@@ -252,7 +300,11 @@ bool AppSettings::Initialize() noexcept {
         const auto damagedPath = std::filesystem::path(existingConfigPath.native() +
             L".corrupt-" + std::to_wstring(std::chrono::system_clock::now().time_since_epoch().count()));
         if (!CopyFileW(existingConfigPath.c_str(), damagedPath.c_str(), TRUE)) {
+			const DWORD error = GetLastError();
             logger.Win32Error("Unable to preserve damaged configuration");
+			const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
+			const auto content = std::wstring(loader.GetString(L"AppSettings_BackupFailed")) + L"\n" + damagedPath.native();
+			ShowErrorMessage(loader.GetString(L"AppSettings_Dialog_Error").c_str(), content.c_str(), damagedPath, error);
             return false;
         }
         std::string replacement = ConfigPersistence::Read(
@@ -264,6 +316,8 @@ bool AppSettings::Initialize() noexcept {
         logger.Warn(fromBackup ? "Recovered configuration from backup" :
             "Recovered complete configuration entries; missing entries use defaults");
         recovered = true;
+		_recoveredConfigPath = damagedPath;
+		_recoveredFromBackup = fromBackup;
     }
     rapidjson::Document doc;
     doc.ParseInsitu(configText.data());
@@ -281,19 +335,30 @@ bool AppSettings::Initialize() noexcept {
 	return true;
 }
 
+void AppSettings::PublishStartupNotice() noexcept {
+	if (_recoveredConfigPath.empty()) return;
+	ErrorService::Get().Report(_recoveredFromBackup ? ScalingError::ConfigurationRecoveredBackup :
+		ScalingError::ConfigurationRecoveredPartial, StrHelper::UTF16ToUTF8(_recoveredConfigPath.native()));
+}
+
 bool AppSettings::Save() noexcept {
+	const uint64_t revision = ++_saveState->nextRevision;
+	const uint64_t issueRevision = ErrorService::Get().Revision();
     try {
         _UpdateWindowPlacement();
-        const uint64_t revision = ++_saveState->nextRevision;
         const std::string json = _Serialize(*this);
-        if (ConfigPersistence::WriteAtomic(_configPath, json, revision, *_saveState)) return true;
+		if (ConfigPersistence::WriteAtomic(_configPath, json, revision, *_saveState)) {
+			ErrorService::Get().ConfigurationSaved(revision, issueRevision);
+			return true;
+		}
         const DWORD error = GetLastError();
         Logger::Get().Win32Error("Save configuration failed");
         ErrorService::Get().Report(ScalingError::ConfigurationWriteFailed,
-            StrHelper::UTF16ToUTF8(_configPath.native()), nullptr, error);
+            StrHelper::UTF16ToUTF8(_configPath.native()), nullptr, error, {}, revision);
     } catch (...) {
         Logger::Get().Error("Save configuration failed with an exception");
-        ErrorService::Get().Report(ScalingError::ConfigurationWriteFailed);
+        ErrorService::Get().Report(ScalingError::ConfigurationWriteFailed,
+			StrHelper::UTF16ToUTF8(_configPath.native()), nullptr, 0, {}, revision);
     }
     return false;
 }
@@ -301,25 +366,28 @@ bool AppSettings::Save() noexcept {
 fire_and_forget AppSettings::SaveAsync(std::function<void(bool)> onCompleted) noexcept {
 	bool succeeded = false;
 	std::filesystem::path path;
+	const uint64_t revision = ++_saveState->nextRevision;
+	const uint64_t issueRevision = ErrorService::Get().Revision();
 	try {
 		path = _configPath;
 		_UpdateWindowPlacement();
 		// Snapshot on the UI thread; background work owns only serialized data.
 		const std::string json = _Serialize(*this);
 		const auto state = _saveState;
-		const uint64_t revision = ++state->nextRevision;
 		co_await resume_background();
 		succeeded = ConfigPersistence::WriteAtomic(path, json, revision, *state);
 		if (!succeeded) {
 			const DWORD error = GetLastError();
 			Logger::Get().Win32Error("Save configuration failed");
 			ErrorService::Get().Report(ScalingError::ConfigurationWriteFailed,
-				StrHelper::UTF16ToUTF8(path.native()), nullptr, error);
+				StrHelper::UTF16ToUTF8(path.native()), nullptr, error, {}, revision);
+		} else {
+			ErrorService::Get().ConfigurationSaved(revision, issueRevision);
 		}
 	} catch (...) {
 		Logger::Get().Error("Save configuration failed with an exception");
 		ErrorService::Get().Report(ScalingError::ConfigurationWriteFailed,
-			StrHelper::UTF16ToUTF8(path.native()));
+			StrHelper::UTF16ToUTF8(path.native()), nullptr, 0, {}, revision);
 	}
 	// This callback must not access UI objects. Parameter saves only publish an
 	// atomic result into shared state, including after their overlay is closed.

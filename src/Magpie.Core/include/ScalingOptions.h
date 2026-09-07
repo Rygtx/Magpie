@@ -6,6 +6,7 @@
 #include "FramePacingOptions.h"
 #include "OverlayWindowGeometry.h"
 #include <mutex>
+#include <functional>
 
 namespace Magpie {
 
@@ -362,7 +363,10 @@ enum class ScalingError {
 	ExportWriteFailed,
 	FileDialogFailed,
 	PassThroughUnavailable,
-	NgxRestartRequired
+	NgxRestartRequired,
+	ScreenshotIntermediateEncodeFailed,
+	ConfigurationRecoveredBackup,
+	ConfigurationRecoveredPartial
 };
 
 struct ScalingFlags {
@@ -439,9 +443,9 @@ struct ScalingOptions {
 	OverlayOptions overlayOptions;
 
 	void (*showToast)(HWND hwndTarget, std::wstring_view msg) noexcept = nullptr;
-	void (*showError)(HWND hwndTarget, ScalingError error) noexcept = nullptr;
-	void (*reportErrorDetails)(HWND hwndTarget, ScalingError error,
-		std::string_view context, uint32_t systemError) noexcept = nullptr;
+	std::function<void(HWND hwndTarget, ScalingError error)> showError;
+	std::function<void(HWND hwndTarget, ScalingError error,
+		std::string_view context, uint32_t systemError)> reportErrorDetails;
 	void (*save)(const ScalingOptions& options, HWND hwndScaling) noexcept = nullptr;
 	bool (*requestEffectParameters)(
 		const ScalingOptions& sessionOptions,

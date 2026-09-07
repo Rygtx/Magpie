@@ -31,6 +31,8 @@ HomeViewModel::HomeViewModel() {
 	_issueChangedRevoker = ErrorService::Get().Changed(auto_revoke, [this] {
 		RaisePropertyChanged(L"ShowRecentIssue");
 		RaisePropertyChanged(L"RecentIssueSummary");
+		RaisePropertyChanged(L"RecentIssueSeverity");
+		RaisePropertyChanged(L"ShowIssueHistory");
 	});
 	ScalingService& ScalingService = ScalingService::Get();
 
@@ -65,6 +67,14 @@ hstring HomeViewModel::RecentIssueSummary() const noexcept {
 	return ErrorService::Get().Summary();
 }
 
+MUXC::InfoBarSeverity HomeViewModel::RecentIssueSeverity() const noexcept {
+	return ErrorService::Get().IsInformational() ? MUXC::InfoBarSeverity::Informational : MUXC::InfoBarSeverity::Warning;
+}
+
+bool HomeViewModel::ShowIssueHistory() const noexcept {
+	return ErrorService::Get().HasIssue() && !ErrorService::Get().IsIssueVisible();
+}
+
 fire_and_forget HomeViewModel::ShowRecentIssueDetails() noexcept {
 	try {
 		if (!ErrorService::Get().HasIssue() || ContentDialogHelper::IsAnyDialogOpen()) co_return;
@@ -73,6 +83,8 @@ fire_and_forget HomeViewModel::ShowRecentIssueDetails() noexcept {
 		const auto loader = ResourceLoader::GetForViewIndependentUse(CommonSharedConstants::APP_RESOURCE_MAP_ID);
 		// Capture the issue the user opened, even if another failure arrives.
 		const hstring details = ErrorService::Get().Details();
+		const IssueAction action = ErrorService::Get().Action();
+		const IssueContext issueContext = ErrorService::Get().Context();
 		TextBox text;
 		text.Text(details);
 		text.IsReadOnly(true);
@@ -84,7 +96,49 @@ fire_and_forget HomeViewModel::ShowRecentIssueDetails() noexcept {
 		dialog.XamlRoot(root->XamlRoot());
 		dialog.RequestedTheme(root->ActualTheme());
 		dialog.Title(box_value(loader.GetString(L"ErrorDetails_Title")));
-		dialog.Content(text);
+		StackPanel content;
+		content.Spacing(12);
+		content.Children().Append(text);
+		TextBlock actionStatus;
+		actionStatus.TextWrapping(TextWrapping::Wrap);
+		if (action != IssueAction::None) {
+			Button remedy;
+			const wchar_t* actionKey = action == IssueAction::RetrySave ? L"ErrorDetails_RetrySave" :
+				action == IssueAction::Profile ? L"ErrorDetails_OpenProfile" :
+				action == IssueAction::Effects ? L"ErrorDetails_OpenEffects" : L"ErrorDetails_OpenConfigDirectory";
+			remedy.Content(box_value(loader.GetString(actionKey)));
+			remedy.Click([action, issueContext, weakDialog = make_weak(dialog), weakRoot = root->get_weak(), loader,
+				weakStatus = make_weak(actionStatus)](const IInspectable& sender, const RoutedEventArgs&) {
+				const auto dialog = weakDialog.get();
+				const auto root = weakRoot.get();
+				const auto actionStatus = weakStatus.get();
+				if (!dialog || !root || !actionStatus) return;
+				const auto remedy = sender.as<Button>();
+				if (action == IssueAction::RetrySave) {
+					const uint64_t issueRevision = ErrorService::Get().Revision();
+					remedy.IsEnabled(false);
+					actionStatus.Text(loader.GetString(L"ErrorDetails_Saving"));
+					ScalingService::Get().RetryConfigurationSave([issueRevision, weakButton = make_weak(remedy), weakStatus, loader](bool succeeded) {
+						App::Get().Dispatcher().TryEnqueue([issueRevision, weakButton, weakStatus, loader, succeeded] {
+							if (succeeded) ErrorService::Get().SavedSuccessfully(issueRevision);
+							if (auto status = weakStatus.get()) status.Text(loader.GetString(succeeded ? L"ErrorDetails_SaveSucceeded" : L"ErrorDetails_SaveStillFailed"));
+							if (auto button = weakButton.get()) button.IsEnabled(!succeeded);
+						});
+					});
+				} else if (action == IssueAction::Profile) {
+					if (root->NavigateToIssueProfile(issueContext.profileName, issueContext.profilePath, issueContext.profileClass)) dialog.Hide();
+					else actionStatus.Text(loader.GetString(L"ErrorDetails_ProfileChanged"));
+				} else if (action == IssueAction::Effects) {
+					dialog.Hide();
+					root->NavigateToScalingModes();
+				} else if (!Win32Helper::ShellOpen(AppSettings::Get().ConfigDir().c_str())) {
+					actionStatus.Text(hstring(std::wstring(loader.GetString(L"ErrorDetails_OpenConfigFailed")) + L"\n" + AppSettings::Get().ConfigDir().native()));
+				}
+			});
+			content.Children().Append(remedy);
+			content.Children().Append(actionStatus);
+		}
+		dialog.Content(content);
 		dialog.PrimaryButtonText(loader.GetString(L"ErrorDetails_Copy"));
 		dialog.SecondaryButtonText(loader.GetString(L"ErrorDetails_OpenLogs"));
 		dialog.CloseButtonText(loader.GetString(L"ErrorDetails_Close"));

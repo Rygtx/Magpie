@@ -1380,7 +1380,8 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 
 	const ImGuiStyle& style = ImGui::GetStyle();
 	const float actionHeight = ImGui::GetFrameHeight() + style.ItemSpacing.y * 2.0f;
-	const float statusHeight = ImGui::GetTextLineHeight() + style.ItemSpacing.y;
+	const bool hasSaveError = (_effectParametersSaveState->result.load(std::memory_order_acquire) & 7) != 0;
+	const float statusHeight = ImGui::GetTextLineHeight() * (hasSaveError ? 3.0f : 1.0f) + style.ItemSpacing.y;
 	const float footerHeight =
 		actionHeight + statusHeight + style.ItemSpacing.y * 3.0f;
 	const float contentHeight = std::max(
@@ -1725,8 +1726,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		ImGui::EndDisabled();
 	}
 	if (queueFailure) {
-		ScalingWindow::Get().ShowToast(ScalingWindow::Get().GetLocalizedString(
-			L"Overlay_EffectParameters_LiveApplyFailed"));
+		ScalingWindow::Get().ShowError(ScalingError::EffectParameterLiveFailed);
 	}
 
 	if (parameterEdited || requestRestart) {
@@ -1772,8 +1772,10 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		"##effectParametersStatus",
 		ImVec2(-ImGui::GetFrameHeight(), statusHeight),
 		ImGuiChildFlags_None,
-		ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-	ImGui::TextDisabled("%s", status.c_str());
+		ImGuiWindowFlags_None);
+	ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+	ImGui::TextWrapped("%s", status.c_str());
+	ImGui::PopStyleColor();
 	if (ImGui::IsItemHovered() &&
 		ImGui::CalcTextSize(status.c_str()).x >
 		ImGui::GetContentRegionAvail().x) {

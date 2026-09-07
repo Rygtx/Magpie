@@ -13,8 +13,30 @@
 #include "ScalingOptions.h"
 #include "EffectParameterRules.h"
 #include "OpticalFlowSettings.h"
+#include "DeviceResources.h"
+#include "StrHelper.h"
 
 namespace Magpie {
+
+static std::string DescribeNativeFailure(DeviceResources& resources, ID3D11Texture2D* input,
+	ID3D11Texture2D* output, const Logger::DiagnosticCapture& diagnostic) {
+	D3D11_TEXTURE2D_DESC inDesc{}, outDesc{};
+	input->GetDesc(&inDesc);
+	output->GetDesc(&outDesc);
+	std::string result = fmt::format("Input={}x{} format={} / Output={}x{} format={}",
+		inDesc.Width, inDesc.Height, static_cast<int>(inDesc.Format),
+		outDesc.Width, outDesc.Height, static_cast<int>(outDesc.Format));
+	if (auto* adapter = resources.GetGraphicsAdapter()) {
+		DXGI_ADAPTER_DESC1 desc{};
+		if (SUCCEEDED(adapter->GetDesc1(&desc))) result += "\nGPU: " + StrHelper::UTF16ToUTF8(desc.Description);
+		LARGE_INTEGER driver{};
+		if (SUCCEEDED(adapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &driver)))
+			result += fmt::format(" / Driver: {}.{}.{}.{}", HIWORD(driver.HighPart), LOWORD(driver.HighPart),
+				HIWORD(driver.LowPart), LOWORD(driver.LowPart));
+	}
+	if (!diagnostic.Details().empty()) result += "\n" + diagnostic.Details();
+	return result;
+}
 
 template <typename T, typename... Args>
 static NativeEffectBackendResult CreateBackend(
@@ -25,10 +47,12 @@ static NativeEffectBackendResult CreateBackend(
 	Args&&... args
 ) noexcept {
 	auto backend = std::make_unique<T>();
+	Logger::DiagnosticCapture diagnostic;
 	if (!backend->Initialize(
 		resources, input, output, std::forward<Args>(args)...)) {
 		Logger::Get().Error(fmt::format("Initialize native effect {} failed", displayName));
-		return { true, nullptr };
+		return { true, nullptr, ScalingError::NoError,
+			DescribeNativeFailure(resources, input, output, diagnostic), diagnostic.SystemError() };
 	}
 	return { true, std::move(backend) };
 }
@@ -64,6 +88,7 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 	if (effectName == "DLSSNR\\DLSSNR_AI_Filter") {
 		const DLSSNRSettings settings = ParseDLSSNRSettings(option);
 		auto backend = std::make_unique<DLSSNRFilter>();
+		Logger::DiagnosticCapture diagnostic;
 		if (!backend->Initialize(resources, ngxCore, input, output, settings)) {
 			if (NgxRuntimeGuard::IsFaulted()) {
 				return { true, nullptr, ScalingError::NgxRestartRequired };
@@ -73,7 +98,8 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 				"fallback=pass-through\n";
 			Logger::Get().Warn(status);
 			OutputDebugStringA(status);
-			return {};
+			return { false, nullptr, ScalingError::NoError,
+				DescribeNativeFailure(resources, input, output, diagnostic), diagnostic.SystemError() };
 		}
 		return { true, std::move(backend) };
 	}
@@ -110,9 +136,11 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 			qualityLevel = 11;
 		}
 		auto backend = std::make_unique<RTXVideoDenoiser>();
+		Logger::DiagnosticCapture diagnostic;
 		if (!backend->Initialize(resources, input, output, qualityLevel)) {
 			Logger::Get().Error(fmt::format("Initialize native effect {} failed", effectName));
-			return { true, nullptr, backend->InitializationError() };
+			return { true, nullptr, backend->InitializationError(),
+				DescribeNativeFailure(resources, input, output, diagnostic), diagnostic.SystemError() };
 		}
 		return { true, std::move(backend) };
 	}

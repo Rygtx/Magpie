@@ -39,6 +39,7 @@ public:
 	// Frontend: cancel new capture/presentation work before cursor teardown.
 	void BeginShutdown() noexcept;
 	const std::string& InitializationContext() const noexcept { return _backendInitContext; }
+	uint32_t InitializationSystemError() const noexcept { return _backendInitSystemError; }
 	const std::wstring& MotionConfigurationNotice() const noexcept { return _motionConfigurationNotice; }
 
 	bool Render(bool force = false, bool waitForGpu = false) noexcept;
@@ -393,6 +394,7 @@ private:
 	winrt::Windows::System::DispatcherQueue _backendThreadDispatcher{ nullptr };
 	ScalingError _backendInitError = ScalingError::NoError;
 	std::string _backendInitContext;
+	uint32_t _backendInitSystemError = 0;
 	std::vector<std::pair<std::string, MotionVectorRequest>> _motionConsumers;
 	std::wstring _motionConfigurationNotice;
 	std::vector<EffectDesc> _effectDescs;

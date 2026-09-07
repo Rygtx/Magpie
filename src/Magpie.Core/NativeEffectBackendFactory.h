@@ -12,6 +12,8 @@ struct NativeEffectBackendResult {
 	bool recognized = false;
 	std::unique_ptr<NativeEffectBackend> backend;
 	ScalingError error = ScalingError::NoError;
+	std::string diagnostic;
+	uint32_t systemError = 0;
 };
 
 NativeEffectBackendResult CreateNativeEffectBackend(

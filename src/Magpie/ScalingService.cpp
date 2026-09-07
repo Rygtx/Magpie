@@ -9,6 +9,7 @@
 #include "ScalingMode.h"
 #include "ScalingModesService.h"
 #include "ScalingService.h"
+#include "StrHelper.h"
 #include "ShortcutService.h"
 #include "ToastService.h"
 #include "TouchHelper.h"
@@ -184,8 +185,20 @@ void ScalingService::_CountDownTimer_Tick(winrt::DispatcherQueueTimer const&, wi
 	TimerTick.Invoke(timeLeft);
 }
 
-static void ShowError(HWND hWnd, ScalingError error) noexcept {
-	ErrorService::Get().Report(error, {}, hWnd);
+static IssueContext MakeIssueContext(HWND window, const Profile& profile) {
+	IssueContext result;
+	result.hasProfile = true;
+	result.profileName = profile.name;
+	result.profilePath = profile.pathRule;
+	result.profileClass = profile.classNameRule;
+	result.captureMethod = profile.captureMethod;
+	const auto& modes = AppSettings::Get().ScalingModes();
+	if (profile.scalingMode >= 0 && static_cast<size_t>(profile.scalingMode) < modes.size())
+		result.scalingModeName = modes[profile.scalingMode].name;
+	wchar_t title[512]{};
+	GetWindowTextW(window, title, static_cast<int>(std::size(title)));
+	result.windowTitle = title;
+	return result;
 }
 
 static bool IsPopupWindow(HWND hwndPopup, HWND hwndOwner) noexcept {
@@ -306,7 +319,20 @@ void ScalingService::_StartScale(HWND hWnd, const Profile& profile, bool windowe
 
 	const ScalingError error = _StartScaleImpl(hWnd, profile, windowedMode, force);
 	if (error != ScalingError::NoError) {
-		ShowError(hWnd, error);
+		std::string context;
+		const auto& modes = AppSettings::Get().ScalingModes();
+		if (profile.scalingMode >= 0 && static_cast<size_t>(profile.scalingMode) < modes.size()) {
+			const auto& effects = modes[profile.scalingMode].effects;
+			for (size_t i = 0; i < effects.size(); ++i) {
+				if ((error == ScalingError::ScalingModeUnknownEffect && !EffectsService::Get().GetEffect(effects[i].name)) ||
+					(error == ScalingError::ConflictingFrameGenerationEffects &&
+						ClassifyFrameGenerationEffect(effects[i].name) != FrameGenerationEffectKind::None)) {
+					if (!context.empty()) context += '\n';
+					context += fmt::format("#{} {}", i + 1, StrHelper::UTF16ToUTF8(effects[i].name));
+				}
+			}
+		}
+		ErrorService::Get().Report(error, std::move(context), hWnd, 0, MakeIssueContext(hWnd, profile));
 	}
 }
 
@@ -494,9 +520,12 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 		ToastService::Get().ShowMessageOnWindow({}, msg, hwndTarget);
 	};
 
-	options.showError = &ShowError;
-	options.reportErrorDetails = [](HWND target, ScalingError error, std::string_view context, uint32_t systemError) noexcept {
-		ErrorService::Get().Report(error, std::string(context), target, systemError);
+	const IssueContext issueContext = MakeIssueContext(hWnd, profile);
+	options.showError = [issueContext](HWND target, ScalingError error) noexcept {
+		ErrorService::Get().Report(error, {}, target, 0, issueContext);
+	};
+	options.reportErrorDetails = [issueContext](HWND target, ScalingError error, std::string_view context, uint32_t systemError) noexcept {
+		ErrorService::Get().Report(error, std::string(context), target, systemError, issueContext);
 	};
 
 	options.save = [](const ScalingOptions& options, HWND /*hwndScaling*/) noexcept {
@@ -579,6 +608,27 @@ void ScalingService::EffectParameterEdited(uint32_t modeIdx, uint32_t effectIdx,
 		effectIdx, static_cast<EffectOption>(modes[modeIdx].effects[effectIdx]), parameter, value);
 }
 
+void ScalingService::RetryConfigurationSave(std::function<void(bool)> completed) {
+	// Capture only failed revisions. A newer edit/conflict must keep its own result.
+	std::vector<std::pair<std::shared_ptr<EffectParametersSaveState>, uint64_t>> failed;
+	for (const auto& weak : _parameterSaveStates) {
+		if (auto state = weak.lock()) {
+			const auto result = state->result.load(std::memory_order_acquire);
+			if ((result & 7) == static_cast<uint64_t>(EffectParametersSaveError::WriteFailed))
+				failed.emplace_back(std::move(state), result);
+		}
+	}
+	AppSettings::Get().SaveAsync([failed = std::move(failed), completed = std::move(completed)](bool succeeded) {
+		if (succeeded) {
+			for (const auto& [state, result] : failed) {
+				auto expected = result;
+				state->result.compare_exchange_strong(expected, result & ~uint64_t(7), std::memory_order_acq_rel);
+			}
+		}
+		if (completed) completed(succeeded);
+	});
+}
+
 void ScalingService::_FlushEffectParametersSaves(bool synchronous) {
 	if (_effectParametersSaveTimer) _effectParametersSaveTimer.Stop();
 	if (_pendingEffectParametersSaves.empty()) return;
@@ -600,6 +650,9 @@ void ScalingService::_HandleEffectParametersRequest(
 	ScalingOptions&& sessionOptions,
 	EffectParametersRequest&& request
 ) {
+	std::erase_if(_parameterSaveStates, [](const auto& state) { return state.expired(); });
+	if (std::ranges::none_of(_parameterSaveStates, [&](const auto& state) { return state.lock() == request.saveState; }))
+		_parameterSaveStates.push_back(request.saveState);
 	auto fail = [&](EffectParametersSaveError error) noexcept {
 		request.saveState->Complete(request.revision, error);
 		if (error == EffectParametersSaveError::Conflict) {

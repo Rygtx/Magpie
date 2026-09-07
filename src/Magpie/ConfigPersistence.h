@@ -77,6 +77,13 @@ inline bool WriteAtomic(const std::filesystem::path& path, std::string_view json
 	if (!IsValid(json)) { SetLastError(ERROR_INVALID_DATA); return false; }
 	std::lock_guard lock(state.mutex);
 	if (revision < state.savedRevision) return true;
+	// Reject a read-only destination before copying its attributes into the backup.
+	// Fixing that destination must be sufficient for the user to retry saving.
+	const DWORD attributes = GetFileAttributesW(path.c_str());
+	if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY)) {
+		SetLastError(ERROR_ACCESS_DENIED);
+		return false;
+	}
 	std::error_code ec;
 	std::filesystem::create_directories(path.parent_path(), ec);
 	if (ec) { SetLastError(static_cast<DWORD>(ec.value())); return false; }

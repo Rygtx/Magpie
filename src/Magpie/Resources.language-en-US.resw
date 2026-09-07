@@ -812,13 +812,13 @@
     <value>The effect group could not initialize. Disable it, reopen the target window and retry. If it still fails, restart Magpie.</value>
   </data>
   <data name="Message_CaptureFailed" xml:space="preserve">
-    <value>This window could not be captured. Make sure it is not minimized, then select Default or Graphics Capture in the current profile and retry.</value>
+    <value>Restore the source window and enable the effect group again. If capture still fails, open View details to check the capture step and error code.</value>
   </data>
   <data name="Message_CreateFenceFailed" xml:space="preserve">
-    <value>The selected GPU or driver lacks synchronization support required for effect processing. Select another GPU under Performance or update the graphics driver.</value>
+    <value>The selected graphics card could not create synchronization resources. Open the profile below, go to Performance → Graphics card and select another available card. If it still fails, update its driver and provide details and logs.</value>
   </data>
   <data name="Message_NvidiaVsrPathUnsupported" xml:space="preserve">
-    <value>NVIDIA VSR initialization failed (error -2). Fully extract Magpie to a path containing only English letters and numbers. No parent directory may contain Chinese characters or special characters, then run Magpie again.</value>
+    <value>NVIDIA VSR did not start (error -2). Exit Magpie, extract the complete package to a folder such as C:\Magpie\, then run Magpie.exe from that folder and retry. Path compatibility is a possible cause. If it still fails, copy the details and include the logs.</value>
   </data>
   <data name="Message_ScalingFailed" xml:space="preserve">
     <value>Could not enable effect group</value>
@@ -941,7 +941,7 @@
     <value>Profiler Window</value>
   </data>
   <data name="Message_Windowed3DGameMode" xml:space="preserve">
-    <value>Windowed mode is unavailable while 3D game mode is enabled. Disable 3D game mode, or use fullscreen mode.</value>
+    <value>For windowed mode, open the profile below and turn off 3D game mode. To keep this setting, use the fullscreen shortcut shown on Home.</value>
   </data>
   <data name="Profile_General_3DGameMode.Description" xml:space="preserve">
     <value>Enables optimizations for 3D games, but is incompatible with the toolbar and windowed mode</value>
@@ -1022,10 +1022,10 @@
     <value>Open logs location</value>
   </data>
   <data name="Message_WindowedDesktopDuplication" xml:space="preserve">
-    <value>Desktop Duplication does not support windowed mode. Select Default or Graphics Capture, or use fullscreen mode.</value>
+    <value>For windowed mode, open the profile below and select Graphics Capture as the capture method. To keep Desktop Duplication, use the fullscreen shortcut shown on Home.</value>
   </data>
   <data name="Profile_General_DesktopDuplicationWarning.Title" xml:space="preserve">
-    <value>Desktop Duplication does not support windowed mode. Select Default or Graphics Capture, or use fullscreen mode.</value>
+    <value>For windowed mode, select Graphics Capture above. Use fullscreen mode to keep Desktop Duplication.</value>
   </data>
   <data name="Settings_Launch_RunAtStartup.Description" xml:space="preserve">
     <value>The main window will not appear if "Display the app on the system tray" is enabled</value>
@@ -1104,23 +1104,23 @@
   <data name="Overlay_EffectParameters_ApplyAndRestart" xml:space="preserve"><value>Apply and restart effect group</value></data>
   <data name="Overlay_EffectParameters_NoParameters" xml:space="preserve"><value>The current effect chain has no exposed parameters.</value></data>
   <data name="Overlay_EffectParameters_Saved" xml:space="preserve"><value>Effect parameters saved.</value></data>
-  <data name="Overlay_EffectParameters_LiveApplyFailed" xml:space="preserve"><value>A live parameter could not be applied. The last working value is still active.</value></data>
-  <data name="Overlay_EffectParameters_SessionExpired" xml:space="preserve"><value>The effect session changed. The parameters were not saved.</value></data>
-  <data name="Overlay_EffectParameters_SourceUnavailable" xml:space="preserve"><value>The source window is no longer available.</value></data>
-  <data name="Overlay_EffectParameters_ScalingModeConflict" xml:space="preserve"><value>The effect group structure changed during this session. Nothing was overwritten.</value></data>
-  <data name="Overlay_EffectParameters_SaveFailed" xml:space="preserve"><value>Automatic save failed. Edit a parameter to retry.</value></data>
-  <data name="Overlay_EffectParameters_Invalid" xml:space="preserve"><value>This parameter is unavailable because its metadata or runtime binding is invalid.</value></data>
+  <data name="Overlay_EffectParameters_LiveApplyFailed" xml:space="preserve"><value>The image still uses the last working value. Restore that value, or click Apply and restart effect group to try the new value.</value></data>
+  <data name="Overlay_EffectParameters_SessionExpired" xml:space="preserve"><value>The active run changed and this request was not saved. Reopen the effect parameters panel, check the latest values, then adjust them.</value></data>
+  <data name="Overlay_EffectParameters_SourceUnavailable" xml:space="preserve"><value>The source window is unavailable and re-enabling did not complete. Open the source program, bring it to the foreground, then enable the group and check the parameters.</value></data>
+  <data name="Overlay_EffectParameters_ScalingModeConflict" xml:space="preserve"><value>The group or parameters changed elsewhere. This panel’s changes were not saved. Disable and re-enable the group to load the latest settings before adjusting again.</value></data>
+  <data name="Overlay_EffectParameters_SaveFailed" xml:space="preserve"><value>Parameters are not saved. Open Home → Most recent issue → View details, resolve the cause, then click Retry save.</value></data>
+  <data name="Overlay_EffectParameters_Invalid" xml:space="preserve"><value>This parameter cannot be adjusted yet. Re-enable the group and reopen the panel. If it remains unavailable, restore this effect from the complete package and provide its name and logs.</value></data>
   <data name="Overlay_EffectParameters_Reason_Inline" xml:space="preserve"><value>This parameter is compiled into the shader.</value></data>
   <data name="Overlay_EffectParameters_Reason_Native" xml:space="preserve"><value>This native effect only reads the parameter during startup.</value></data>
   <data name="Overlay_EffectParameters_Reason_Resources" xml:space="preserve"><value>This parameter changes effect resources or processing size.</value></data>
   <data name="Overlay_EffectParameters_Reason_Guidance" xml:space="preserve"><value>This parameter changes the frame-guidance provider.</value></data>
   <data name="Overlay_EffectParameters_Reason_FrameGeneration" xml:space="preserve"><value>This parameter changes the frame-generation feature or presentation ring.</value></data>
-  <data name="Message_OpticalFlowProviderUnavailable" xml:space="preserve"><value>The selected optical-flow provider is not available in this build. Select another method or None.</value></data>
-  <data name="Message_NvidiaOpticalFlowUnsupported" xml:space="preserve"><value>NVIDIA Optical Flow cannot be initialized on the selected GPU or driver. Select AMD OF or None.</value></data>
-  <data name="Message_NvidiaOpticalFlowQualityUnsupported" xml:space="preserve"><value>The selected NVIDIA Optical Flow quality requires an output grid that this GPU or driver does not support. Select a lower quality, AMD OF, or None.</value></data>
-  <data name="Message_AmdOpticalFlowUnsupported" xml:space="preserve"><value>The selected GPU does not provide the D3D12, shader-model, wave-operation, or format capabilities required by AMD FidelityFX Optical Flow. Select another available optical-flow method or None.</value></data>
-  <data name="Message_OpticalFlowInteropFailed" xml:space="preserve"><value>The selected optical-flow method could not create its D3D11/D3D12 shared resources. Select another method or None.</value></data>
-  <data name="Message_ConflictingFrameGenerationEffects" xml:space="preserve"><value>A effect group can contain only one frame-generation effect. Remove either DLSSFG, XeSSFG x2, or XeSS Multi-Frame Generation, then retry.</value></data>
+  <data name="Message_OpticalFlowProviderUnavailable" xml:space="preserve"><value>Open the effects listed in details and select another optical flow method offered by the effect, or disable optical flow, then enable the group again. This build does not provide the requested method.</value></data>
+  <data name="Message_NvidiaOpticalFlowUnsupported" xml:space="preserve"><value>NVIDIA optical flow did not start. Check the affected effects in details, open that group and choose the option that disables optical flow, then enable the group again. If you need optical flow, try AMD optical flow when offered by the effect.</value></data>
+  <data name="Message_NvidiaOpticalFlowQualityUnsupported" xml:space="preserve"><value>Open the effects listed in details and lower their NVIDIA optical flow quality, then enable the group again. You can also disable optical flow first. The selected quality did not pass the GPU or driver capability check.</value></data>
+  <data name="Message_AmdOpticalFlowUnsupported" xml:space="preserve"><value>AMD optical flow did not start. Open the effects listed in details, disable optical flow and enable the group again. If you need optical flow, try another method offered by the effect. See details and logs for the capability check results.</value></data>
+  <data name="Message_OpticalFlowInteropFailed" xml:space="preserve"><value>Optical flow shared resources could not be created. Open the effects listed in details, disable optical flow and enable the group again. If you need optical flow, try another method offered by the effect.</value></data>
+  <data name="Message_ConflictingFrameGenerationEffects" xml:space="preserve"><value>The effect group below contains multiple frame generation effects. Check the conflicting entries in details, open this group and keep the one you want to use. Remove the other frame generation entries, then enable the group again.</value></data>
   <data name="Message_XeSSMfgRequiresIntel" xml:space="preserve"><value>XeSS Multi-Frame Generation x3/x4 requires a supported Intel Arc GPU. Use XeSS Frame Generation x2 on this GPU.</value></data>
   <data name="Message_XeSSMfgUnsupported" xml:space="preserve"><value>The selected Intel GPU or driver cannot initialize XeSS Multi-Frame Generation. Update the driver or use XeSS Frame Generation x2.</value></data>
   <data name="Message_XeSSMfgMultiplierUnsupported" xml:space="preserve"><value>The selected XeSS Multi-Frame Generation multiplier is not supported by this GPU or driver. Select a lower MFG multiplier, or use XeSS Frame Generation x2.</value></data>
@@ -1320,7 +1320,7 @@
   <data name="ErrorDetails_Time" xml:space="preserve"><value>Time</value></data>
   <data name="ErrorDetails_Code" xml:space="preserve"><value>Issue code</value></data>
   <data name="ErrorDetails_Version" xml:space="preserve"><value>Version</value></data>
-  <data name="ErrorDetails_Context" xml:space="preserve"><value>Related effect or path</value></data>
+  <data name="ErrorDetails_Context" xml:space="preserve"><value>Failed step, related items or path</value></data>
   <data name="ErrorDetails_SystemCode" xml:space="preserve"><value>System code</value></data>
   <data name="ErrorDetails_Count" xml:space="preserve"><value>Consecutive occurrences</value></data>
   <data name="ErrorDetails_Logs" xml:space="preserve"><value>Logs folder</value></data>
@@ -1328,25 +1328,25 @@
   <data name="ErrorAdvice_FileBusy" xml:space="preserve"><value>Another program is using the file. Close its editor or synchronization operation, then retry.</value></data>
   <data name="ErrorAdvice_DiskFull" xml:space="preserve"><value>The destination drive is full. Free some space or choose a folder on another drive, then retry.</value></data>
   <data name="ErrorAdvice_PathMissing" xml:space="preserve"><value>The file or folder no longer exists. Reconnect the drive or select an existing location, then retry.</value></data>
-  <data name="Message_ScalingModeNotSelected" xml:space="preserve"><value>No valid effect group is selected for this profile. Choose an existing mode in Profiles and enable the effect group again.</value></data>
-  <data name="Message_ScalingModeEmpty" xml:space="preserve"><value>The selected effect group has no effects. Add an effect in Effect groups, or select another effect group.</value></data>
-  <data name="Message_ScalingModeUnknownEffect" xml:space="preserve"><value>The effect group refers to an unavailable effect. Restore the matching effects files from the complete release package, or replace that effect.</value></data>
+  <data name="Message_ScalingModeNotSelected" xml:space="preserve"><value>Open the profile below and select an available effect group, then enable it. This profile currently has no valid effect group selected.</value></data>
+  <data name="Message_ScalingModeEmpty" xml:space="preserve"><value>The effect group below is empty. Open Effect groups, find this group and add an effect, or select another effect group in the profile.</value></data>
+  <data name="Message_ScalingModeUnknownEffect" xml:space="preserve"><value>Check the unavailable effect names and positions in View details, then open the effect group below and replace those entries. To keep them, restore the corresponding effects files from the complete package for this version and restart Magpie.</value></data>
   <data name="Message_GraphicsDeviceInitFailed" xml:space="preserve"><value>The graphics device could not be initialized. Check the selected GPU, close other GPU-heavy apps, and try again. If it persists, update the graphics driver and restart Windows.</value></data>
   <data name="Message_PresentationInitFailed" xml:space="preserve"><value>The presentation output could not be created. Try switching between windowed and fullscreen mode; if using frame generation, try an effect group without it.</value></data>
   <data name="Message_EffectCompileFailed" xml:space="preserve"><value>An effect failed to compile. See details for its name; restore that effect from the matching release package, or remove it from the effect group and retry. Compiler output is in the log.</value></data>
   <data name="Message_EffectResourceFailed" xml:space="preserve"><value>An effect could not create its textures or rendering resources. Try a smaller output size or fewer effects, then check the effect files listed in details.</value></data>
-  <data name="Message_NativeEffectInitFailed" xml:space="preserve"><value>An AI effect could not initialize. Check that the effect supports your GPU and that the full release package was extracted; update the graphics driver or try another effect.</value></data>
-  <data name="Message_FrameGenerationInitFailed" xml:space="preserve"><value>Frame generation could not initialize. Try a lower multiplier or disable optical flow; confirm GPU support and the graphics driver, or use a mode without frame generation.</value></data>
+  <data name="Message_NativeEffectInitFailed" xml:space="preserve"><value>The effect below could not start. Open details to inspect the failed initialization step and any reported file or error code. You can also open the effect group and replace this effect to continue. If the cause is unclear, copy the details and include the logs.</value></data>
+  <data name="Message_FrameGenerationInitFailed" xml:space="preserve"><value>Frame generation did not start. Check the failed step in details. In the effect group below, disable its optical flow, or lower the multiplier if adjustable, then retry. You can also use a group without frame generation.</value></data>
   <data name="Message_OverlayInitFailed" xml:space="preserve"><value>The toolbar or cursor overlay could not initialize. Extract the full release package again and enable the effect group again. If it persists, share the details and log.</value></data>
   <data name="Message_SharedTextureOpenFailed" xml:space="preserve"><value>The graphics device could not share the frame output. Try the same GPU for capture and output, or disable frame generation; update the driver if it persists.</value></data>
-  <data name="Message_DlssNrUnavailable" xml:space="preserve"><value>DLSSNR could not initialize; its image is passing through without NR processing. Its runtime controls are unavailable. Check GPU support and the full release files, then restart the effect group.</value></data>
+  <data name="Message_DlssNrUnavailable" xml:space="preserve"><value>DLSSNR is not processing the image; the image continues to display and other effects keep their order. Open details to check the DLSSNR initialization failure, then enable the group again after resolving it. DLSSNR parameters remain unavailable until it starts successfully.</value></data>
   <data name="Message_FrameGenerationDisabled" xml:space="preserve"><value>Frame generation was disabled for this session after repeated failures. Original frames will continue. Try a lower multiplier or different optical flow settings, then restart the effect group.</value></data>
-  <data name="Message_ConfigurationWriteFailed" xml:space="preserve"><value>Recent changes could not be saved to the configuration file. Check the path, write permission and free disk space in details; keep Magpie open, fix the cause and change a setting to retry.</value></data>
-  <data name="Message_EffectParameterConflict" xml:space="preserve"><value>The same parameter was changed elsewhere. This panel&#x27;s edit was not saved over it. Close and restart the effect group to load the latest saved values, then make the change again.</value></data>
+  <data name="Message_ConfigurationWriteFailed" xml:space="preserve"><value>Recent changes have not been saved to disk. Keep Magpie open and check the configuration path and cause in View details. Resolve the problem, then click Retry save. Exit after saving succeeds.</value></data>
+  <data name="Message_EffectParameterConflict" xml:space="preserve"><value>The group or parameters changed elsewhere. This panel’s changes did not overwrite them. Disable and re-enable the group to load the latest settings before adjusting again.</value></data>
   <data name="Message_EffectParameterLiveFailed" xml:space="preserve"><value>The effect rejected a live parameter update and kept its previous running values. Saved settings may differ; restart the effect group to apply them, or restore the last working values.</value></data>
   <data name="Message_ScreenshotDirectoryFailed" xml:space="preserve"><value>The screenshot folder could not be created. Check its path and permissions in details, or choose a writable folder under Home → Screenshot save directory and retry.</value></data>
   <data name="Message_ScreenshotWriteFailed" xml:space="preserve"><value>The screenshot file could not be written. Check free disk space and whether the file is read-only or in use; try another screenshot folder.</value></data>
-  <data name="Message_ScreenshotEncodeFailed" xml:space="preserve"><value>The image could not be encoded. Try capturing the final effect output as PNG. If it still fails, share the details and log with the effect name.</value></data>
+  <data name="Message_ScreenshotEncodeFailed" xml:space="preserve"><value>The image could not be encoded as a screenshot. Re-enable the effect group and click Take Screenshot on the toolbar again. If it still fails, copy the details and include the logs.</value></data>
   <data name="Message_ScreenshotReadbackFailed" xml:space="preserve"><value>The frame could not be read from the GPU. Restart the effect group and try again; if it persists, try a smaller output size or fewer effects and share the details and log.</value></data>
   <data name="Overlay_EffectParameters_Unavailable" xml:space="preserve"><value>Unavailable</value></data>
   <data name="Overlay_EffectParameters_BackendUnavailable" xml:space="preserve"><value>DLSSNR is passing through because its backend did not initialize. Check Home → Most recent issue, then restart the effect group.</value></data>
@@ -1362,7 +1362,7 @@
   <data name="Message_ImportReadFailed" xml:space="preserve"><value>The selected file could not be read. Check that the path is accessible and the file has finished downloading or syncing, then select it again.</value></data>
   <data name="Message_ImportEmpty" xml:space="preserve"><value>The selected file is empty or contains no effect groups. Export an effect group from Magpie or obtain a complete effect group file, then retry.</value></data>
   <data name="Message_ImportInvalidJson" xml:space="preserve"><value>The file is not valid JSON. Download or export it again; details include the byte offset and parsing reason to help locate damaged content.</value></data>
-  <data name="Message_ImportWrongFileType" xml:space="preserve"><value>This JSON does not contain a scalingModes array. Choose an effect-groups file exported by Magpie; renaming another file to .json does not convert it.</value></data>
+  <data name="Message_ImportWrongFileType" xml:space="preserve"><value>This is not a Magpie effect group file. Use Export on the source Magpie’s Effect groups page, then import the exported JSON file here. If someone shared the file, ask them for the Magpie export.</value></data>
   <data name="Message_ImportIncompatible" xml:space="preserve"><value>An effect group entry has an incompatible structure. Export it again from a compatible Magpie version. No effect groups from this file were imported.</value></data>
   <data name="Message_ExportWriteFailed" xml:space="preserve"><value>The effect-groups file could not be completely written. Check the path, free space and write permission; export again to a writable folder.</value></data>
   <data name="Message_FileDialogFailed" xml:space="preserve"><value>The Windows file picker failed to open or return a location. Restart Magpie and try again; if it persists, share the details and log.</value></data>
@@ -1478,4 +1478,35 @@
   <data name="Message_NgxRestartRequired" xml:space="preserve">
     <value>NVIDIA effects encountered an error. Fully exit Magpie from the system tray and start it again before enabling DLSSNR or DLSS Frame Generation.</value>
   </data>
+  <data name="Message_CaptureFailed_TryGraphicsCapture" xml:space="preserve"><value>Restore the source window. Open the profile below, select Graphics Capture as the capture method, then enable the effect group again. If it still fails, copy the details and include the logs.</value></data>
+  <data name="Message_CaptureFailed_AlreadyGraphicsCapture" xml:space="preserve"><value>Graphics Capture is already selected. Restore the source window and enable the effect group again. If it still fails, check the failed step and error code in details, then copy the details and include the logs.</value></data>
+  <data name="Message_CreateFenceFailed_SingleAdapter" xml:space="preserve"><value>The graphics card could not create synchronization resources. Update its driver, restart Magpie and retry. If it still fails, copy the details and include the logs.</value></data>
+  <data name="Message_ScreenshotIntermediateEncodeFailed" xml:space="preserve"><value>This intermediate result could not be saved. Click Take Screenshot on the toolbar to try saving the displayed image, which is saved as PNG automatically. If it still fails, copy the details and include the logs.</value></data>
+  <data name="Message_ConfigurationRecoveredBackup" xml:space="preserve"><value>The configuration was damaged and a backup has been loaded. Check your effect groups and profiles. The damaged original was preserved; its path is in details. Click Open configuration folder to inspect it.</value></data>
+  <data name="Message_ConfigurationRecoveredPartial" xml:space="preserve"><value>The configuration was damaged. Recoverable entries were loaded and remaining settings use defaults. Check your effect groups and shortcuts. The damaged original was preserved; its path is in details. Click Open configuration folder to inspect it.</value></data>
+  <data name="ErrorAdvice_ReadAccessDenied" xml:space="preserve"><value>Windows denied reading this file. In File Explorer, check that your account has read access and that the file is downloaded locally, then select it again.</value></data>
+  <data name="ErrorAdvice_OperationAccessDenied" xml:space="preserve"><value>Windows denied access for this operation. Follow the steps above and retry. If it still fails, provide the operation and error code below.</value></data>
+  <data name="ErrorDetails_Profile" xml:space="preserve"><value>Profile</value></data>
+  <data name="ErrorDetails_Group" xml:space="preserve"><value>Effect group</value></data>
+  <data name="ErrorDetails_Window" xml:space="preserve"><value>Source window</value></data>
+  <data name="ErrorDetails_Capture" xml:space="preserve"><value>Capture method</value></data>
+  <data name="ErrorDetails_RetrySave" xml:space="preserve"><value>Retry save</value></data>
+  <data name="ErrorDetails_OpenProfile" xml:space="preserve"><value>Open this profile</value></data>
+  <data name="ErrorDetails_OpenEffects" xml:space="preserve"><value>Open effect groups</value></data>
+  <data name="ErrorDetails_OpenConfigDirectory" xml:space="preserve"><value>Open configuration folder</value></data>
+  <data name="ErrorDetails_OpenConfigFailed" xml:space="preserve"><value>The folder could not be opened. Copy the configuration path into File Explorer to inspect its location.</value></data>
+  <data name="ErrorDetails_ProfileChanged" xml:space="preserve"><value>This profile was removed, renamed or had its matching rules changed. Close details and select the profile you want to edit from the sidebar.</value></data>
+  <data name="ErrorDetails_Saving" xml:space="preserve"><value>Saving current changes…</value></data>
+  <data name="ErrorDetails_SaveSucceeded" xml:space="preserve"><value>These changes have been saved to disk.</value></data>
+  <data name="ErrorDetails_SaveStillFailed" xml:space="preserve"><value>Saving still failed. Close and reopen details to inspect the latest cause, resolve it, then click Retry save again.</value></data>
+  <data name="ErrorDetails_PreviousRun" xml:space="preserve"><value>Previous run: {}</value></data>
+  <data name="ErrorDetails_PreviousRunHint" xml:space="preserve"><value>This diagnostic was retained from a previous run. It does not restore that run’s unsaved changes. Check the current state before following its steps. Logs remain in the listed folder.</value></data>
+  <data name="ErrorDetails_SaveFailedToast" xml:space="preserve"><value>Changes are not saved. Keep Magpie open and use Home to retry saving.</value></data>
+  <data name="ErrorDetails_RecoveryToast" xml:space="preserve"><value>Settings were recovered from a damaged configuration. Open Home to review the recovery.</value></data>
+  <data name="Home_RecentIssue_Reopen.Content" xml:space="preserve"><value>View most recent issue</value></data>
+  <data name="AppSettings_ReadFailedGuidance" xml:space="preserve"><value>Open the location below in File Explorer. Check that the drive is connected, the file is downloaded locally and your account can read it, then restart Magpie. The original configuration was not changed.</value></data>
+  <data name="AppSettings_ReadAccessDenied" xml:space="preserve"><value>Open the location below in File Explorer and check that your account can read this file, then restart Magpie. The original configuration was not changed.</value></data>
+  <data name="AppSettings_CopyFailed" xml:space="preserve"><value>Copying failed. Record the path and error code below, resolve the problem, then restart Magpie.</value></data>
+  <data name="AppSettings_ConfigLocationFailed" xml:space="preserve"><value>The configuration location could not be accessed. Check that its drive is connected and your account has access and write permission, then restart Magpie. Related location:</value></data>
+  <data name="AppSettings_BackupFailed" xml:space="preserve"><value>The configuration is damaged, but its original could not be preserved, so recovery has not started. Check write permission and free space at the backup path below, then restart Magpie. The original file is unchanged. Backup destination:</value></data>
 </root>

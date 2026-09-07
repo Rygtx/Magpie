@@ -379,7 +379,8 @@ void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 	if (error != ScalingError::NoError) {
 		if (_options.reportErrorDetails) {
 			_options.reportErrorDetails(hwndSrc, error,
-				_renderer ? _renderer->InitializationContext() : std::string_view{}, 0);
+				_renderer ? _renderer->InitializationContext() : std::string_view{},
+				_renderer ? _renderer->InitializationSystemError() : 0);
 		} else {
 			_options.showError(hwndSrc, error);
 		}

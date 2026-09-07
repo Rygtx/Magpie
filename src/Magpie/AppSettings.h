@@ -100,6 +100,7 @@ public:
 	virtual ~AppSettings();
 
 	bool Initialize() noexcept;
+	void PublishStartupNotice() noexcept;
 
 	bool Save() noexcept;
 
@@ -400,6 +401,8 @@ public:
 	Event<bool> IsAutoCheckForUpdatesChanged;
 
 private:
+	std::filesystem::path _recoveredConfigPath;
+	bool _recoveredFromBackup = false;
 	AppSettings() = default;
 
 	AppSettings(const AppSettings&) = delete;

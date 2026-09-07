@@ -269,8 +269,11 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	}
 	_isXeSSFrameGenerationActive = xessVariant.has_value();
 
+	Logger::DiagnosticCapture frontendDiagnostic;
 	if (!_frontendResources.Initialize(true)) {
 		Logger::Get().Error("初始化前端资源失败");
+		_backendInitContext = "Create output device\n" + frontendDiagnostic.Details();
+		_backendInitSystemError = frontendDiagnostic.SystemError();
 		return ScalingError::GraphicsDeviceInitFailed;
 	}
 
@@ -303,6 +306,8 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 			_xessMotionRequest.method != OpticalFlowMethod::None);
 		if (!xessPresenter->Initialize(hwndAttach, _frontendResources)) {
 			Logger::Get().Error("初始化 XeSSFGPresenter 失败");
+			_backendInitContext = "XeSS frame generation\n" + frontendDiagnostic.Details();
+			_backendInitSystemError = frontendDiagnostic.SystemError();
 			return xessPresenter->InitializationError();
 		}
 		_presenter = std::move(xessPresenter);
@@ -1413,9 +1418,12 @@ bool Renderer::_InitFrameSource() noexcept {
 			"Frame Generation: exact duplicate-frame filtering forced for captured input");
 	}
 
+	Logger::DiagnosticCapture captureDiagnostic;
 	if (!_frameSource->Initialize(_backendResources, _backendDescriptorStore)) {
 		Logger::Get().Error("初始化 FrameSource 失败");
 		_backendInitError = ScalingError::CaptureFailed;
+		_backendInitContext = std::string(_frameSource->Name()) + " / Initialize\n" + captureDiagnostic.Details();
+		_backendInitSystemError = captureDiagnostic.SystemError();
 		return false;
 	}
 
@@ -1472,6 +1480,7 @@ static std::optional<EffectDesc> CompileEffect(
 ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 	_backendInitError = ScalingError::ScalingFailedGeneral;
 	_backendInitContext.clear();
+	_backendInitSystemError = 0;
 	const ScalingOptions& options = ScalingWindow::Get().Options();
 	const bool noFP16 = !_backendResources.IsFP16Supported() || options.IsFP16Disabled();
 
@@ -1541,13 +1550,16 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 			_backendInitError = nativeBackend.error == ScalingError::NoError
 				? ScalingError::NativeEffectInitFailed : nativeBackend.error;
 			_backendInitContext = effects[i].name;
+			if (!nativeBackend.diagnostic.empty()) _backendInitContext += "\n" + nativeBackend.diagnostic;
+			_backendInitSystemError = nativeBackend.systemError;
 			return nullptr;
 		}
 		_nativeEffectBackends[i] = std::move(nativeBackend.backend);
 		if (effects[i].name == "DLSSNR\\DLSSNR_AI_Filter" && !_nativeEffectBackends[i] &&
 			options.reportErrorDetails) {
 			options.reportErrorDetails(ScalingWindow::Get().SrcTracker().Handle(),
-				ScalingError::DlssNrUnavailable, effects[i].name, 0);
+				ScalingError::DlssNrUnavailable, effects[i].name + "\n" + nativeBackend.diagnostic,
+				nativeBackend.systemError);
 		}
 
 		if (IsDLSSFrameGenerationEffect(effects[i].name)) {
@@ -2028,12 +2040,15 @@ bool Renderer::_InitializeDLSSFrameGenerator(
 	D3D11_TEXTURE2D_DESC sourceDesc{};
 	_frameSource->GetOutput()->GetDesc(&sourceDesc);
 	auto frameGenerator = std::make_unique<DLSSFrameGenerator>();
+	Logger::DiagnosticCapture diagnostic;
 	if (!frameGenerator->Initialize(
 		_backendResources, _ngxD3D12Core, input,
 		{ sourceDesc.Width, sourceDesc.Height }, settings)) {
 		_backendInitError = NgxRuntimeGuard::IsFaulted() ?
 			ScalingError::NgxRestartRequired : ScalingError::FrameGenerationInitFailed;
 		_backendInitContext = "DLSSFG\\DLSS_FrameGeneration";
+		_backendInitContext += "\n" + diagnostic.Details();
+		_backendInitSystemError = diagnostic.SystemError();
 		return false;
 	}
 	_captureCadence.Reset();
@@ -2567,8 +2582,11 @@ HANDLE Renderer::_InitBackend() noexcept {
 	_runtimeEffectOptions = ScalingWindow::Get().Options().effects;
 	ScalingWindow::Get().Options().parameterSession->Applied(_runtimeEffectOptions);
 
+	Logger::DiagnosticCapture backendDiagnostic;
 	if (!_backendResources.Initialize(false)) {
 		_backendInitError = ScalingError::GraphicsDeviceInitFailed;
+		_backendInitContext = "Create processing device\n" + backendDiagnostic.Details();
+		_backendInitSystemError = backendDiagnostic.SystemError();
 		return NULL;
 	}
 
@@ -2653,6 +2671,13 @@ HANDLE Renderer::_InitBackend() noexcept {
 			} else {
 				_backendInitError = ScalingError::OpticalFlowProviderUnavailable;
 			}
+			_backendInitContext = "Optical flow initialization";
+			_backendInitContext += "\n" + backendDiagnostic.Details();
+			_backendInitSystemError = backendDiagnostic.SystemError();
+			for (const auto& [name, request] : _motionConsumers) {
+				if (request.method == method) _backendInitContext += fmt::format(
+					"\n{} / method={} / quality={}", name, static_cast<int>(request.method), request.quality);
+			}
 			return NULL;
 		}
 	}
@@ -2665,6 +2690,8 @@ HANDLE Renderer::_InitBackend() noexcept {
 		// 和 ID3D12Device::CreateFence 等价，但支持 DX12 的显卡也有失败的可能，如 GH#1013
 		Logger::Get().ComError("CreateFence 失败", hr);
 		_backendInitError = ScalingError::CreateFenceFailed;
+		_backendInitContext = "ID3D11Device5::CreateFence";
+		_backendInitSystemError = static_cast<uint32_t>(hr);
 		return NULL;
 	}
 
@@ -2683,8 +2710,8 @@ HANDLE Renderer::_InitBackend() noexcept {
 	if (!_frameSource->Start()) {
 		Logger::Get().Error("启动捕获失败");
 		_backendInitError = ScalingError::CaptureFailed;
-		_backendInitContext = fmt::format("{} (0x{:08X})",
-			_frameSource->CaptureErrorContext(), uint32_t(_frameSource->CaptureErrorCode()));
+		_backendInitContext = std::string(_frameSource->Name()) + " / " + _frameSource->CaptureErrorContext();
+		_backendInitSystemError = static_cast<uint32_t>(_frameSource->CaptureErrorCode());
 		return NULL;
 	}
 
@@ -3265,7 +3292,8 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 	if (!TextureHelper::SaveTexture(fullPath.c_str(), desc.Width, desc.Height,
 		format, pixelData, mapped.RowPitch, &saveError)) {
 		if (report) report(target, saveError.fileWriteFailed ? ScalingError::ScreenshotWriteFailed
-			: ScalingError::ScreenshotEncodeFailed,
+			: (std::wstring_view(imgFormat) == L"dds" ? ScalingError::ScreenshotIntermediateEncodeFailed
+				: ScalingError::ScreenshotEncodeFailed),
 			effectName + " / " + StrHelper::UTF16ToUTF8(fullPath.native()),
 			static_cast<uint32_t>(saveError.code));
 		co_return false;
