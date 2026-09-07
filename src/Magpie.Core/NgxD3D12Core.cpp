@@ -193,6 +193,7 @@ bool NgxD3D12Core::DestroyParameters(
 
 void NgxD3D12Core::_Shutdown() noexcept {
 	if (NgxRuntimeGuard::IsFaulted()) {
+		// Keep the device alive for SDK state whose teardown was interrupted.
 		(void)_device.detach();
 		_initialized = false;
 		return;

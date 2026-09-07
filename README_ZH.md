@@ -27,6 +27,8 @@ Magpie Experimental 是面向 Windows 的窗口画面处理工具，也是 [Blin
 
 工具栏中的参数面板支持边看画面边调节，修改自动保存。控件会标明参数是实时生效，还是需要重新启用效果组；双击滑条可恢复效果器自身的默认值。参数支持分组、下拉选项和中文翻译。
 
+同一面板在所有效果器之前提供 Front Edge Sync 开关和目标帧率滑条（15–360 FPS，步进 1），方便集中调节帧节奏与画面效果。修改的生效方式以各控件的 Live（实时）或 Restart（重新启用）标记为准。参数浮窗会记住位置和大小，并在捕获区域变化时自动调整到可见范围。
+
 ### 对比、性能监测与帧同步
 
 工具栏提供原图／处理后对比、各效果器耗时与帧率监测、截屏和参数调节，并支持自定义快捷键。启用帧生成时，可以分别查看输出帧率和真实帧率，帮助判断效果与性能开销。
@@ -69,6 +71,7 @@ Front Edge Sync 用于控制 Magpie 的帧提交节奏，启用 FG 时控制补�
 
 - [HexBen123](https://github.com/HexBen123)：早期深度估算性能优化与 TensorRT 集成指导，以及 [DLSSNR 参数本地化提案](https://github.com/SAOG0721/Magpie/pull/16)。
 - [Kristijan1001](https://github.com/Kristijan1001)：[缩放期间实时编辑效果参数的参考实现](https://github.com/SAOG0721/Magpie/pull/4)，为本项目参数面板的设计与实现提供了参考。
+- [LCPD15](https://github.com/LCPD15)：[窗口模式 1.0× 倍率修复](https://github.com/SAOG0721/Magpie/pull/3)，允许同分辨率效果按原尺寸显示，避免输出被额外放大。
 
 欢迎通过 Issues 和 Pull Requests 参与；代码贡献记录见 [Contributors](https://github.com/SAOG0721/Magpie/graphs/contributors)。
 

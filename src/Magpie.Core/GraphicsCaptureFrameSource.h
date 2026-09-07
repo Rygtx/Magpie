@@ -56,6 +56,7 @@ private:
 	std::chrono::steady_clock::time_point _lastRecoveryGeometryCheck{};
 	UINT_PTR _recoveryTimer = 0;
 	bool _captureFailed = false;
+	// Backend-thread terminal state; distinct from a recoverable cursor restart.
 	bool _captureStopping = false;
 
 	winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice _wrappedD3DDevice{ nullptr };

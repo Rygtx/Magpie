@@ -1,4 +1,4 @@
-Magpie Experimental v0.6.5 x64
+Magpie Experimental v0.6.6 x64
 
 安装或从旧版升级
 建议先删除此前所有版本的 Magpie 程序目录（包括旧内测版），再安装本版，不要直接覆盖旧目录。
@@ -10,6 +10,12 @@ Magpie Experimental v0.6.5 x64
 可保留或恢复配置，但不要复制旧版效果目录、DLL 或深度组件。
 
 使用入口
+- 0.6.6：此前自动重启的 DLSSNR 图像参数改为实时生效；资源、分辨率和光流配置仍需“应用并重新启用”。
+- 重新启用效果组会恢复工具栏显示与固定状态、性能分析器和参数窗口的开关状态。
+- 参数面板使用滑条调节 Front Edge Sync 目标：15–360 FPS，步进 1；修改仍在重新启用后生效。
+- 参数浮窗记住位置和大小，捕获区域变小时临时限制在可见范围，变大后恢复保存的尺寸。
+- 修复停止缩放后迟到的捕获错误回调可能触发的空指针崩溃。
+- NGX 异常后阻止再次进入受损运行库，避免重新启用时死锁；按提示完全退出并重启 Magpie。
 - 效果组：选择或组合效果器；从工具栏打开“效果参数”边看画面边调节，修改自动保存。
 - 对比：切换原图与处理后画面，切回无需重新加载效果。
 - Front Edge Sync：默认开启、60 FPS，目标程序需配合限帧；启用补帧时控制真实帧输入，可能增加延迟。
@@ -31,6 +37,11 @@ Portable settings: config\config.json in the old program folder.
 Keep or restore settings if needed, but do not copy old effects, DLLs or depth components.
 
 Getting started
+- 0.6.6: DLSSNR image parameters that previously triggered automatic restart now apply live; resource, resolution and optical-flow settings still require Apply and restart.
+- Re-enabling a group restores toolbar visibility and pinning, the profiler and parameter-window visibility.
+- Set the Front Edge Sync target with the parameter-panel slider: 15–360 FPS, step 1. Changes still take effect after restarting the group.
+- The parameter window remembers its position and size, temporarily fits smaller capture areas and restores the preferred size when space becomes available.
+- Fixed a possible null-callback crash from delayed capture errors after stopping scaling.
 - Effect groups: select or combine effects; open Effect parameters from the toolbar to adjust the image with automatic saving.
 - Comparison: switch between original and processed images without reloading effects.
 - Front Edge Sync: enabled at 60 FPS by default; apply a matching source limiter. With FG it controls real input frames and may increase latency.

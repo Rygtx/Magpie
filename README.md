@@ -27,6 +27,8 @@ An **effect group** combines effects in a chosen order, storing their parameters
 
 The toolbar's parameter panel lets you adjust effects while viewing the result, with automatic saving. Controls indicate whether a change applies live or requires the group to restart; double-clicking a slider restores the effect's default value. Parameters support groups, drop-down choices and Chinese translations.
 
+The same panel places the Front Edge Sync switch and target frame-rate slider (15–360 FPS, step 1) before the effect controls, so you can adjust frame pacing and image processing in one place. Follow each control's Live or Restart label to see how a change takes effect. The parameter window remembers its position and size and stays within the visible area when the capture area changes.
+
 ### Comparison, Performance Monitoring and Frame Sync
 
 The toolbar offers original/processed comparison, per-effect timings and frame-rate monitoring, screenshots and parameter editing, with customizable shortcuts. When frame generation is enabled, separate output and real-frame readings help you assess the result and processing cost.
@@ -69,6 +71,7 @@ This project builds on [Blinue/Magpie](https://github.com/Blinue/Magpie) and its
 
 - [HexBen123](https://github.com/HexBen123): early depth-estimation performance optimization and TensorRT integration guidance, plus the [DLSSNR parameter-localization proposal](https://github.com/SAOG0721/Magpie/pull/16).
 - [Kristijan1001](https://github.com/Kristijan1001): the [reference implementation for editing effect parameters while scaling](https://github.com/SAOG0721/Magpie/pull/4), which informed this project's parameter-panel design and implementation.
+- [LCPD15](https://github.com/LCPD15): the [1.0× windowed-scaling fix](https://github.com/SAOG0721/Magpie/pull/3), allowing same-resolution effects to be displayed at the source size without forcing output enlargement.
 
 Contributions through Issues and Pull Requests are welcome. See [Contributors](https://github.com/SAOG0721/Magpie/graphs/contributors) for the code contribution history.
 

@@ -1062,6 +1062,7 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 					JsonHelper::ReadFloat(windowOptionObj, "vPos", windowOption.vPos);
 					JsonHelper::ReadFloat(windowOptionObj, "width", windowOption.width);
 					JsonHelper::ReadFloat(windowOptionObj, "height", windowOption.height);
+					SanitizeOverlayWindowOption(windowOption);
 				}
 			}
 		}

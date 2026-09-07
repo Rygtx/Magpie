@@ -1478,4 +1478,7 @@
   <data name="Overlay_FrameSync_Help" xml:space="preserve">
     <value>Saved automatically; use Apply and restart to apply both settings. 0 is automatic. Apply a matching frame-rate cap to the source application.</value>
   </data>
+  <data name="Message_NgxRestartRequired" xml:space="preserve">
+    <value>NVIDIA effects encountered an error. Fully exit Magpie from the system tray and start it again before enabling DLSSNR or DLSS Frame Generation.</value>
+  </data>
 </root>
