@@ -426,6 +426,9 @@
   <data name="Profile_General_3DGameMode.Header" xml:space="preserve">
     <value>3D 游戏模式</value>
   </data>
+  <data name="Profile_General_HdrCompatibility.Header" xml:space="preserve">
+    <value>HDR 兼容</value>
+  </data>
   <data name="Profile_General_AutoScale.Header" xml:space="preserve">
     <value>位于前台时自动启用效果组</value>
   </data>
@@ -942,6 +945,9 @@
   </data>
   <data name="Profile_General_3DGameMode.Description" xml:space="preserve">
     <value>针对 3D 游戏优化，不支持工具栏和窗口模式</value>
+  </data>
+  <data name="Profile_General_HdrCompatibility.Description" xml:space="preserve">
+    <value>启用实验性 HDR 捕获到效果兼容路径。除非正在测试 HDR 支持，请保持关闭</value>
   </data>
   <data name="Home_Toolbar_ScreenshotSaveDirectory.Header" xml:space="preserve">
     <value>截图保存目录</value>

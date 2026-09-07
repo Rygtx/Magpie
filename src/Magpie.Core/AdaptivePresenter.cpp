@@ -33,7 +33,9 @@ bool AdaptivePresenter::_Initialize(HWND hwndAttach) noexcept {
 	DXGI_SWAP_CHAIN_DESC1 sd{
 		.Width = (UINT)rendererSize.cx,
 		.Height = (UINT)rendererSize.cy,
-		.Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+		.Format = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()
+			? DXGI_FORMAT_R16G16B16A16_FLOAT
+			: DXGI_FORMAT_R8G8B8A8_UNORM,
 		.SampleDesc = {
 			.Count = 1
 		},
@@ -68,11 +70,17 @@ bool AdaptivePresenter::_Initialize(HWND hwndAttach) noexcept {
 		Logger::Get().ComError("创建交换链失败", hr);
 		return false;
 	}
-
 	_dxgiSwapChain = dxgiSwapChain.try_as<IDXGISwapChain4>();
 	if (!_dxgiSwapChain) {
 		Logger::Get().Error("获取 IDXGISwapChain2 失败");
 		return false;
+	}
+	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
+		hr = _dxgiSwapChain->SetColorSpace1(DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709);
+		if (FAILED(hr)) {
+			Logger::Get().ComError("设置 HDR 交换链色彩空间失败", hr);
+			return false;
+		}
 	}
 
 	const auto& options = ScalingWindow::Get().Options();
@@ -408,7 +416,9 @@ bool AdaptivePresenter::_ResizeDCompVisual(HWND hwndAttach) noexcept {
 		hr = _dcompDevice->CreateVirtualSurface(
 			(UINT)rendererSize.cx,
 			(UINT)rendererSize.cy,
-			DXGI_FORMAT_R8G8B8A8_UNORM,
+			ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()
+				? DXGI_FORMAT_R16G16B16A16_FLOAT
+				: DXGI_FORMAT_R8G8B8A8_UNORM,
 			DXGI_ALPHA_MODE_IGNORE,
 			_dcompSurface.put()
 		);

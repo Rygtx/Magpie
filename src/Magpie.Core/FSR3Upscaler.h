@@ -1,5 +1,6 @@
 #pragma once
 #include "NativeEffectBackend.h"
+#include "GroupBEffectProtocol.h"
 
 namespace Magpie {
 
@@ -21,6 +22,9 @@ public:
 	bool Resize(DeviceResources& resources, ID3D11Texture2D* input,
 		ID3D11Texture2D* output) noexcept override;
 	bool Draw(const NativeEffectDrawContext& context) noexcept override;
+	void SetFsrHdrProtocol(const FsrHdrProtocol& protocol) noexcept {
+		_hdrProtocol = protocol;
+	}
 	FrameGuidanceRequirements GetFrameGuidanceRequirements() const noexcept override {
 		FrameGuidanceRequirements result{ .zero = true };
 		result.Add(_motionRequest);
@@ -35,6 +39,7 @@ private:
 	MotionVectorRequest _motionRequest{};
 	std::unique_ptr<Impl> _impl;
 	bool _useFsr4 = false;
+	FsrHdrProtocol _hdrProtocol{};
 };
 
 }

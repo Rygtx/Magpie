@@ -272,8 +272,8 @@ bool DLSSSRUpscaler::Draw(const NativeEffectDrawContext& context) noexcept {
 	evalParams.InReset = _resetHistory || guidanceReset ? 1 : 0;
 	evalParams.InMVScaleX = 1.0f;
 	evalParams.InMVScaleY = 1.0f;
-	evalParams.InPreExposure = 1.0f;
-	evalParams.InExposureScale = 1.0f;
+	evalParams.InPreExposure = _hdrProtocol.preExposure;
+	evalParams.InExposureScale = _hdrProtocol.exposure;
 
 	const NVSDK_NGX_Result result = NGX_D3D11_EVALUATE_DLSS_EXT(
 		_d3dDC,

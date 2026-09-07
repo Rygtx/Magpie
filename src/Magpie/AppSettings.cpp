@@ -123,6 +123,8 @@ static void WriteProfile(rapidjson::PrettyWriter<rapidjson::StringBuffer>& write
 	writer.Bool(profile.IsAdjustCursorSpeed());
 	writer.Key("disableDirectFlip");
 	writer.Bool(profile.IsDirectFlipDisabled());
+	writer.Key("enableHdrCompatibility");
+	writer.Bool(profile.IsHdrCompatibilityEnabled());
 
 	writer.Key("cursorScaling");
 	writer.Uint((uint32_t)profile.cursorScaling);
@@ -1222,6 +1224,7 @@ bool AppSettings::_LoadProfile(
 	}
 	JsonHelper::ReadBoolFlag(profileObj, "adjustCursorSpeed", ScalingFlags::AdjustCursorSpeed, profile.scalingFlags);
 	JsonHelper::ReadBoolFlag(profileObj, "disableDirectFlip", ScalingFlags::DisableDirectFlip, profile.scalingFlags);
+	JsonHelper::ReadBoolFlag(profileObj, "enableHdrCompatibility", ScalingFlags::EnableHdrCompatibility, profile.scalingFlags);
 
 	{
 		uint32_t cursorScaling = (uint32_t)CursorScaling::NoScaling;

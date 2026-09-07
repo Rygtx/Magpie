@@ -3,53 +3,75 @@
 
 🌍 [English](./README.md) | **简体中文**
 
-这是 [Blinue/Magpie](https://github.com/Blinue/Magpie) 的非官方实验分支，提供基于窗口捕获画面的 DLSS、DLSS Frame Generation、DLSSNR、XeSS、FSR 和 RTX Video 效果。不代表 Magpie 官方，也不由上游项目提供支持。
+Magpie Experimental 是面向 Windows 的窗口画面处理工具，也是 [Blinue/Magpie](https://github.com/Blinue/Magpie) 的非官方实验分支。它在 Magpie 的窗口缩放与效果系统基础上，探索 DLSS、XeSS、FSR、RTX Video 等技术在游戏、视频和其他窗口内容中的应用。
 
-## 版本与安装
+程序捕获目标窗口的画面，按用户配置的效果组处理，再以全屏或窗口形式显示。目标应用无需为这些效果单独集成接口。本项目不代表 Magpie 官方，实验分支的问题请在本仓库反馈。
 
-0.6.5 已进入本地发布包准备阶段，完整说明见 [0.6.5 Release Note](docs/RELEASE_NOTES_v0.6.5-experimental.md)。已公开版本以 [GitHub Releases](https://github.com/SAOG0721/Magpie/releases) 为准。
+## 主要功能
 
-完全退出 Magpie，将 `Magpie-Experimental-x64.zip` 完整解压到新目录后运行 `Magpie.exe`。不要只替换 EXE，也不要复制旧效果目录或已经移除的深度组件。普通设置位于 `%LOCALAPPDATA%\Magpie\config\v4\config.json`；便携设置位于程序目录的 `config\config.json`。升级前备份配置和旧安装。
+### 图像处理与帧生成
 
-## 效果组与参数
+| 功能 | 效果示例 | 用途 |
+| --- | --- | --- |
+| 空间缩放与锐化 | Lanczos、FSR 及其他 MagpieFX 效果 | 放大窗口内容，调整清晰度与细节表现 |
+| 实验性时序超分辨率 | DLSS SR、FSR 2/3/4、XeSS SR | 探索从捕获画面和估算运动信息进行图像重建 |
+| AI 画面调整 | DLSSNR | 同分辨率 SDR 画面处理，调整色调、结构、阴影、反射与辉光 |
+| 视频增强 | RTX Video | 视频超分辨率与降噪，改善低分辨率或压缩内容的观感 |
+| 帧生成 | DLSSFG、XeSSFG | 在真实帧之间生成中间画面，提高视觉流畅度 |
 
-“缩放模式”现称为“效果组”，一个组可以组合多个效果器。新配置默认包含 Lanczos、FSR、RTX Video VSR Ultra、DLSSFG、XeSSFG、DLSSNR，默认选择 Lanczos。原有自定义组保持保留。
+实验效果的可用性取决于显卡、驱动、运行组件和具体效果组合。各版本包含的效果及硬件要求见 [Release 说明](https://github.com/SAOG0721/Magpie/releases)。
 
-程序内置效果组包含 DLSSFG、XeSSFG 和 DLSSNR；可在效果组页面通过重置恢复默认组。
+### 效果组与参数调节
 
-参数修改自动保存。工具栏参数页按当前会话标记“实时”“重启”“自动重启”；后两者的区别是手动应用与编辑结束后自动重建。DLSSNR 核心和上游图像的原实时参数会触发完整停用，等待 500 毫秒再重新启用；残差合成参数保留原有实时行为。连续编辑合并处理，手动停用会取消等待中的重启。
+一个**效果组**可以按顺序组合多个效果器，并保存各自的参数和缩放设置。可以使用内置效果组，也可以为不同应用创建自己的组合。
 
-在 170 毫秒内双击滑条可恢复效果器自身默认值。参数支持分组、下拉选项以及简体／繁体中文显示。保存失败或目标值尚未应用时，参数页会区分实际值与修改值。
+工具栏中的参数面板支持边看画面边调节，修改自动保存。控件会标明参数是实时生效，还是需要重新启用效果组；双击滑条可恢复效果器自身的默认值。参数支持分组、下拉选项和中文翻译。
 
-## 工具栏与帧节奏
+### 对比、性能监测与帧同步
 
-| 功能 | 默认快捷键 |
-| --- | --- |
-| 性能监测 | Alt+Shift+P |
-| 效果参数 | Alt+Shift+E |
-| 截屏 | Alt+Shift+S |
-| 固定工具栏 | Alt+Shift+F |
-| 对比 | Alt+Shift+C |
+工具栏提供原图／处理后对比、各效果器耗时与帧率监测、截屏和参数调节，并支持自定义快捷键。启用帧生成时，可以分别查看输出帧率和真实帧率，帮助判断效果与性能开销。
 
-快捷键可在主页收起项中修改。“对比”显示原图时效果继续处理；角标停留 2 秒后以 500 毫秒淡出。启用 FG 后帧率支持“输出／真实帧”显示。
+Front Edge Sync 用于控制 Magpie 的帧提交节奏，启用 FG 时控制补帧前的真实帧输入。源程序仍需配合限帧，同步等待可能增加延迟；设置方法见 [帧同步使用说明](docs/FRAME_SYNC_GUIDE.md)。
 
-Front Edge Sync 默认开启，目标为 60 FPS，控制 FG 之前的基础帧节奏；目标程序也需要配合限帧。可能增加延迟。FrameRate Filter 默认跟随该设置，关闭同步后可自定义。完整解释见 [帧同步说明](docs/FRAME_SYNC_GUIDE.md)。VRR 当前隐藏并停用，HDR 尚未实现。
+## 下载与安装
 
-## 光流与兼容性
+1. 从 [GitHub Releases](https://github.com/SAOG0721/Magpie/releases) 选择版本，阅读该版本说明并下载主包 `Magpie-Experimental-x64.zip`。
+2. 完全退出正在运行的 Magpie，将主包完整解压到一个新目录。
+3. 运行其中的 `Magpie.exe`，选择效果组和目标窗口，使用主页所示快捷键启用效果。
 
-DLSS SR、FSR 2/3/4 和 XeSS SR 各提供一个入口，支持不使用／AMD OF／NVOF。独立 Zero MV、Optical Flow 和 metadata-only jitter 入口已合并，旧配置自动迁移。DLSSNR、DLSSFG 使用 NVOF；XeSSFG x2 可使用 AMD OF／NVOF，XeSS Multi-FG 当前仅支持 AMD OF 或不使用光流。
+升级前请将需要保留的设置和截图备份到程序目录之外，并按对应 Release 的说明处理旧安装和配置。可选运行组件、DLL 选项及辅助工具的用途和使用方法也以该版本说明为准。GitHub 自动生成的源码压缩包用于开发，不是可直接运行的程序包。
 
-多个消费者共享实际申请中的同一提供者：NVOF 优先，再 AMD OF，使用选定来源实际申请中的较高档位。NVOF 最高质量为 2×2 Slow，开销可能很高；均衡档继续标注推荐。
+## 使用与兼容性
 
-Magpie 没有游戏引擎原生深度、运动矢量、曝光或 UI 分离信息。需要深度的接口使用全零纹理，Motion 从捕获颜色估算，不能等同于游戏原生 DLSS／FSR／XeSS 集成。同一组仅使用一种 FG，避免与 Smooth Motion 等其他补帧叠加。
+- 发布主包面向 Windows x64，需要支持 DirectX 11 的显卡；具体 AI 效果可能有更高要求。
+- Magpie 从完整窗口画面进行处理，无法取得游戏引擎原生的完整运动矢量、深度、曝光和独立 UI 信息。估算光流可以辅助部分效果，但不能等同于游戏原生 DLSS／FSR／XeSS 集成。
+- 图像处理可能同时影响文字和 UI；时序效果也可能产生拖影或其他瑕疵。可通过“对比”判断效果是否适合当前内容。
+- 同一效果组使用一种帧生成效果，避免与其他补帧系统叠加。生成帧率不等于游戏的真实渲染帧率，也不代表输入响应速度同比提升。
 
-## 排错与开发
+## 问题反馈
 
-优先查看主页“最近一次问题”的详情与日志。Release 配套提供 NGX OTA 开关和 DLSSNR DLL 选项；用途与限制见 Release Note。源码默认关闭可选专有后端；本机 SDK／运行时通过不入库的 `src/BuildOptions.props.user` 配置。
+遇到问题时，先查看主页“最近一次问题”的处理建议和详细信息，或打开日志目录。向 [Issues](https://github.com/SAOG0721/Magpie/issues) 反馈时，请提供程序版本、显卡与驱动、效果组、输入／输出分辨率、复现步骤和相关日志。
 
-- [依赖、第三方声明与构建边界](docs/THIRD_PARTY_AND_REDISTRIBUTION.md)
-- [实验开发文档](docs/experimental/README.md)
-- [构建和发布脚本](scripts/Build-Release.ps1)
+通用使用问题也可参考 [Magpie 上游 FAQ](https://github.com/Blinue/Magpie/wiki/FAQ)；本分支特有的实验效果和兼容性问题请在本仓库讨论。
+
+## 开发与文档
+
+项目包含 Magpie 应用、MagpieFX 效果及实验性原生效果后端。源码构建默认关闭可选专有后端，相关 SDK 和运行组件需要另行准备；本机路径通过不入库的 `src/BuildOptions.props.user` 配置。
+
+- [第三方依赖、许可与构建边界](docs/THIRD_PARTY_AND_REDISTRIBUTION.md)
+- [实验功能的设计与开发记录](docs/experimental/README.md)
+- [构建和打包脚本](scripts/Build-Release.ps1)
 - [MagpieFX 效果格式](docs/MagpieFX.md)
 
-源码沿用 [GPLv3](LICENSE)。第三方运行时、SDK、模型及本地配置不进入源码仓库。
+## 贡献与致谢
+
+本项目建立在 [Blinue/Magpie](https://github.com/Blinue/Magpie) 及其贡献者的工作之上，也感谢提交代码、翻译、设计建议和测试反馈的参与者。
+
+- [HexBen123](https://github.com/HexBen123)：早期深度估算性能优化与 TensorRT 集成指导，以及 [DLSSNR 参数本地化提案](https://github.com/SAOG0721/Magpie/pull/16)。
+- [Kristijan1001](https://github.com/Kristijan1001)：[缩放期间实时编辑效果参数的参考实现](https://github.com/SAOG0721/Magpie/pull/4)，为本项目参数面板的设计与实现提供了参考。
+
+欢迎通过 Issues 和 Pull Requests 参与；代码贡献记录见 [Contributors](https://github.com/SAOG0721/Magpie/graphs/contributors)。
+
+## 许可
+
+Magpie 派生源码采用 [GPLv3](LICENSE)。第三方 SDK、模型和运行组件适用各自的许可证，详见 [第三方组件与再分发说明](docs/THIRD_PARTY_AND_REDISTRIBUTION.md)。

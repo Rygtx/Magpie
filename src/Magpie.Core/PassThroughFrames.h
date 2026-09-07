@@ -1,4 +1,5 @@
 #pragma once
+#include "HdrColorTransform.h"
 #include <array>
 #include <atomic>
 #include <d3d11_4.h>
@@ -13,9 +14,12 @@ class PassThroughFrames {
 public:
 	static constexpr uint32_t MAX_SLOTS = 4;
 	bool InitializeBackend(DeviceResources& resources, ID3D11Texture2D* input,
-		ID3D11Texture2D* output, uint32_t slotCount) noexcept;
+		ID3D11Texture2D* output, uint32_t slotCount, bool hdrEnabled = false,
+		const HdrTransformParameters& hdrParameters = {},
+		const HdrFrameMetadata& frameMetadata = {}) noexcept;
 	bool OpenFrontend(DeviceResources& resources, uint32_t slotCount) noexcept;
 	void UpdateBackend(uint64_t captureFrameId, bool newCapture) noexcept;
+	void UpdateBackend(const HdrFrame& frame, bool newCapture) noexcept;
 	void Publish(uint32_t slot, bool generatedFrame) noexcept;
 	bool Consume(uint32_t slot) noexcept;
 	void OnPresented() noexcept;
@@ -32,6 +36,9 @@ public:
 			: (_baseValid ? _base.get() : nullptr);
 	}
 	uint64_t PresentedCaptureFrameId() const noexcept { return _presentedFrameId; }
+	const HdrFrameMetadata& PresentedFrameMetadata() const noexcept {
+		return _presentedMetadata;
+	}
 
 private:
 	struct Slot {
@@ -45,6 +52,7 @@ private:
 	std::array<Slot, MAX_SLOTS> _frontendSlots;
 	std::array<HANDLE, MAX_SLOTS> _handles{};
 	std::array<uint64_t, MAX_SLOTS> _frameIds{};
+	std::array<HdrFrameMetadata, MAX_SLOTS> _metadata{};
 	std::array<bool, MAX_SLOTS> _valid{};
 	// Reconfiguration is frontend-blocked. Failure disables future reference
 	// transactions atomically, retaining resources until in-flight work is done.
@@ -54,12 +62,17 @@ private:
 	winrt::com_ptr<ID3D11Texture2D> _previous;
 	winrt::com_ptr<ID3D11ShaderResourceView> _inputView;
 	winrt::com_ptr<ID3D11UnorderedAccessView> _outputView;
+	winrt::com_ptr<ID3D11Buffer> _constants;
 	winrt::com_ptr<ID3D11ComputeShader> _shader;
 	winrt::com_ptr<ID3D11SamplerState> _sampler;
+	bool _hdrEnabled = false;
+	HdrTransformParameters _hdrParameters{};
 	uint32_t _width = 0;
 	uint32_t _height = 0;
 	uint64_t _currentFrameId = 0;
 	uint64_t _previousFrameId = 0;
+	HdrFrameMetadata _currentMetadata{};
+	HdrFrameMetadata _previousMetadata{};
 	bool _currentValid = false;
 	bool _previousValid = false;
 	winrt::com_ptr<ID3D11Texture2D> _base;
@@ -68,6 +81,7 @@ private:
 	bool _presentedValid = false;
 	uint64_t _baseFrameId = 0;
 	uint64_t _presentedFrameId = 0;
+	HdrFrameMetadata _presentedMetadata{};
 };
 
 }

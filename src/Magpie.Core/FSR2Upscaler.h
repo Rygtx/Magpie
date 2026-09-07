@@ -1,5 +1,6 @@
 #pragma once
 #include "NativeEffectBackend.h"
+#include "GroupBEffectProtocol.h"
 
 namespace Magpie {
 
@@ -16,6 +17,9 @@ public:
 		MotionVectorRequest motionRequest = {}) noexcept;
 	bool Resize(DeviceResources& resources, ID3D11Texture2D* input, ID3D11Texture2D* output) noexcept override;
 	bool Draw(const NativeEffectDrawContext& context) noexcept override;
+	void SetFsrHdrProtocol(const FsrHdrProtocol& protocol) noexcept {
+		_hdrProtocol = protocol;
+	}
 	FrameGuidanceRequirements GetFrameGuidanceRequirements() const noexcept override {
 		FrameGuidanceRequirements result{ .zero = true };
 		result.Add(_motionRequest);
@@ -50,9 +54,12 @@ private:
 	winrt::com_ptr<ID3D11UnorderedAccessView> _zeroDepthUav;
 	winrt::com_ptr<ID3D11Texture2D> _reactive;
 	winrt::com_ptr<ID3D11UnorderedAccessView> _reactiveUav;
+	winrt::com_ptr<ID3D11Texture2D> _exposure;
+	winrt::com_ptr<ID3D11UnorderedAccessView> _exposureUav;
 	bool _resetHistory = true;
 	FrameGuidanceFrameId _lastGuidanceResetFrameId = std::numeric_limits<FrameGuidanceFrameId>::max();
 	bool _enableOpticalFlow = false;
+	FsrHdrProtocol _hdrProtocol{};
 };
 
 }

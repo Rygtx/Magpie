@@ -1,5 +1,6 @@
 #pragma once
 #include "FrameGuidanceProvider.h"
+#include "GroupBEffectProtocol.h"
 
 namespace Magpie {
 
@@ -27,10 +28,12 @@ public:
 	void Reset(FrameGuidanceResetReason reason) noexcept override;
 	bool Resize(FrameGuidanceExtent sourceExtent) noexcept override;
 	OpticalFlowInitializationError InitializationError() const noexcept override;
+	void SetHdrProtocol(const AmdOpticalFlowHdrProtocol& protocol) noexcept { _hdrProtocol = protocol; }
 
 private:
 	AmdOpticalFlowMode _mode;
 	std::unique_ptr<Impl> _impl;
+	AmdOpticalFlowHdrProtocol _hdrProtocol{};
 };
 
 }

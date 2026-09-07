@@ -32,6 +32,7 @@ namespace Magpie {
 
 		Int32 AutoScale;
 		Boolean Is3DGameMode;
+		Boolean IsHdrCompatibilityEnabled;
 
 		Boolean HasMultipleMonitors { get; };
 		IVector<IInspectable> MonitorOptions { get; };

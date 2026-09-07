@@ -1,5 +1,6 @@
 #pragma once
 #include "NativeEffectBackend.h"
+#include "GroupBEffectProtocol.h"
 
 namespace Magpie {
 
@@ -23,9 +24,11 @@ struct DLSSNRSettings {
 	bool uiCorrection = false;
 	NvidiaOpticalFlowQuality motionVectorQuality =
 		NvidiaOpticalFlowQuality::Balanced;
+	// Experimental FP16 path. SDR RGBA8 remains the default.
+	DlssnrExperimentProtocol experimentalHdr{};
 };
 
-DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option) noexcept;
+DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled = false) noexcept;
 
 // Experimental same-resolution DLSS neural filter. Magpie only owns the
 // composited colour frame, so valid zero-filled motion/depth textures are used

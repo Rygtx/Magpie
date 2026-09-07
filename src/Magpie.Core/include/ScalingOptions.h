@@ -389,6 +389,7 @@ struct ScalingFlags {
 	static constexpr uint32_t BenchmarkMode = 1 << 20;
 	static constexpr uint32_t DeveloperMode = 1 << 21;
 	static constexpr uint32_t DisableTopmost = 1 << 22;
+	static constexpr uint32_t EnableHdrCompatibility = 1 << 23;
 };
 
 struct ScalingOptions {
@@ -411,6 +412,7 @@ struct ScalingOptions {
 	DEFINE_FLAG_ACCESSOR(IsCaptureTitleBar, ScalingFlags::CaptureTitleBar, flags)
 	DEFINE_FLAG_ACCESSOR(IsAdjustCursorSpeed, ScalingFlags::AdjustCursorSpeed, flags)
 	DEFINE_FLAG_ACCESSOR(IsDirectFlipDisabled, ScalingFlags::DisableDirectFlip, flags)
+	DEFINE_FLAG_ACCESSOR(IsHdrCompatibilityEnabled, ScalingFlags::EnableHdrCompatibility, flags)
 
 	std::vector<EffectOption> effects;
 	uint32_t scalingModeIdx = 0;

@@ -19,6 +19,11 @@ struct Win32Helper {
 	// 相比 \\.\DISPLAY1 之类的 GDI 名称，在显示器插拔和顺序变化后更稳定。
 	static std::vector<DisplayMonitorInfo> GetDisplayMonitors() noexcept;
 
+	// Returns the Windows HDR SDR-white calibration for a monitor in nits.
+	// The value is unavailable on older paths or when the display driver does
+	// not expose the calibration; callers should keep their explicit fallback.
+	static float GetMonitorSdrWhiteNits(HMONITOR monitor) noexcept;
+
 	static SIZE GetSizeOfRect(const RECT& rect) noexcept {
 		return { rect.right - rect.left, rect.bottom - rect.top };
 	}

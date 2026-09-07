@@ -9,7 +9,11 @@
 #include "DirectXHelper.h"
 #include "DwmSharedSurfaceFrameSource.h"
 #include "EffectCompiler.h"
+#include "EffectHelper.h"
 #include "EffectDrawer.h"
+#include "GroupAHdrRoutes.h"
+#include "GroupBHdrRoutes.h"
+#include "EffectProtocolCatalogC.h"
 #include "EffectParameterValue.h"
 #include "EffectParameterRestart.h"
 #include "EffectsProfiler.h"
@@ -25,6 +29,9 @@
 #include "TextureHelper.h"
 #include "Win32Helper.h"
 #include "DLSSFrameGenerator.h"
+#include "DLSSSRUpscaler.h"
+#include "FSR2Upscaler.h"
+#include "FSR3Upscaler.h"
 #include "NativeEffectBackend.h"
 #include "NativeEffectBackendFactory.h"
 #include "NvidiaOpticalFlowProvider.h"
@@ -104,6 +111,80 @@ static bool IsXeSSFrameGenerationEffect(std::string_view name) noexcept {
 
 static bool IsFrameGenerationEffect(std::string_view name) noexcept {
 	return IsDLSSFrameGenerationEffect(name) || IsXeSSFrameGenerationEffect(name);
+}
+
+static HdrFormatRoutes GetHdrRoutesForEffect(
+	const EffectOption& effect,
+	bool hdrEnabled
+) noexcept {
+	// Route selection is a HDR-only contract. Keep this guard local so a
+	// caller cannot accidentally turn saved HDR parameters into a live route
+	// while the profile option is disabled.
+	if (!hdrEnabled) {
+		return {};
+	}
+	const size_t separator = effect.name.find('\\');
+	const std::string_view group = separator == std::string::npos
+		? std::string_view(effect.name)
+		: std::string_view(effect.name).substr(0, separator);
+	int casFormatOption = 0;
+	if (group == "Anime4K" || group == "CAS" || group == "CRT" ||
+		group == "CuNNy" || group == "CuNNy2" || group == "Diagnostics" ||
+		group == "FSRCNNX" || group == "FXAA" || group == "MLAA") {
+		if (const auto it = effect.parameters.find("hdrFormat"); it != effect.parameters.end()) {
+			casFormatOption = static_cast<int>(std::lround(it->second));
+		}
+		return GetGroupAHdrRoutes(group, casFormatOption);
+	}
+	if (group == "DLSSNR") {
+		const auto path = effect.parameters.find("experimentalHdrPath");
+		const auto scale = effect.parameters.find("experimentalHdrScale");
+		return GetGroupBHdrRoutes(group,
+			path != effect.parameters.end() && path->second >= 0.5f,
+			scale != effect.parameters.end() ? scale->second : 1.0f);
+	}
+	if (group == "DLSS" || group == "FSR" || group == "FSR2" ||
+		group == "FSR3" || group == "FSR4" || group == "NIS") {
+		return GetGroupBHdrRoutes(group);
+	}
+	if (group == "RTXVideo") {
+		return effect.name.find("_VSR_") != std::string::npos
+			? EffectProtocolC::RTXVideoVsr()
+			: EffectProtocolC::RTXVideoDenoiser();
+	}
+	if (group == "DLSSFG" || group == "FSR3FG") {
+		return EffectProtocolC::GetGroupCHdrRoutes(group);
+	}
+	return EffectProtocolC::GetGroupCHdrRoutes(group);
+}
+
+static void ConfigureHdrBackendProtocol(
+	std::string_view effectName,
+	NativeEffectBackend& backend,
+	const HdrFrameMetadata& metadata,
+	bool hdrEnabled
+) noexcept {
+	if (!hdrEnabled || !metadata.IsValid()) return;
+	// Capture normalization has already applied source pre-exposure into the
+	// canonical FP16 surface. Native SR backends therefore consume linear HDR
+	// values with a neutral exposure contract for this frame.
+	const FsrHdrProtocol protocol{
+		.hdrColorInput = true,
+		.transfer = GroupBTransfer::Linear,
+		.preExposure = 1.0f,
+		.exposure = 1.0f,
+		.depthInverted = true,
+		.depthInfinite = true,
+		.useReactiveMask = true,
+		.useTransparencyMask = true,
+	};
+	if (effectName == "DLSS\\DLSS_SR") {
+		static_cast<DLSSSRUpscaler&>(backend).SetDlssHdrProtocol(protocol);
+	} else if (effectName == "FSR2\\FSR2_SR") {
+		static_cast<FSR2Upscaler&>(backend).SetFsrHdrProtocol(protocol);
+	} else if (effectName == "FSR3\\FSR3_SR" || effectName == "FSR4\\FSR4_SR") {
+		static_cast<FSR3Upscaler&>(backend).SetFsrHdrProtocol(protocol);
+	}
 }
 
 static MotionVectorRequest GetMotionVectorRequest(
@@ -495,6 +576,8 @@ bool Renderer::_OpenFrontendSharedTextures() noexcept {
 	_frontendMotionReset = true;
 	_frontendBaseValid = false;
 	_frontendPresentedBaseValid = false;
+	_frontendFrameMetadata = {};
+	_frontendPresentedFrameMetadata = {};
 	_frontendBaseNeedsPresent = false;
 	for (uint32_t i = 0; i < MAX_SHARED_TEXTURE_SLOTS; ++i) {
 		_frontendSharedTextureMutexes[i] = nullptr;
@@ -603,6 +686,25 @@ bool Renderer::_UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept {
 	if (FAILED(hr)) {
 		return false;
 	}
+	const uint64_t slotSequence =
+		_sharedTextureCaptureSequences[sharedTextureSlot].load(std::memory_order_acquire);
+	const uint64_t activeSequence =
+		_activeCaptureSequence.load(std::memory_order_acquire);
+	const uint64_t slotGeneration = _sharedTextureResourceGenerations[sharedTextureSlot].load(
+		std::memory_order_acquire);
+	const uint64_t activeGeneration = _activeResourceGeneration.load(std::memory_order_acquire);
+	if ((slotSequence != 0 && activeSequence != 0 && slotSequence != activeSequence) ||
+		(slotGeneration != 0 && activeGeneration != 0 && slotGeneration != activeGeneration)) {
+		const HRESULT staleRelease = ReleasePresentationTextures(mutexes, releaseKey);
+		if (SUCCEEDED(staleRelease)) {
+			_sharedTextureMutexKeys[sharedTextureSlot].store(releaseKey, std::memory_order_release);
+			_lastAccessMutexKeys[sharedTextureSlot] = releaseKey;
+		}
+		Logger::Get().Info(fmt::format(
+			"Dropped stale frontend slot={} sequence={}/{} resourceGeneration={}/{}",
+			sharedTextureSlot, slotSequence, activeSequence, slotGeneration, activeGeneration));
+		return false;
+	}
 
 	D3D11_TEXTURE2D_DESC sourceDesc{};
 	source->GetDesc(&sourceDesc);
@@ -632,7 +734,8 @@ bool Renderer::_UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept {
 	}
 	if (SUCCEEDED(hr)) {
 		_frontendResources.GetD3DDC()->CopyResource(_frontendBaseTexture.get(), source);
-		_frontendCaptureFrameId = _sharedMotionFrameIds[sharedTextureSlot].load(std::memory_order_acquire);
+		_frontendCaptureFrameId = _sharedTextureFrameIds[sharedTextureSlot].load(std::memory_order_acquire);
+		_frontendFrameMetadata = _sharedFrameMetadata[sharedTextureSlot];
 		FrameTrace::SetFrame(_frontendCaptureFrameId);
 		traceBase.FrameId(_frontendCaptureFrameId);
 		if (!_passThroughFrames.Consume(sharedTextureSlot) && _isPassThroughActive) {
@@ -881,6 +984,9 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 			d3dDC->CopyResource(
 				_frontendPresentedBaseTexture.get(), _frontendBaseTexture.get());
 			_frontendPresentedBaseValid = true;
+			_frontendPresentedFrameMetadata = _frontendFrameMetadata;
+			_frontendPresentedFrameMetadata = _frontendFrameMetadata;
+			_frontendPresentedFrameMetadata.stage = HdrFrameStage::PresentedOutput;
 			_passThroughFrames.OnPresented();
 		}
 		if (!stableBaseOnly) _frontendBaseNeedsPresent = false;
@@ -1402,10 +1508,16 @@ bool Renderer::_InitFrameSource() noexcept {
 		_backendInitError = ScalingError::CaptureFailed;
 		return false;
 	}
+	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() &&
+		!_hdrPresentationAdapter.Initialize(_backendResources, _backendDescriptorStore)) {
+		Logger::Get().Error("初始化 HDR 发布适配器失败");
+		_backendInitError = ScalingError::GraphicsDeviceInitFailed;
+		return false;
+	}
 
 	// 由于 DPI 缩放，捕获尺寸和边界矩形尺寸不一定相同
 	D3D11_TEXTURE2D_DESC desc;
-	_frameSource->GetOutput()->GetDesc(&desc);
+	_frameSource->GetPipelineTexture()->GetDesc(&desc);
 	Logger::Get().Info(fmt::format("捕获尺寸: {}x{}", desc.Width, desc.Height));
 
 	return true;
@@ -1414,7 +1526,9 @@ bool Renderer::_InitFrameSource() noexcept {
 static std::optional<EffectDesc> CompileEffect(
 	const EffectOption& effectOption,
 	bool noFP16,
-	bool forceInlineParams = false
+	bool forceInlineParams = false,
+	DXGI_FORMAT routeInputFormat = DXGI_FORMAT_UNKNOWN,
+	DXGI_FORMAT routeOutputFormat = DXGI_FORMAT_UNKNOWN
 ) noexcept {
 	// 指定效果名
 	EffectDesc result{ .name = effectOption.name };
@@ -1436,6 +1550,19 @@ static std::optional<EffectDesc> CompileEffect(
 	if (noFP16) {
 		compileFlag |= EffectCompilerFlags::NoFP16;
 	}
+	if (scalingOptions.IsHdrCompatibilityEnabled()) {
+		compileFlag |= EffectCompilerFlags::HdrCompatibility;
+	}
+	const auto encodeFormat = [](DXGI_FORMAT format, uint32_t shift) {
+		if (format == DXGI_FORMAT_UNKNOWN) return uint32_t(0);
+		for (uint32_t i = 0; i < std::size(EffectHelper::FORMAT_DESCS) - 1; ++i) {
+			if (EffectHelper::FORMAT_DESCS[i].dxgiFormat == format)
+				return ((i + 1) & EffectCompilerFlags::SurfaceFormatMask) << shift;
+		}
+		return uint32_t(0);
+	};
+	compileFlag |= encodeFormat(routeInputFormat, EffectCompilerFlags::InputFormatShift);
+	compileFlag |= encodeFormat(routeOutputFormat, EffectCompilerFlags::OutputFormatShift);
 
 	bool success = true;
 	uint32_t duration = Measure([&]() {
@@ -1470,7 +1597,18 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 
 	int duration = Measure([&]() {
 		Win32Helper::RunParallel([&](uint32_t id) {
-			std::optional<EffectDesc> desc = CompileEffect(effects[id], noFP16);
+			DXGI_FORMAT routeInput = DXGI_FORMAT_UNKNOWN;
+			DXGI_FORMAT routeOutput = DXGI_FORMAT_UNKNOWN;
+			if (options.IsHdrCompatibilityEnabled()) {
+				const HdrFormatRoutes routes = GetHdrRoutesForEffect(
+					effects[id], options.IsHdrCompatibilityEnabled());
+				if (!routes.empty() && routes.front().inputFormat != DXGI_FORMAT_UNKNOWN) {
+					routeInput = routes.front().inputFormat;
+					routeOutput = routes.front().outputFormat;
+				}
+			}
+			std::optional<EffectDesc> desc = CompileEffect(
+				effects[id], noFP16, false, routeInput, routeOutput);
 
 			auto lk = writeLock.lock_exclusive();
 			if (desc) {
@@ -1499,8 +1637,28 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 	_dlssFgRecoveryAttempts = 0;
 	std::optional<DLSSFrameGenerationSettings> dlssFrameGenerationSettings;
 
-	ID3D11Texture2D* inOutTexture = _frameSource->GetOutput();
+	ID3D11Texture2D* inOutTexture = _frameSource->GetPipelineTexture();
+	if (!_frameSource->PrepareHdrOutputForResize()) {
+		Logger::Get().Error("准备 HDR 输出尺寸失败");
+		return nullptr;
+	}
+	inOutTexture = _frameSource->GetPipelineTexture();
+	HdrFrame initialHdrFrame{};
+	if (options.IsHdrCompatibilityEnabled()) {
+		initialHdrFrame.texture = _frameSource->GetPipelineTexture();
+		initialHdrFrame.metadata = _frameSource->GetHdrFrameMetadata();
+		initialHdrFrame.workingFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	}
 	for (uint32_t i = 0; i < effectCount; ++i) {
+		HdrEffectBoundaryContext initialHdrBoundary{};
+		if (options.IsHdrCompatibilityEnabled()) {
+			const EffectOption& effectOption = effects[i];
+			initialHdrBoundary = HdrEffectBoundary::Prepare(
+				true, initialHdrFrame,
+				GetHdrRoutesForEffect(effectOption, options.IsHdrCompatibilityEnabled()),
+				initialHdrFrame.metadata.color);
+			_effectDrawers[i].SetHdrBoundary(initialHdrBoundary);
+		}
 		if (!_effectDrawers[i].Initialize(
 			_effectDescs[i],
 			effects[i],
@@ -1528,6 +1686,11 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 			return nullptr;
 		}
 		_nativeEffectBackends[i] = std::move(nativeBackend.backend);
+		if (_nativeEffectBackends[i] && options.IsHdrCompatibilityEnabled()) {
+			_nativeEffectBackends[i]->SetHdrBoundary(std::move(initialHdrBoundary));
+			ConfigureHdrBackendProtocol(effects[i].name, *_nativeEffectBackends[i],
+				initialHdrFrame.metadata, true);
+		}
 		if (effects[i].name == "DLSSNR\\DLSSNR_AI_Filter" && !_nativeEffectBackends[i] &&
 			options.reportErrorDetails) {
 			options.reportErrorDetails(ScalingWindow::Get().SrcTracker().Handle(),
@@ -1576,6 +1739,7 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 	}
 
 	_UpdateActiveEffectDescs();
+	_UpdateHdrEffectBoundaryContexts();
 
 	// 初始化所有效果共用的动态常量缓冲区
 	for (const EffectDesc& effectDesc : _effectDescs) {
@@ -1600,9 +1764,56 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 	return inOutTexture;
 }
 
+void Renderer::_UpdateHdrEffectBoundaryContexts() noexcept {
+	const ScalingOptions& options = ScalingWindow::Get().Options();
+	if (!options.IsHdrCompatibilityEnabled()) {
+		for (size_t i = 0; i < _effectDrawers.size(); ++i) {
+			_effectDrawers[i].SetHdrBoundary({});
+			if (i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) {
+				_nativeEffectBackends[i]->SetHdrBoundary({});
+			}
+		}
+		return;
+	}
+	if (!_frameSource) {
+		return;
+	}
+
+	HdrFrame inputFrame{};
+	inputFrame.texture = _frameSource->GetPipelineTexture();
+	inputFrame.metadata = _frameSource->GetHdrFrameMetadata();
+	inputFrame.workingFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+
+	for (size_t i = 0; i < _effectDrawers.size(); ++i) {
+		const EffectOption& effectOption = _runtimeEffectOptions[i];
+		const HdrFormatRoutes routes = GetHdrRoutesForEffect(effectOption, options.IsHdrCompatibilityEnabled());
+		HdrEffectBoundaryContext context = HdrEffectBoundary::Prepare(
+			true, inputFrame, routes, inputFrame.metadata.color);
+		if (effectOption.name == "DLSSNR\\DLSSNR_AI_Filter") {
+			D3D11_TEXTURE2D_DESC sourceDesc{};
+			inputFrame.texture->GetDesc(&sourceDesc);
+			Logger::Get().Info(fmt::format(
+				"DLSSNR HDR boundary: enabled={} route={} profile={} requiresBounded={} "
+				"normalizationScale={} sourceFormat={} source={}x{}",
+				options.IsHdrCompatibilityEnabled(),
+				context.SelectedRoute() ? context.SelectedRoute()->Id() : "(none)",
+				ToString(context.plan.profile), context.plan.requiresBoundedMapping,
+				context.plan.normalizationScale, static_cast<uint32_t>(sourceDesc.Format),
+				sourceDesc.Width, sourceDesc.Height));
+		}
+		_effectDrawers[i].SetHdrBoundary(context);
+		if (i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) {
+			_nativeEffectBackends[i]->SetHdrBoundary(std::move(context));
+			ConfigureHdrBackendProtocol(_runtimeEffectOptions[i].name,
+				*_nativeEffectBackends[i], inputFrame.metadata, true);
+		}
+	}
+}
+
 void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 	_effectParameterRuntimeInfos.clear();
 	_effectParameterRuntimeInfos.resize(_effectDescs.size());
+	const bool hdrEnabled = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled();
 	std::optional<uint32_t> lastDlssNr;
 	for (uint32_t i = 0; i < _runtimeEffectOptions.size(); ++i) {
 		if (_runtimeEffectOptions[i].name == "DLSSNR\\DLSSNR_AI_Filter" &&
@@ -1618,7 +1829,19 @@ void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 
 		for (const EffectParameterDesc& parameter : desc.params) {
 			EffectParameterRuntimeInfo info{ .name = parameter.name };
-			if (IsFrameRateFilterEffect(option.name)) {
+			const bool isHdrOnlyParameter =
+				(((option.name == "CAS\\CAS" || option.name == "CAS\\CAS_Scaling") &&
+					parameter.name == "hdrFormat") ||
+				 (option.name == "DLSSNR\\DLSSNR_AI_Filter" &&
+					(parameter.name == "experimentalHdrPath" ||
+					 parameter.name == "experimentalHdrScale")));
+			if (!hdrEnabled && isHdrOnlyParameter) {
+				info.applyMode = EffectParameterApplyMode::Unavailable;
+				info.restartReason = EffectParameterRestartReason::None;
+			} else if (isHdrOnlyParameter) {
+				info.applyMode = EffectParameterApplyMode::RestartRequired;
+				info.restartReason = EffectParameterRestartReason::ResourceRecreation;
+			} else if (IsFrameRateFilterEffect(option.name)) {
 				info.applyMode = EffectParameterApplyMode::Live;
 				info.restartReason = EffectParameterRestartReason::None;
 			} else if (IsDLSSFrameGenerationEffect(option.name)) {
@@ -1895,10 +2118,15 @@ ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
 		return nullptr;
 	}
 
-	ID3D11Texture2D* inOutTexture = _frameSource->GetOutput();
+	ID3D11Texture2D* inOutTexture = _frameSource->GetPipelineTexture();
 	D3D11_TEXTURE2D_DESC sourceDesc{};
+	if (!_frameSource->PrepareHdrOutputForResize()) {
+		Logger::Get().Error("准备 HDR 输出尺寸失败");
+		return nullptr;
+	}
+	inOutTexture = _frameSource->GetPipelineTexture();
 	inOutTexture->GetDesc(&sourceDesc);
-	const FrameGuidanceRequirements guidanceRequirements =
+	FrameGuidanceRequirements guidanceRequirements =
 		CollectFrameGuidanceRequirements(
 			_nativeEffectBackends, _dlssFrameGenerator.get(), _xessMotionRequest);
 	if (_frameGuidanceService.IsInitialized()) {
@@ -1991,6 +2219,7 @@ ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
 			_effectsProfiler.SetPassCount(_backendResources.GetD3DDevice(), passCount);
 		}
 	}
+	_UpdateHdrEffectBoundaryContexts();
 
 	if (_dlssFrameGenerator) {
 		const DLSSFrameGenerationSettings settings =
@@ -2015,7 +2244,7 @@ bool Renderer::_InitializeDLSSFrameGenerator(
 		_dlssFrameGenerator.reset();
 	}
 	D3D11_TEXTURE2D_DESC sourceDesc{};
-	_frameSource->GetOutput()->GetDesc(&sourceDesc);
+	_frameSource->GetPipelineTexture()->GetDesc(&sourceDesc);
 	auto frameGenerator = std::make_unique<DLSSFrameGenerator>();
 	if (!frameGenerator->Initialize(
 		_backendResources, _ngxD3D12Core, input,
@@ -2169,10 +2398,54 @@ void Renderer::_UpdateDestRect() noexcept {
 HANDLE Renderer::_CreateSharedTexture(ID3D11Texture2D* effectsOutput) noexcept {
 	D3D11_TEXTURE2D_DESC desc;
 	effectsOutput->GetDesc(&desc);
+	if (_hdrPresentationTexture) {
+		_backendDescriptorStore.RemoveCache(_hdrPresentationTexture.get());
+		_hdrPresentationTexture = nullptr;
+	}
+	if (_dlssFgNormalizedInput) {
+		_backendDescriptorStore.RemoveCache(_dlssFgNormalizedInput.get());
+		_dlssFgNormalizedInput = nullptr;
+	}
+	if (_dlssFgCanonicalGenerated) {
+		_backendDescriptorStore.RemoveCache(_dlssFgCanonicalGenerated.get());
+		_dlssFgCanonicalGenerated = nullptr;
+	}
+	const bool hdrEnabled = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled();
+	const bool xessFgHdrTerminal = hdrEnabled && _isXeSSFrameGenerationActive;
+	const DXGI_FORMAT presentationFormat = hdrEnabled
+		? (xessFgHdrTerminal ? DXGI_FORMAT_R10G10B10A2_UNORM : DXGI_FORMAT_R16G16B16A16_FLOAT)
+		: DXGI_FORMAT_R8G8B8A8_UNORM;
+	if (hdrEnabled && desc.Format != DXGI_FORMAT_R16G16B16A16_FLOAT) {
+		Logger::Get().Error("HDR 发布要求 canonical FP16 输出");
+		return NULL;
+	}
 	SIZE textureSize = { (LONG)desc.Width, (LONG)desc.Height };
+	_dlssFgHdrNormalizationScale = 1.0f;
+	if (hdrEnabled && _dlssFrameGenerator && _frameSource) {
+		const auto color = _frameSource->GetHdrFrameMetadata().color;
+		if (color.IsValid() && color.sdrWhiteNits > 80.0f) {
+			_dlssFgHdrNormalizationScale = 80.0f / color.sdrWhiteNits;
+			_dlssFgNormalizedInput = DirectXHelper::CreateTexture2D(
+				_backendResources.GetD3DDevice(), DXGI_FORMAT_R16G16B16A16_FLOAT,
+				textureSize.cx, textureSize.cy,
+				D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS);
+			_dlssFgCanonicalGenerated = DirectXHelper::CreateTexture2D(
+				_backendResources.GetD3DDevice(), DXGI_FORMAT_R16G16B16A16_FLOAT,
+				textureSize.cx, textureSize.cy,
+				D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS);
+			if (!_dlssFgNormalizedInput || !_dlssFgCanonicalGenerated) {
+				Logger::Get().Error("Create DLSSFG HDR normalization textures failed");
+				return NULL;
+			}
+			Logger::Get().Info(fmt::format(
+				"DLSSFG HDR bounded bridge enabled: sdrWhiteNits={:.3f} inputScale={:.6f}",
+				color.sdrWhiteNits, _dlssFgHdrNormalizationScale));
+		}
+	}
 	_sharedTextureSlotCount = _dlssFrameGenerator ?
 		std::clamp(_dlssFrameGenerator->Multiplier(), 2u, MAX_SHARED_TEXTURE_SLOTS) : 1u;
 	_sharedTextureGeneration.fetch_add(1, std::memory_order_release);
+	_pendingDLSSFGFrontendFrames.store(0, std::memory_order_release);
 	_nextBackendSharedTextureSlot = 0;
 	_latestSharedTextureSlot.store(0, std::memory_order_relaxed);
 	for (uint32_t i = 0; i < MAX_SHARED_TEXTURE_SLOTS; ++i) {
@@ -2187,12 +2460,18 @@ HANDLE Renderer::_CreateSharedTexture(ID3D11Texture2D* effectsOutput) noexcept {
 		_sharedMotionFrameIds[i].store(0, std::memory_order_relaxed);
 		_sharedMotionValid[i].store(false, std::memory_order_relaxed);
 		_sharedMotionReset[i].store(true, std::memory_order_relaxed);
+		_sharedTextureCaptureSequences[i].store(0, std::memory_order_relaxed);
+		_sharedTextureFrameIds[i].store(0, std::memory_order_relaxed);
+		_sharedTextureResourceGenerations[i].store(
+			_sharedTextureGeneration.load(std::memory_order_relaxed), std::memory_order_relaxed);
+		_sharedTextureTimestamps[i].store(0, std::memory_order_relaxed);
+		_sharedFrameMetadata[i] = {};
 	}
 
 	for (uint32_t i = 0; i < _sharedTextureSlotCount; ++i) {
 		_backendSharedTextures[i] = DirectXHelper::CreateTexture2D(
 			_backendResources.GetD3DDevice(),
-			DXGI_FORMAT_R8G8B8A8_UNORM,
+			presentationFormat,
 			textureSize.cx,
 			textureSize.cy,
 			D3D11_BIND_SHADER_RESOURCE,
@@ -2266,8 +2545,21 @@ HANDLE Renderer::_CreateSharedTexture(ID3D11Texture2D* effectsOutput) noexcept {
 			"DLSSFG bounded presentation ring initialized: slots={}",
 			_sharedTextureSlotCount));
 	}
+	if (xessFgHdrTerminal) {
+		_hdrPresentationTexture = DirectXHelper::CreateTexture2D(
+			_backendResources.GetD3DDevice(), DXGI_FORMAT_R10G10B10A2_UNORM,
+			textureSize.cx, textureSize.cy,
+			D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS);
+		if (!_hdrPresentationTexture) {
+			Logger::Get().Error("Create XeSSFG HDR10 presentation texture failed");
+			return NULL;
+		}
+	}
 	if (!_passThroughFrames.InitializeBackend(_backendResources,
-		_frameSource->GetOutput(), effectsOutput, _sharedTextureSlotCount)) {
+		_frameSource->GetPipelineTexture(), effectsOutput, _sharedTextureSlotCount,
+		ScalingWindow::Get().Options().IsHdrCompatibilityEnabled(),
+		HdrColorTransform::ForFrame(_frameSource->GetHdrFrameMetadata().color),
+		_frameSource->GetHdrFrameMetadata())) {
 		const auto& window = ScalingWindow::Get();
 		if (const auto& report = window.Options().reportErrorDetails) {
 			report(window.SrcTracker().Handle(), ScalingError::PassThroughUnavailable,
@@ -2348,7 +2640,7 @@ void Renderer::_BackendThreadProc() noexcept {
 			// Do not replace colour/reference/motion before this input enters FG.
 			auto input = std::move(_pendingFrameGenerationInput);
 			_fgInputClock.Submitted(now);
-			_CompleteBackendFrame(input.get(), true);
+			_CompleteBackendFrame(input.get(), true, _captureSequence);
 			if (!_dlssFrameGenerator || !_synchronousFramePresentationEnabled.load(std::memory_order_acquire)) {
 				PostMessage(ScalingWindow::Get().Handle(), CommonSharedConstants::WM_FRONTEND_RENDER, 0, 0);
 			}
@@ -2407,7 +2699,7 @@ void Renderer::_BackendThreadProc() noexcept {
 			_forceNextRender = false;
 			_backendMayDeferFG = true;
 			_BackendRender(
-				_effectDrawers.back().GetOutputTexture(),
+				_effectDrawers.back().GetExternalOutputTexture(),
 				frameSourceState == FrameSourceState::NewFrame);
 			_backendMayDeferFG = false;
 			// DLSSFG uses synchronous, individually paced presentation so generated
@@ -2533,6 +2825,7 @@ HANDLE Renderer::_InitBackend() noexcept {
 	if (!_InitFrameSource()) {
 		return NULL;
 	}
+	_activeResourceGeneration.store(_frameSource->ResourceGeneration(), std::memory_order_release);
 	{
 		if (_frameSource->WaitType() == FrameSourceWaitType::NoWait) {
 			// 某些捕获方式不会限制捕获帧率，因此将捕获帧率限制为屏幕刷新率
@@ -2558,10 +2851,13 @@ HANDLE Renderer::_InitBackend() noexcept {
 		return NULL;
 	}
 
-	const FrameGuidanceRequirements guidanceRequirements =
+	FrameGuidanceRequirements guidanceRequirements =
 		CollectFrameGuidanceRequirements(
 			_nativeEffectBackends, _dlssFrameGenerator.get(), _xessMotionRequest);
 	_motionConsumers.clear();
+	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() && guidanceRequirements.HasMotion()) {
+		Logger::Get().Info("HDR mode: optical-flow providers receive the canonical frame and perform provider-local format adaptation");
+	}
 	for (size_t i = 0; i < _runtimeEffectOptions.size(); ++i) {
 		const auto& effect = _runtimeEffectOptions[i];
 		const MotionVectorRequest request = IsDLSSFrameGenerationEffect(effect.name) && _dlssFrameGenerator ?
@@ -2588,7 +2884,7 @@ HANDLE Renderer::_InitBackend() noexcept {
 #endif
 		});
 		if (!_frameGuidanceService.Initialize(
-			_backendResources, _frameSource->GetOutput(), guidanceRequirements)) {
+			_backendResources, _frameSource->GetPipelineTexture(), guidanceRequirements)) {
 			const OpticalFlowMethod method =
 				_frameGuidanceService.InitializationFailedMethod();
 			const OpticalFlowInitializationError error =
@@ -2657,6 +2953,9 @@ void Renderer::_BackendRender(
 		const uint64_t sequence = _frameSource->CaptureSequence();
 		if (sequence != _captureSequence) {
 			_captureSequence = sequence;
+			_activeCaptureSequence.store(sequence, std::memory_order_release);
+			_activeResourceGeneration.store(
+				_frameSource->ResourceGeneration(), std::memory_order_release);
 			_captureCadence.RestartSequence();
 			_captureCadenceQueueWait = {};
 			if (_capturedFrameId) {
@@ -2673,9 +2972,12 @@ void Renderer::_BackendRender(
 		const auto downstreamWait = std::exchange(_captureCadenceQueueWait,
 			std::chrono::steady_clock::duration::zero());
 		if (_captureCadence.Observe(captureTime, downstreamWait)) {
-			if (_frameGuidanceService.IsInitialized())
-				_frameGuidanceService.ResetHistory(FrameGuidanceResetReason::LongPause);
-			if (_dlssFrameGenerator) _dlssFrameGenerator->RequestHistoryReset();
+			// A delayed WGC notification is a delivery-time observation, not a
+			// capture interruption. Resetting DLSSFG history here drops the first
+			// generated frame after an otherwise valid static-window gap and causes
+			// visible flashing. Actual interruptions already advance CaptureSequence
+			// and reset temporal consumers in the branch above.
+			Logger::Get().Info("Capture cadence gap observed; preserving temporal history until capture sequence changes");
 		}
 		if (_dlssFrameGenerator) _synchronousPresentInterval =
 			_captureCadence.Interval(_dlssFrameGenerator->Multiplier(), _baseFrameRateLimit);
@@ -2689,7 +2991,10 @@ void Renderer::_BackendRender(
 		if (_frameGuidanceService.IsInitialized()) {
 			FrameTrace::Scope traceGuidance(FrameTrace::Event::Guidance);
 			_frameGuidanceService.BeginFrame(
-				_capturedFrameId, _frameSource->GetOutput(), guidanceRequirements);
+			_capturedFrameId, _frameSource->GetPipelineTexture(), guidanceRequirements,
+			_frameSource->CaptureSequence(), _frameSource->ResourceGeneration(),
+			_frameSource->CaptureTimestamp100ns(),
+			_frameSource->GetHdrFrameMetadata().color);
 		}
 	}
 	if (_dlssFrameGenerator && isNewCaptureFrame) {
@@ -2698,7 +3003,17 @@ void Renderer::_BackendRender(
 
 	FrameTrace::SetFrame(_capturedFrameId);
 	traceRender.FrameId(_capturedFrameId);
-	_passThroughFrames.UpdateBackend(_capturedFrameId, isNewCaptureFrame);
+	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() && isNewCaptureFrame && _capturedFrameId <= 2) {
+		_LogHdrTextureStats(_frameSource->GetPipelineTexture(), "capture-canonical");
+	}
+	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
+		HdrFrame captureFrame = _frameSource->GetCanonicalFrame();
+		captureFrame.metadata.frameId = _capturedFrameId;
+		captureFrame.metadata.captureSequence = _captureSequence;
+		_passThroughFrames.UpdateBackend(captureFrame, isNewCaptureFrame);
+	} else {
+		_passThroughFrames.UpdateBackend(_capturedFrameId, isNewCaptureFrame);
+	}
 
 	ID3D11DeviceContext4* d3dDC = _backendResources.GetD3DDC();
 	d3dDC->ClearState();
@@ -2709,10 +3024,26 @@ void Renderer::_BackendRender(
 	}
 
 	_effectsProfiler.OnBeginEffects(d3dDC);
+	if (isNewCaptureFrame) {
+		_UpdateHdrEffectBoundaryContexts();
+	}
 
 	for (uint32_t i = 0; i < _effectDrawers.size(); ++i) {
 		const EffectDrawer& effectDrawer = _effectDrawers[i];
+		if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
+			// Rebind every boundary to the actual upstream canonical handoff for
+			// this frame. Initialization-time pointers become stale after the
+			// first capture and after any resize/rebuild.
+			ID3D11Texture2D* upstream = i == 0
+				? _frameSource->GetPipelineTexture()
+				: _effectDrawers[i - 1].GetExternalOutputTexture();
+			_effectDrawers[i].SetHdrInputSource(upstream);
+		}
 		if (i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) {
+			if (!effectDrawer.PrepareHdrInput()) {
+				Logger::Get().Error("准备 native HDR 效果输入失败");
+				continue;
+			}
 			D3D11_TEXTURE2D_DESC inputDesc{};
 			effectDrawer.GetTexture(0)->GetDesc(&inputDesc);
 			const FrameGuidanceConsumerViews guidance =
@@ -2723,6 +3054,10 @@ void Renderer::_BackendRender(
 			const NativeEffectDrawContext drawContext{
 				.input = effectDrawer.GetTexture(0),
 				.output = effectDrawer.GetOutputTexture(),
+				.inputMetadata = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()
+					? effectDrawer.GetHdrBoundary().inputFrame.metadata : HdrFrameMetadata{},
+				.outputMetadata = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()
+					? effectDrawer.GetHdrBoundary().inputFrame.metadata : HdrFrameMetadata{},
 				.frameId = _capturedFrameId,
 				.inputRevision = i < _effectInputRevisions.size()
 					? _effectInputRevisions[i] : 0,
@@ -2730,16 +3065,50 @@ void Renderer::_BackendRender(
 				.zeroFrameGuidance = guidance.zero
 			};
 			FrameTrace::Scope traceNative(FrameTrace::Event::NativeEffect, i);
-			if (!_nativeEffectBackends[i]->Draw(drawContext)) {
-				Logger::Get().Error("Draw native effect failed");
+			const bool nativeDrawSucceeded = _nativeEffectBackends[i]->Draw(drawContext);
+			if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() && isNewCaptureFrame && _capturedFrameId <= 2) {
+				_LogHdrTextureStats(drawContext.input, fmt::format("effect-{}-input", i));
+				_LogHdrTextureStats(drawContext.output, fmt::format("effect-{}-backend-output", i));
+			}
+			if (!nativeDrawSucceeded) {
+				const HdrEffectBoundaryContext& boundary = effectDrawer.GetHdrBoundary();
+				D3D11_TEXTURE2D_DESC outputDesc{};
+				if (effectDrawer.GetOutputTexture()) {
+					effectDrawer.GetOutputTexture()->GetDesc(&outputDesc);
+				}
+				Logger::Get().Error(fmt::format(
+					"Native effect Draw failed: effect={} route={} profile={} "
+					"inputFormat={} outputFormat={} fallback=marker-pass",
+					_runtimeEffectOptions[i].name,
+					boundary.SelectedRoute() ? boundary.SelectedRoute()->Id() : "(none)",
+					ToString(boundary.plan.profile),
+					static_cast<uint32_t>(inputDesc.Format),
+					static_cast<uint32_t>(outputDesc.Format)));
+				// A runtime SDK failure must not publish the cleared route output.
+				// Execute the production marker pass through the same drawer so the
+				// chain remains visible at the requested output size.
+				effectDrawer.Draw(_effectsProfiler);
+			} else if (!effectDrawer.CompleteHdrOutput()) {
+				Logger::Get().Error("完成 native HDR 效果输出失败");
 			}
 			_effectsProfiler.OnEndPass(d3dDC);
 		} else {
 			effectDrawer.Draw(_effectsProfiler);
+			if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() && isNewCaptureFrame && _capturedFrameId <= 2) {
+				_LogHdrTextureStats(effectDrawer.GetTexture(0), fmt::format("effect-{}-adapter-input", i));
+				_LogHdrTextureStats(effectDrawer.GetExternalOutputTexture(), fmt::format("effect-{}-canonical-output", i));
+			}
 		}
 	}
 
 	_effectsProfiler.OnEndEffects(d3dDC);
+	// Keep the pacing/queue optimization, while avoiding duplicate real-frame
+	// submissions during a capture gap. FG must advance from a new canonical
+	// capture or its own generated frame, never from a repeated stale input.
+	if (!isNewCaptureFrame && (_dlssFrameGenerator || _isXeSSFrameGenerationActive)) {
+		d3dDC->Flush();
+		return;
+	}
 
 	if (_frontEdgeSyncEnabled && _dlssFrameGenerator && isNewCaptureFrame &&
 		_backendMayDeferFG && _synchronousFramePresentationEnabled.load(std::memory_order_acquire)) {
@@ -2747,30 +3116,102 @@ void Renderer::_BackendRender(
 		d3dDC->Flush();
 		return;
 	}
-	_CompleteBackendFrame(effectsOutput, isNewCaptureFrame);
+	_CompleteBackendFrame(effectsOutput, isNewCaptureFrame, _captureSequence);
 }
 
-void Renderer::_CompleteBackendFrame(ID3D11Texture2D* effectsOutput, bool isNewCaptureFrame) noexcept {
+void Renderer::_LogHdrTextureStats(ID3D11Texture2D* texture, std::string_view label) noexcept {
+	if (!texture) {
+		Logger::Get().Warn(fmt::format("HDR texture stats: label={} texture=null", label));
+		return;
+	}
+	D3D11_TEXTURE2D_DESC sourceDesc{};
+	texture->GetDesc(&sourceDesc);
+	if (sourceDesc.ArraySize != 1 || sourceDesc.MipLevels != 1) return;
+	D3D11_TEXTURE2D_DESC staging = sourceDesc;
+	staging.Usage = D3D11_USAGE_STAGING;
+	staging.BindFlags = 0;
+	staging.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	staging.MiscFlags = 0;
+	winrt::com_ptr<ID3D11Texture2D> readback;
+	if (FAILED(_backendResources.GetD3DDevice()->CreateTexture2D(&staging, nullptr, readback.put()))) {
+		Logger::Get().Warn(fmt::format("HDR texture stats: label={} staging-create-failed format={}", label, static_cast<uint32_t>(sourceDesc.Format)));
+		return;
+	}
+	_backendResources.GetD3DDC()->CopyResource(readback.get(), texture);
+	_backendResources.GetD3DDC()->Flush();
+	D3D11_MAPPED_SUBRESOURCE mapped{};
+	if (FAILED(_backendResources.GetD3DDC()->Map(readback.get(), 0, D3D11_MAP_READ, 0, &mapped))) {
+		Logger::Get().Warn(fmt::format("HDR texture stats: label={} map-failed format={}", label, static_cast<uint32_t>(sourceDesc.Format)));
+		return;
+	}
+	double sum[4]{}; float minimum[4]{ FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX };
+	float maximum[4]{ -FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX }; uint64_t finite = 0, invalid = 0;
+	for (UINT y = 0; y < sourceDesc.Height; ++y) {
+		const auto* row = static_cast<const uint8_t*>(mapped.pData) + size_t(y) * mapped.RowPitch;
+		for (UINT x = 0; x < sourceDesc.Width; ++x) {
+			float values[4]{};
+			if (sourceDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM) {
+				const auto* p = row + size_t(x) * 4; for (int c = 0; c < 4; ++c) values[c] = p[c] / 255.0f;
+			} else if (sourceDesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT) {
+				const auto* p = reinterpret_cast<const uint16_t*>(row) + size_t(x) * 4;
+				for (int c = 0; c < 4; ++c) { const uint16_t h = p[c]; const uint32_t e = (h >> 10) & 31u; const uint32_t f = h & 1023u; const bool s = (h & 0x8000u) != 0; values[c] = e == 0 ? std::ldexp(float(f), -24) : e == 31 ? (f ? NAN : (s ? -INFINITY : INFINITY)) : std::ldexp(float(1024 + f), int(e) - 25) * (s ? -1.0f : 1.0f); }
+			} else { continue; }
+			for (int c = 0; c < 4; ++c) { if (std::isfinite(values[c])) { sum[c] += values[c]; minimum[c] = (std::min)(minimum[c], values[c]); maximum[c] = (std::max)(maximum[c], values[c]); ++finite; } else ++invalid; }
+		}
+	}
+	_backendResources.GetD3DDC()->Unmap(readback.get(), 0);
+	const double pixels = double(sourceDesc.Width) * double(sourceDesc.Height);
+	Logger::Get().Info(fmt::format("HDR texture stats: label={} format={} size={}x{} finite={} invalid={} R=[{:.6g},{:.6g},{:.6g}] G=[{:.6g},{:.6g},{:.6g}] B=[{:.6g},{:.6g},{:.6g}] A=[{:.6g},{:.6g},{:.6g}]", label, static_cast<uint32_t>(sourceDesc.Format), sourceDesc.Width, sourceDesc.Height, finite, invalid, minimum[0], maximum[0], sum[0] / pixels, minimum[1], maximum[1], sum[1] / pixels, minimum[2], maximum[2], sum[2] / pixels, minimum[3], maximum[3], sum[3] / pixels));
+}
+
+void Renderer::_CompleteBackendFrame(
+	ID3D11Texture2D* effectsOutput,
+	bool isNewCaptureFrame,
+	uint64_t captureSequence
+) noexcept {
 	auto* d3dDC = _backendResources.GetD3DDC();
 	if (_frontEdgeSyncEnabled) _baseFrameRateLimit = _FrontEdgeFrameRate();
 	if (_dlssFrameGenerator) _synchronousPresentInterval =
 		_captureCadence.Interval(_dlssFrameGenerator->Multiplier(), _baseFrameRateLimit);
 	if (_dlssFrameGenerator && isNewCaptureFrame) {
 		D3D11_TEXTURE2D_DESC sourceDesc{};
-		_frameSource->GetOutput()->GetDesc(&sourceDesc);
+		_frameSource->GetPipelineTexture()->GetDesc(&sourceDesc);
 		const FrameGuidanceConsumerViews guidance =
 			_frameGuidanceService.GetConsumerViews(
 				_capturedFrameId, { sourceDesc.Width, sourceDesc.Height },
 				GetMotionVectorRequest(
 					_dlssFrameGenerator->GetFrameGuidanceRequirements()));
 		_dlssFgPresentationStopping = false;
+		ID3D11Texture2D* dlssInput = effectsOutput;
+		if (_dlssFgNormalizedInput && _dlssFgHdrNormalizationScale != 1.0f) {
+			if (!_hdrPresentationAdapter.ConvertHdrToBounded(
+				effectsOutput, _dlssFgNormalizedInput.get(),
+				HdrColorTransform::ForFrame(_frameSource->GetHdrFrameMetadata().color),
+				_dlssFgHdrNormalizationScale)) {
+				Logger::Get().Error("DLSSFG canonical-to-bounded input conversion failed");
+				return;
+			}
+			dlssInput = _dlssFgNormalizedInput.get();
+		}
 		const bool generated = _dlssFrameGenerator->Draw(
-			effectsOutput,
+			dlssInput,
 			_capturedFrameId,
 			guidance.produced,
 			guidance.zero,
-			[this](ID3D11Texture2D* generatedFrame) {
-				return _PublishBackendTexture(generatedFrame, true, true);
+		[this, captureSequence](ID3D11Texture2D* generatedFrame) {
+				ID3D11Texture2D* canonicalGenerated = generatedFrame;
+				if (_dlssFgCanonicalGenerated && _dlssFgHdrNormalizationScale != 1.0f) {
+					if (!_hdrPresentationAdapter.ConvertBoundedToHdr(
+						generatedFrame, _dlssFgCanonicalGenerated.get(),
+						HdrColorTransform::ForFrame(_frameSource->GetHdrFrameMetadata().color),
+						_dlssFgHdrNormalizationScale)) {
+						Logger::Get().Error("DLSSFG bounded-to-canonical output conversion failed");
+						return false;
+					}
+					canonicalGenerated = _dlssFgCanonicalGenerated.get();
+				}
+				return _PublishBackendTexture(canonicalGenerated, true, true, captureSequence,
+					_frameSource ? _frameSource->ResourceGeneration() : 0);
 			}
 		);
 		if (!generated && !_dlssFgPresentationStopping) {
@@ -2785,7 +3226,8 @@ void Renderer::_CompleteBackendFrame(ID3D11Texture2D* effectsOutput, bool isNewC
 
 	const bool synchronous = _dlssFrameGenerator &&
 		_synchronousFramePresentationEnabled.load(std::memory_order_acquire);
-	if (!_PublishBackendTexture(effectsOutput, synchronous, false)) {
+	if (!_PublishBackendTexture(effectsOutput, synchronous, false, captureSequence,
+		_frameSource ? _frameSource->ResourceGeneration() : 0)) {
 		return;
 	}
 
@@ -2796,13 +3238,71 @@ void Renderer::_CompleteBackendFrame(ID3D11Texture2D* effectsOutput, bool isNewC
 bool Renderer::_PublishBackendTexture(
 	ID3D11Texture2D* texture,
 	bool synchronous,
-	bool generatedFrame
+	bool generatedFrame,
+	uint64_t captureSequence,
+	uint64_t resourceGeneration
 ) noexcept {
+	const uint64_t currentGeneration = _frameSource ? _frameSource->ResourceGeneration() :
+		_sharedTextureGeneration.load(std::memory_order_acquire);
+	if (captureSequence != 0 && captureSequence != _captureSequence) {
+		Logger::Get().Warn(fmt::format(
+			"Dropping stale {} frame: generation={} currentGeneration={}",
+			generatedFrame ? "generated" : "real", captureSequence, _captureSequence));
+		// The SDK submission itself completed; treat the stale publication as
+		// consumed so a recovery does not disable an otherwise healthy FG path.
+		return true;
+	}
+	if (resourceGeneration != 0 && resourceGeneration != currentGeneration) {
+		Logger::Get().Warn(fmt::format(
+			"Dropping stale {} frame: resourceGeneration={} currentResourceGeneration={}",
+			generatedFrame ? "generated" : "real", resourceGeneration, currentGeneration));
+		return true;
+	}
+	if (!texture) {
+		Logger::Get().Error("Dropping frame publication with null texture");
+		return false;
+	}
 	ID3D11DeviceContext4* d3dDC = _backendResources.GetD3DDC();
+	ID3D11Texture2D* publicationTexture = texture;
+	HdrFrameMetadata publicationMetadata{};
+	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
+		publicationMetadata = _frameSource->GetHdrFrameMetadata();
+		publicationMetadata.frameId = _capturedFrameId;
+		publicationMetadata.captureSequence = captureSequence;
+		publicationMetadata.resourceGeneration = _frameSource->ResourceGeneration();
+		publicationMetadata.timestamp100ns = _frameSource->CaptureTimestamp100ns();
+		publicationMetadata.stage = generatedFrame
+			? HdrFrameStage::GeneratedOutput : HdrFrameStage::CanonicalOutput;
+		publicationMetadata.generated = generatedFrame;
+		D3D11_TEXTURE2D_DESC textureDesc{};
+		texture->GetDesc(&textureDesc);
+		if (textureDesc.Format != DXGI_FORMAT_R16G16B16A16_FLOAT) {
+			Logger::Get().Error("HDR 发布收到非 canonical FP16 纹理");
+			return false;
+		}
+		if (_isXeSSFrameGenerationActive) {
+			if (!_hdrPresentationTexture ||
+				!_hdrPresentationAdapter.ConvertCanonicalToHdr10(
+					texture, _hdrPresentationTexture.get(),
+					HdrColorTransform::ForFrame(_frameSource->GetHdrFrameMetadata().color))) {
+				Logger::Get().Error("XeSSFG canonical-to-HDR10 conversion failed");
+				return false;
+			}
+			publicationTexture = _hdrPresentationTexture.get();
+			publicationMetadata.stage = HdrFrameStage::PublishedOutput;
+			publicationMetadata.color.transfer = HdrTransferFunction::PQ;
+			publicationMetadata.sourceFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
+		}
+	}
 	const bool queuedPresentation = synchronous &&
 		_synchronousFramePresentationEnabled.load(std::memory_order_acquire);
 	const uint32_t sharedTextureSlot =
 		_nextBackendSharedTextureSlot++ % _sharedTextureSlotCount;
+	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() &&
+		_capturedFrameId <= 2) {
+		_LogHdrTextureStats(publicationTexture, fmt::format(
+			"publication-source-slot-{}", sharedTextureSlot));
+	}
 	bool slotReserved = false;
 	if (queuedPresentation) {
 		const auto ringWaitStart = std::chrono::steady_clock::now();
@@ -2887,7 +3387,22 @@ bool Renderer::_PublishBackendTexture(
 			hr = AcquirePresentationTextures(mutexes, currentKey, 250);
 		}
 		if (SUCCEEDED(hr)) {
-			d3dDC->CopyResource(_backendSharedTextures[sharedTextureSlot].get(), texture);
+			HdrFrameMetadata frameMetadata = _frameSource ?
+				_frameSource->GetHdrFrameMetadata() : HdrFrameMetadata{};
+			frameMetadata.frameId = _capturedFrameId;
+			frameMetadata.captureSequence = captureSequence;
+			frameMetadata.resourceGeneration = resourceGeneration != 0 ? resourceGeneration : currentGeneration;
+			frameMetadata.timestamp100ns = _frameSource ? _frameSource->CaptureTimestamp100ns() : 0;
+			frameMetadata.generated = generatedFrame;
+			frameMetadata.stage = generatedFrame ? HdrFrameStage::GeneratedOutput : HdrFrameStage::PublishedOutput;
+			frameMetadata.valid = true;
+			_sharedFrameMetadata[sharedTextureSlot] = frameMetadata;
+			d3dDC->CopyResource(_backendSharedTextures[sharedTextureSlot].get(), publicationTexture);
+			if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() &&
+				_capturedFrameId <= 2) {
+				_LogHdrTextureStats(_backendSharedTextures[sharedTextureSlot].get(),
+					fmt::format("publication-shared-slot-{}", sharedTextureSlot));
+			}
 			_passThroughFrames.Publish(sharedTextureSlot, generatedFrame);
 			if (mutexes[2] && xessMotionValid) {
 				d3dDC->CopyResource(_backendSharedMotionTextures[sharedTextureSlot].get(), xessMotion);
@@ -2896,6 +3411,15 @@ bool Renderer::_PublishBackendTexture(
 			_sharedMotionValid[sharedTextureSlot].store(xessMotionValid, std::memory_order_release);
 			_sharedMotionReset[sharedTextureSlot].store(xessMotionReset || !xessMotionValid,
 				std::memory_order_release);
+			_sharedTextureCaptureSequences[sharedTextureSlot].store(
+				captureSequence, std::memory_order_release);
+			_sharedTextureFrameIds[sharedTextureSlot].store(
+				publicationMetadata.frameId, std::memory_order_release);
+			_sharedTextureResourceGenerations[sharedTextureSlot].store(
+				publicationMetadata.resourceGeneration, std::memory_order_release);
+			_sharedTextureTimestamps[sharedTextureSlot].store(
+				_frameSource->CaptureTimestamp100ns(), std::memory_order_release);
+			_sharedFrameMetadata[sharedTextureSlot] = publicationMetadata;
 			hr = ReleasePresentationTextures(mutexes, key);
 			if (SUCCEEDED(hr)) _sharedTextureMutexKeys[sharedTextureSlot].store(key, std::memory_order_release);
 		}

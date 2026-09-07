@@ -438,6 +438,21 @@ void ProfileViewModel::Is3DGameMode(bool value) {
 	RaisePropertyChanged(L"Is3DGameMode");
 }
 
+bool ProfileViewModel::IsHdrCompatibilityEnabled() const noexcept {
+	return _data->IsHdrCompatibilityEnabled();
+}
+
+void ProfileViewModel::IsHdrCompatibilityEnabled(bool value) {
+	if (_data->IsHdrCompatibilityEnabled() == value) {
+		return;
+	}
+
+	_data->IsHdrCompatibilityEnabled(value);
+	AppSettings::Get().SaveAsync();
+
+	RaisePropertyChanged(L"IsHdrCompatibilityEnabled");
+}
+
 bool ProfileViewModel::HasMultipleMonitors() const noexcept {
 	return GetSystemMetrics(SM_CMONITORS) > 1;
 }
