@@ -872,7 +872,7 @@
     <value>Undo</value>
   </data>
   <data name="Message_BannedInWindowedMode" xml:space="preserve">
-    <value>This window is maximized or fullscreen. Restore it or exit fullscreen, or use fullscreen mode instead.</value>
+    <value>The source application is maximized or fullscreen. Switch it to windowed mode and restore its window to a size smaller than the screen, then start windowed effects again.</value>
   </data>
   <data name="Message_InvalidCropping" xml:space="preserve">
     <value>The cropped area is too small or invalid. Reduce the crop values so both dimensions are at least 64 pixels, or disable custom cropping.</value>

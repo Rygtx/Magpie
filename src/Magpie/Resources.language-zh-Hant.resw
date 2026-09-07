@@ -845,7 +845,7 @@
     <value>取消操作</value>
   </data>
   <data name="Message_BannedInWindowedMode" xml:space="preserve">
-    <value>不支援視窗模式這個視窗。</value>
+    <value>來源應用程式已最大化或處於全螢幕狀態。請先在來源應用程式中切換為視窗化，並將視窗還原到小於螢幕的尺寸，再啟動視窗模式效果。</value>
   </data>
   <data name="Message_InvalidCropping" xml:space="preserve">
     <value>無法套用自訂裁剪。</value>

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "SrcTracker.h"
+#include "SourceWindowGeometry.h"
 #include "Logger.h"
 #include "SmallVector.h"
 #include "Win32Helper.h"
@@ -96,6 +97,27 @@ ScalingError SrcTracker::Set(HWND hWnd, const ScalingOptions& options, bool& isI
 	if (!Win32Helper::GetClientScreenRect(hWnd, clientRect)) {
 		Logger::Get().Win32Error("GetClientScreenRect 失败");
 		return ScalingError::SourceWindowGeometryFailed;
+	}
+
+	// Reject fullscreen sources before cropping, creating scaling windows or
+	// initializing capture/GPU resources. Borderless fullscreen need not carry
+	// the maximized flag, and its window kind varies between applications.
+	if (options.IsWindowedMode()) {
+		MONITORINFO monitorInfo{ .cbSize = sizeof(monitorInfo) };
+		if (!GetMonitorInfoW(hMon, &monitorInfo)) {
+			Logger::Get().Win32Error("Read source monitor bounds for windowed scaling failed");
+			return ScalingError::DisplayLayoutFailed;
+		}
+		if (SourceWindowCoversMonitor(_windowFrameRect, clientRect, monitorInfo.rcMonitor)) {
+			Logger::Get().Info(fmt::format(
+				"Windowed scaling preflight: fullscreen source; switch the source application to a window. "
+				"frame=({},{},{},{}) client=({},{},{},{}) monitor=({},{},{},{})",
+				_windowFrameRect.left, _windowFrameRect.top, _windowFrameRect.right, _windowFrameRect.bottom,
+				clientRect.left, clientRect.top, clientRect.right, clientRect.bottom,
+				monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
+				monitorInfo.rcMonitor.right, monitorInfo.rcMonitor.bottom));
+			return ScalingError::BannedInWindowedMode;
+		}
 	}
 
 	// 计算窗口样式

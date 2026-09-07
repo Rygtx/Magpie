@@ -73,6 +73,7 @@
     <ClInclude Include="include\EffectDesc.h" />
     <ClInclude Include="include\EffectParameterValue.h" />
     <ClInclude Include="include\ScalingOptions.h" />
+    <ClInclude Include="include\SourceWindowGeometry.h" />
     <ClInclude Include="include\ScalingSessionLifetime.h" />
     <ClInclude Include="include\OverlayWindowGeometry.h" />
     <ClInclude Include="include\EffectParameterPersistence.h" />

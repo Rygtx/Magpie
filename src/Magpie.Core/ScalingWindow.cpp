@@ -317,7 +317,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 
 	LogRects(_srcTracker.SrcRect(), _rendererRect, _windowRect);
 
-	if (!_options.RealIsAllowScalingMaximized()) {
+	if (!_options.IsWindowedMode() && !_options.RealIsAllowScalingMaximized()) {
 		// 检查源窗口是否是无边框全屏窗口
 		if (srcWindowKind == SrcWindowKind::NoNativeFrame && _srcTracker.WindowRect() == _rendererRect) {
 			Logger::Get().Info("源窗口已全屏");

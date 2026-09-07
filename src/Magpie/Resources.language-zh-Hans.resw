@@ -872,7 +872,7 @@
     <value>取消操作</value>
   </data>
   <data name="Message_BannedInWindowedMode" xml:space="preserve">
-    <value>当前窗口已最大化或处于全屏状态。请先还原窗口或退出全屏，也可以改用全屏模式。</value>
+    <value>源应用已最大化或处于全屏状态。请先在源应用中切换为窗口化，并将窗口还原到小于屏幕的尺寸，再启动窗口模式效果。</value>
   </data>
   <data name="Message_InvalidCropping" xml:space="preserve">
     <value>裁剪后的区域过小或无效。请减小裁剪值，确保宽高至少为 64 像素，或关闭自定义裁剪。</value>

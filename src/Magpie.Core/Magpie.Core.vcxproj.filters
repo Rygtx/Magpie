@@ -125,6 +125,7 @@
     <ClInclude Include="FramePresentationTiming.h" />
     <ClInclude Include="FramePacingWait.h" />
     <ClInclude Include="include\FramePacingOptions.h" />
+    <ClInclude Include="include\SourceWindowGeometry.h" />
     <ClInclude Include="FrameGuidanceTypes.h">
       <Filter>Render</Filter>
     </ClInclude>
