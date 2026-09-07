@@ -13,6 +13,7 @@
 using namespace Magpie;
 
 int main() {
+	assert(GetIssueAction(ScalingError::CaptureMethodUnavailable) == IssueAction::Profile);
 	// The next step must exist on this machine and differ from the current value.
 	assert(!CanSuggestAnotherAdapter(0));
 	assert(!CanSuggestAnotherAdapter(1));

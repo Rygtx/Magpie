@@ -1487,4 +1487,5 @@
   <data name="AppSettings_RecoveredGroup" xml:space="preserve"><value>已復原的效果組</value></data>
   <data name="AppSettings_RecoveryRecordFailed" xml:space="preserve"><value>已找到這份設定的復原記錄，但記錄暫不可用。請開啟下方目錄，從保留的原件或其他備份中選擇可用設定，取代 config.json 後重新啟動 Magpie。</value></data>
   <data name="AppSettings_RecoveryWriteFailed" xml:space="preserve"><value>尚未能完成設定復原。請檢查設定目錄的寫入權限、檔案占用與磁碟空間，再重新啟動 Magpie；已儲存的復原結果會繼續使用。相關位置：</value></data>
+  <data name="Message_CaptureMethodUnavailable" xml:space="preserve"><value>目前系統工作階段無法使用所選截取方式。請開啟下方設定檔，改選另一種截取方式後重試（可先嘗試 Graphics Capture，若已選用則嘗試 GDI）。仍失敗時，請複製詳細資料並附上記錄。</value></data>
 </root>

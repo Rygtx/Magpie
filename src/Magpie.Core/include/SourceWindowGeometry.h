@@ -1,7 +1,15 @@
 #pragma once
 #include <windows.h>
+#include <cmath>
 
 namespace Magpie {
+
+inline bool IsValidSourceCropping(double left, double top, double right, double bottom,
+	double width, double height, double minSize) noexcept {
+	return std::isfinite(left) && std::isfinite(top) && std::isfinite(right) && std::isfinite(bottom) &&
+		left >= 0 && top >= 0 && right >= 0 && bottom >= 0 &&
+		width - left - right >= minSize && height - top - bottom >= minSize;
+}
 
 // These are uncropped, physical screen coordinates. Use the monitor bounds,
 // not its work area or the future scaling window's position and size.

@@ -1520,4 +1520,5 @@
   <data name="AppSettings_RecoveredGroup" xml:space="preserve"><value>已恢复的效果组</value></data>
   <data name="AppSettings_RecoveryRecordFailed" xml:space="preserve"><value>已找到这份配置的恢复记录，但记录暂不可用。请打开下方目录，从保留的原件或其他备份中选择可用配置，替换 config.json 后重新启动 Magpie。</value></data>
   <data name="AppSettings_RecoveryWriteFailed" xml:space="preserve"><value>暂未能完成配置恢复。请检查配置目录的写入权限、文件占用及磁盘空间，再重新启动 Magpie；已保存的恢复结果会继续使用。相关位置：</value></data>
+  <data name="Message_CaptureMethodUnavailable" xml:space="preserve"><value>当前系统会话无法使用所选捕获方式。请打开下方配置，改选另一种捕获方式后重试（可先尝试 Graphics Capture，若已选用则尝试 GDI）。仍失败时，请复制详情并附上日志。</value></data>
 </root>

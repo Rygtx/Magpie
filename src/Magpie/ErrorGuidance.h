@@ -64,6 +64,7 @@ constexpr IssueAction GetIssueAction(ScalingError error) noexcept {
 	case ScalingError::ScalingModeNotSelected:
 	case ScalingError::InvalidScalingMode:
 	case ScalingError::CaptureFailed:
+	case ScalingError::CaptureMethodUnavailable:
 	case ScalingError::CreateFenceFailed:
 	case ScalingError::GraphicsDeviceInitFailed:
 	case ScalingError::WindowedDesktopDuplication:

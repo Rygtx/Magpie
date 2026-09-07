@@ -1520,4 +1520,5 @@
   <data name="AppSettings_RecoveredGroup" xml:space="preserve"><value>Recovered effect group</value></data>
   <data name="AppSettings_RecoveryRecordFailed" xml:space="preserve"><value>A recovery record exists for this configuration but is unavailable. Open the folder below, choose a usable configuration from the preserved original or another backup, replace config.json, then restart Magpie.</value></data>
   <data name="AppSettings_RecoveryWriteFailed" xml:space="preserve"><value>Configuration recovery could not be completed. Check write permission, file locks and free disk space in the configuration folder, then restart Magpie. Any saved recovery result will be reused. Related location:</value></data>
+  <data name="Message_CaptureMethodUnavailable" xml:space="preserve"><value>The selected capture method is unavailable in this system session. Open the profile below and try another capture method (start with Graphics Capture, or try GDI if it is already selected). If it still fails, copy the details and include the logs.</value></data>
 </root>

@@ -377,6 +377,9 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	if (profile.Is3DGameMode() && windowedMode) {
 		return ScalingError::Windowed3DGameMode;
 	}
+	if (windowedMode && profile.captureMethod == CaptureMethod::DesktopDuplication) {
+		return ScalingError::WindowedDesktopDuplication;
+	}
 
 	ScalingOptions options;
 	options.scalingModeIdx = static_cast<uint32_t>(profile.scalingMode);

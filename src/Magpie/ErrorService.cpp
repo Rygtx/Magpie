@@ -27,6 +27,7 @@ static const wchar_t* MessageKey(ScalingError error) noexcept {
 	case ScalingError::BannedInWindowedMode: return L"Message_BannedInWindowedMode";
 	case ScalingError::ScalingFailedGeneral: return L"Message_ScalingFailedGeneral";
 	case ScalingError::CaptureFailed: return L"Message_CaptureFailed";
+	case ScalingError::CaptureMethodUnavailable: return L"Message_CaptureMethodUnavailable";
 	case ScalingError::CreateFenceFailed: return L"Message_CreateFenceFailed";
 	case ScalingError::NvidiaVsrPathUnsupported: return L"Message_NvidiaVsrPathUnsupported";
 	case ScalingError::OpticalFlowProviderUnavailable: return L"Message_OpticalFlowProviderUnavailable";

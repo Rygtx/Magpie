@@ -367,7 +367,8 @@ enum class ScalingError {
 	ConfigurationRecoveredBackup,
 	ConfigurationRecoveredPartial,
 	ConfigurationRepaired,
-	ConfigurationResetDefaults
+	ConfigurationResetDefaults,
+	CaptureMethodUnavailable
 };
 
 struct ScalingFlags {

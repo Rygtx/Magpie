@@ -14,6 +14,7 @@
 #include <dwmapi.h>
 #include <ShellScalingApi.h>
 #include <timeapi.h>
+#include <winrt/Windows.Graphics.Capture.h>
 
 namespace Magpie {
 
@@ -54,7 +55,43 @@ static void LogRects(const RECT& srcRect, const RECT& rendererRect, const RECT& 
 		windowRect.right - windowRect.left, windowRect.bottom - windowRect.top));
 }
 
+// Capability queries only. No capture session, window or D3D device is created.
+static ScalingError CheckCapturePrerequisites(CaptureMethod method) noexcept {
+	switch (method) {
+	case CaptureMethod::GraphicsCapture:
+		try {
+			if (winrt::Windows::Graphics::Capture::GraphicsCaptureSession::IsSupported()) {
+				return ScalingError::NoError;
+			}
+			Logger::Get().Error("Scaling preflight: Graphics Capture is unavailable in this system session");
+		} catch (const winrt::hresult_error& e) {
+			Logger::Get().ComError("Scaling preflight: query Graphics Capture support failed", e.code());
+		}
+		return ScalingError::CaptureMethodUnavailable;
+	case CaptureMethod::DesktopDuplication:
+		if (Win32Helper::GetOSVersion().Is20H1OrNewer()) return ScalingError::NoError;
+		Logger::Get().Error("Scaling preflight: Desktop Duplication requires Windows 10 2004 or newer");
+		return ScalingError::CaptureMethodUnavailable;
+	case CaptureMethod::DwmSharedSurface:
+		if (Win32Helper::LoadSystemFunction<void()>(L"user32.dll", "DwmGetDxSharedSurface")) {
+			return ScalingError::NoError;
+		}
+		Logger::Get().Win32Error("Scaling preflight: DwmSharedSurface entry point is unavailable");
+		return ScalingError::CaptureMethodUnavailable;
+	case CaptureMethod::GDI:
+		return ScalingError::NoError;
+	default:
+		Logger::Get().Error("Scaling preflight: select a valid capture method in the profile");
+		return ScalingError::CaptureMethodUnavailable;
+	}
+}
+
 ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
+	if (_options.effects.empty()) return ScalingError::ScalingModeEmpty;
+	if (ValidateFrameGenerationChain(_options.effects).HasConflict()) {
+		Logger::Get().Error("Scaling preflight: keep one frame-generation effect in the group");
+		return ScalingError::ConflictingFrameGenerationEffects;
+	}
 	if (NgxRuntimeGuard::IsFaulted() && std::ranges::any_of(_options.effects, [](const auto& effect) {
 		return effect.name == "DLSSNR\\DLSSNR_AI_Filter" ||
 			ClassifyFrameGenerationEffect(effect.name) == FrameGenerationEffectKind::DLSS;
@@ -130,6 +167,14 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 			return ScalingError::Maximized;
 		}
 	}
+
+	if (ScalingError error = CheckCapturePrerequisites(_options.captureMethod);
+		error != ScalingError::NoError) {
+		return error;
+	}
+	// Fullscreen layout calculation may move the source. Check responsiveness
+	// before that operation as well as immediately before window creation.
+	if (Win32Helper::IsWindowHung(hwndSrc)) return ScalingError::SourceWindowUnresponsive;
 
 	[[maybe_unused]] static Ignore _ = []() {
 		WNDCLASSEXW wcex{
@@ -274,6 +319,10 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 				wil::GetModuleInstanceHandle(),
 				nullptr
 			);
+			if (!_hwndRenderer) {
+				Logger::Get().Win32Error("Create renderer child window failed");
+				return ScalingError::ScalingWindowCreationFailed;
+			}
 		}
 	} else {
 		uint32_t monitorCount;
@@ -317,14 +366,6 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 
 	LogRects(_srcTracker.SrcRect(), _rendererRect, _windowRect);
 
-	if (!_options.IsWindowedMode() && !_options.RealIsAllowScalingMaximized()) {
-		// 检查源窗口是否是无边框全屏窗口
-		if (srcWindowKind == SrcWindowKind::NoNativeFrame && _srcTracker.WindowRect() == _rendererRect) {
-			Logger::Get().Info("源窗口已全屏");
-			return ScalingError::Maximized;
-		}
-	}
-
 	_renderer = std::make_unique<class Renderer>();
 	ScalingError error = _renderer->Initialize(_hwndRenderer, _options.overlayOptions);
 	if (error != ScalingError::NoError) {
@@ -357,9 +398,6 @@ void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 	_frontendRenderPending = false;
 	_dlssFgFrameJobs.clear();
 
-	assert(!options.effects.empty());
-	assert(options.cropping.Left >= 0 && options.cropping.Top >= 0 &&
-		options.cropping.Right >= 0 && options.cropping.Bottom >= 0);
 	assert(options.minFrameRate >= 0);
 	assert(!options.maxFrameRate.has_value() || *options.maxFrameRate > 0);
 	assert(options.cursorScaling >= 0);
@@ -374,12 +412,13 @@ void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 	// Self move-assignment may clear vectors/maps and lose the session.
 	if (&options != &_options) _options = std::move(options);
 
+	Logger::DiagnosticCapture startupDiagnostic;
 	ScalingError error = _StartImpl(hwndSrc);
 	if (error != ScalingError::NoError) {
 		if (_options.reportErrorDetails) {
 			_options.reportErrorDetails(hwndSrc, error,
-				_renderer ? _renderer->InitializationContext() : std::string_view{},
-				_renderer ? _renderer->InitializationSystemError() : 0);
+				_renderer ? _renderer->InitializationContext() : startupDiagnostic.Details(),
+				_renderer ? _renderer->InitializationSystemError() : startupDiagnostic.SystemError());
 		} else {
 			_options.showError(hwndSrc, error);
 		}

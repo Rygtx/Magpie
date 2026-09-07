@@ -102,21 +102,21 @@ ScalingError SrcTracker::Set(HWND hWnd, const ScalingOptions& options, bool& isI
 	// Reject fullscreen sources before cropping, creating scaling windows or
 	// initializing capture/GPU resources. Borderless fullscreen need not carry
 	// the maximized flag, and its window kind varies between applications.
-	if (options.IsWindowedMode()) {
+	if (options.IsWindowedMode() || !options.RealIsAllowScalingMaximized()) {
 		MONITORINFO monitorInfo{ .cbSize = sizeof(monitorInfo) };
 		if (!GetMonitorInfoW(hMon, &monitorInfo)) {
-			Logger::Get().Win32Error("Read source monitor bounds for windowed scaling failed");
+			Logger::Get().Win32Error("Read source monitor bounds before scaling failed");
 			return ScalingError::DisplayLayoutFailed;
 		}
 		if (SourceWindowCoversMonitor(_windowFrameRect, clientRect, monitorInfo.rcMonitor)) {
 			Logger::Get().Info(fmt::format(
-				"Windowed scaling preflight: fullscreen source; switch the source application to a window. "
+				"Scaling preflight: fullscreen source; switch the source application to a window. "
 				"frame=({},{},{},{}) client=({},{},{},{}) monitor=({},{},{},{})",
 				_windowFrameRect.left, _windowFrameRect.top, _windowFrameRect.right, _windowFrameRect.bottom,
 				clientRect.left, clientRect.top, clientRect.right, clientRect.bottom,
 				monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
 				monitorInfo.rcMonitor.right, monitorInfo.rcMonitor.bottom));
-			return ScalingError::BannedInWindowedMode;
+			return options.IsWindowedMode() ? ScalingError::BannedInWindowedMode : ScalingError::Maximized;
 		}
 	}
 
@@ -562,6 +562,14 @@ ScalingError SrcTracker::_CalcSrcRect(
 	if (_srcRect.right - _srcRect.left < MIN_SRC_SIZE || _srcRect.bottom - _srcRect.top < MIN_SRC_SIZE) {
 		Logger::Get().Error("源窗口太小");
 		return ScalingError::SourceWindowTooSmall;
+	}
+
+	// Reject invalid values before rounding or extending the capture rectangle.
+	if (!IsValidSourceCropping(options.cropping.Left, options.cropping.Top,
+		options.cropping.Right, options.cropping.Bottom,
+		double(_srcRect.right) - _srcRect.left, double(_srcRect.bottom) - _srcRect.top, MIN_SRC_SIZE)) {
+		Logger::Get().Error("Scaling preflight: reduce cropping to leave at least 64 pixels on each axis");
+		return ScalingError::InvalidCropping;
 	}
 
 	_srcRect = {

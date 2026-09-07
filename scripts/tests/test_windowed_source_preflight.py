@@ -18,13 +18,15 @@ def block(text, marker):
     return text[start:end]
 
 
-preflight = block(tracker, 'if (options.IsWindowedMode()) {')
+preflight = block(tracker, 'if (options.IsWindowedMode() || !options.RealIsAllowScalingMaximized()) {')
 maximized = block(window, 'if (_srcTracker.IsZoomed()) {')
 assert tracker.index(preflight) < tracker.index('// 计算窗口样式') < tracker.index('return _CalcSrcRect(')
 start_impl = window.split('ScalingError ScalingWindow::_StartImpl(', 1)[1].split('\nvoid ScalingWindow::Start(', 1)[0]
 assert start_impl.index('_srcTracker.Set(') < start_impl.index('CreateWindowEx(') < start_impl.index('_renderer->Initialize(')
 assert 'return error;' in start_impl.split('_srcTracker.Set(', 1)[1].split('CreateWindowEx(', 1)[0]
-assert 'if (!_options.IsWindowedMode() && !_options.RealIsAllowScalingMaximized())' in start_impl
+assert '_srcTracker.WindowRect() == _rendererRect' not in start_impl
+assert start_impl.index('_srcTracker.Set(') < start_impl.index('_CalcFullscreenRendererRect(')
+assert tracker.index('IsValidSourceCropping(') < tracker.index('std::lround(_srcRect.left + options.cropping.Left)')
 
 harness = r'''
 #define NOMINMAX
@@ -32,6 +34,7 @@ harness = r'''
 #include <cassert>
 #include <iostream>
 #include <string>
+#include <limits>
 using namespace Magpie;
 enum class ScalingError { NoError, DisplayLayoutFailed, BannedInWindowedMode, Maximized };
 struct Logger {
@@ -111,6 +114,21 @@ int main() {
     Accepted(monitor,monitor,Options{false,true});
     assert(monitorQueries==queries);
     monitorAvailable=true;
+    windowCreations=gpuInitializations=0;
+    assert(Check(monitor,monitor,Options{false,false})==ScalingError::Maximized);
+    assert(windowCreations==0 && gpuInitializations==0);
+    assert(IsValidSourceCropping(0,0,0,0,64,64,64));
+    assert(IsValidSourceCropping(10,20,30,40,104,124,64));
+    assert(!IsValidSourceCropping(10,20,31,40,104,124,64));
+    assert(!IsValidSourceCropping(-1,0,0,0,1280,720,64));
+    const double bad[]={std::numeric_limits<double>::quiet_NaN(),
+        std::numeric_limits<double>::infinity(),std::numeric_limits<double>::max()};
+    for (double value:bad) {
+        assert(!IsValidSourceCropping(value,0,0,0,1280,720,64));
+        assert(!IsValidSourceCropping(0,value,0,0,1280,720,64));
+        assert(!IsValidSourceCropping(0,0,value,0,1280,720,64));
+        assert(!IsValidSourceCropping(0,0,0,value,1280,720,64));
+    }
     std::cout << "Windowed preflight: production branches reject fullscreen/maximized sources "
         "before window/GPU work; ordinary windows, physical-coordinate/DPI layouts, "
         "negative monitor coordinates, query failure and fullscreen-effects bypass passed.\n";
