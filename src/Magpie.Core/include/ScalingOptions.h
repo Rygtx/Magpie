@@ -365,7 +365,9 @@ enum class ScalingError {
 	NgxRestartRequired,
 	ScreenshotIntermediateEncodeFailed,
 	ConfigurationRecoveredBackup,
-	ConfigurationRecoveredPartial
+	ConfigurationRecoveredPartial,
+	ConfigurationRepaired,
+	ConfigurationResetDefaults
 };
 
 struct ScalingFlags {

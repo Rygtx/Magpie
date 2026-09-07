@@ -41,6 +41,8 @@ constexpr IssueAction GetIssueAction(ScalingError error) noexcept {
 	switch (error) {
 	case ScalingError::ConfigurationWriteFailed: return IssueAction::RetrySave;
 	case ScalingError::ConfigurationRecoveredBackup:
+	case ScalingError::ConfigurationRepaired:
+	case ScalingError::ConfigurationResetDefaults:
 	case ScalingError::ConfigurationRecoveredPartial: return IssueAction::ConfigurationDirectory;
 	case ScalingError::ScalingModeEmpty:
 	case ScalingError::ScalingModeUnknownEffect:
@@ -81,7 +83,8 @@ constexpr bool CanSuggestAnotherAdapter(size_t adapterCount) noexcept {
 
 constexpr bool IsRecoveryNotice(ScalingError error) noexcept {
 	return error == ScalingError::ConfigurationRecoveredBackup ||
-		error == ScalingError::ConfigurationRecoveredPartial;
+		error == ScalingError::ConfigurationRecoveredPartial ||
+		error == ScalingError::ConfigurationRepaired || error == ScalingError::ConfigurationResetDefaults;
 }
 
 }

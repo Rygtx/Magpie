@@ -402,7 +402,8 @@ public:
 
 private:
 	std::filesystem::path _recoveredConfigPath;
-	bool _recoveredFromBackup = false;
+	ScalingError _recoveryNotice = ScalingError::ConfigurationRecoveredPartial;
+	std::string _recoveryDetails;
 	AppSettings() = default;
 
 	AppSettings(const AppSettings&) = delete;

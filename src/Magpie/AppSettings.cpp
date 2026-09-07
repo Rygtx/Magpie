@@ -1,7 +1,10 @@
 #include "pch.h"
 #include "AppSettings.h"
+#include "ConfigRecovery.h"
 #include "App.h"
 #include "ErrorService.h"
+#include "EffectsService.h"
+#include "EffectDesc.h"
 #include "AutoStartHelper.h"
 #include "CommonSharedConstants.h"
 #include "JsonHelper.h"
@@ -296,51 +299,92 @@ bool AppSettings::Initialize() noexcept {
 		return false;
 	}
 
-    bool recovered = false;
-    if (!ConfigPersistence::IsValid(configText)) {
-        // Preserve the exact source before any recovery or migration writes.
-        const auto damagedPath = std::filesystem::path(existingConfigPath.native() +
-            L".corrupt-" + std::to_wstring(std::chrono::system_clock::now().time_since_epoch().count()));
-        if (!CopyFileW(existingConfigPath.c_str(), damagedPath.c_str(), TRUE)) {
-			const DWORD error = GetLastError();
-            logger.Win32Error("Unable to preserve damaged configuration");
-			const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
-			const auto content = std::wstring(loader.GetString(L"AppSettings_BackupFailed")) + L"\n" + damagedPath.native();
-			ShowErrorMessage(loader.GetString(L"AppSettings_Dialog_Error").c_str(), content.c_str(), damagedPath, error);
-            return false;
-        }
-        std::string replacement = ConfigPersistence::Read(
-            std::filesystem::path(existingConfigPath.native() + L".bak"));
-        const bool fromBackup = ConfigPersistence::IsValid(replacement);
-        if (!fromBackup) replacement = ConfigPersistence::RecoverPrefix(configText);
-        if (replacement.empty()) replacement = "{}";
-        configText = std::move(replacement);
-        logger.Warn(fromBackup ? "Recovered configuration from backup" :
-            "Recovered complete configuration entries; missing entries use defaults");
-        recovered = true;
-		_recoveredConfigPath = damagedPath;
-		_recoveredFromBackup = fromBackup;
-    }
-    rapidjson::Document doc;
-    doc.ParseInsitu(configText.data());
-
-	_LoadSettings(((const rapidjson::Document&)doc).GetObj());
-	if (recovered && _scalingModes.empty()) _SetDefaultScalingModes();
-
-	// 迁移旧版配置后立刻保存，_SetDefaultShortcuts 用于确保快捷键不为空
-	if (_SetDefaultShortcuts() || recovered || _isConfigMigrationNeeded ||
-		!Win32Helper::FileExists(_configPath.c_str()))
-	{
-		SaveAsync();
+	const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
+	auto failRecovery = [&](const wchar_t* key, const std::filesystem::path& path, DWORD error) {
+		const auto details = std::wstring(loader.GetString(key)) + L"\n" + path.native();
+		ShowErrorMessage(loader.GetString(L"AppSettings_Dialog_Error").c_str(), details.c_str(), path, error);
+		return false;
+	};
+	try {
+		const std::string recoveredName = StrHelper::UTF16ToUTF8(loader.GetString(L"AppSettings_RecoveredGroup"));
+		const ConfigRecovery::ParameterRules rules = [](std::string_view effectName, std::string_view parameterName)
+			-> std::optional<ConfigRecovery::ParameterRule> {
+			const auto* effect = EffectsService::Get().GetEffect(StrHelper::UTF8ToUTF16(effectName));
+			if (!effect) return std::nullopt;
+			const auto it = std::ranges::find(effect->params, parameterName, &EffectParameterDesc::name);
+			if (it == effect->params.end()) return std::nullopt;
+			return std::visit([&](const auto& constant) -> ConfigRecovery::ParameterRule {
+				ConfigRecovery::ParameterRule rule{ static_cast<float>(constant.minValue),
+					static_cast<float>(constant.maxValue), static_cast<float>(constant.defaultValue),
+					std::is_integral_v<decltype(constant.defaultValue)>, {} };
+				for (const auto& choice : it->choices) rule.choices.push_back(choice.value);
+				return rule;
+			}, it->constant);
+		};
+		auto plan = ConfigRecovery::Prepare(configText,
+			ConfigPersistence::Read(existingConfigPath.native() + L".bak"), recoveredName, rules);
+		const auto files = ConfigRecovery::FilesFor(_configPath, configText);
+		bool recovered = plan.kind != ConfigRecovery::Kind::None;
+		bool reused = false;
+		if (recovered) {
+			if (!ConfigRecovery::Preserve(existingConfigPath, configText, files))
+				return failRecovery(L"AppSettings_BackupFailed", files.original, GetLastError());
+			if (Win32Helper::FileExists(files.result.c_str())) {
+				// Reuse the previously completed recovery for these exact input bytes.
+				// A damaged recovery record needs user attention, not another reset.
+				const auto previous = ConfigPersistence::Read(files.result);
+				if (!ConfigPersistence::IsValid(previous))
+					return failRecovery(L"AppSettings_RecoveryRecordFailed", files.result, ERROR_INVALID_DATA);
+				auto cached = ConfigRecovery::Prepare(previous, {}, recoveredName, rules);
+				if (cached.kind != ConfigRecovery::Kind::None)
+					return failRecovery(L"AppSettings_RecoveryRecordFailed", files.result, ERROR_INVALID_DATA);
+				plan.document = std::move(cached.document);
+				plan.defaultModes = false;
+				reused = true;
+			}
+		}
+		if (plan.defaultModes) _SetDefaultScalingModes();
+		_LoadSettings(static_cast<const rapidjson::Document&>(plan.document).GetObj());
+		const bool shortcutsChanged = _SetDefaultShortcuts();
+		// Existing versioned migrations also preserve the input before their first write.
+		if (_isConfigMigrationNeeded && !recovered) {
+			if (!ConfigRecovery::Preserve(existingConfigPath, configText, files))
+				return failRecovery(L"AppSettings_BackupFailed", files.original, GetLastError());
+			recovered = true;
+			plan.kind = ConfigRecovery::Kind::Repaired;
+			plan.fields.push_back("/experimental settings migration");
+		}
+		if (recovered) {
+			const std::string result = _Serialize(*this);
+			ConfigSaveState recoverySave;
+			if (!reused && !ConfigPersistence::WriteAtomic(files.result, result, 1, recoverySave))
+				return failRecovery(L"AppSettings_RecoveryWriteFailed", files.result, GetLastError());
+			// Finish persistence before startup succeeds. A write failure leaves the
+			// original and completed recovery available for a subsequent save attempt.
+			if (!ConfigPersistence::WriteAtomic(_configPath, result, ++_saveState->nextRevision, *_saveState))
+				return failRecovery(L"AppSettings_RecoveryWriteFailed", _configPath, GetLastError());
+			_recoveredConfigPath = files.original;
+			_recoveryNotice = plan.kind == ConfigRecovery::Kind::Backup ? ScalingError::ConfigurationRecoveredBackup :
+				plan.kind == ConfigRecovery::Kind::Defaults ? ScalingError::ConfigurationResetDefaults :
+				plan.kind == ConfigRecovery::Kind::Repaired ? ScalingError::ConfigurationRepaired :
+				ScalingError::ConfigurationRecoveredPartial;
+			for (const auto& field : plan.fields) _recoveryDetails += "\n" + field;
+			logger.Warn(fmt::format("Configuration recovery completed: kind={} reused={} repairedFields={} original={}",
+				static_cast<int>(plan.kind), reused, plan.fields.size(), StrHelper::UTF16ToUTF8(files.original.native())));
+		} else if (shortcutsChanged || !Win32Helper::FileExists(_configPath.c_str())) {
+			SaveAsync();
+		}
+		return true;
+	} catch (...) {
+		logger.Error("Configuration recovery failed with an exception");
+		return failRecovery(L"AppSettings_RecoveryWriteFailed", _configPath, ERROR_INVALID_DATA);
 	}
-
-	return true;
 }
 
 void AppSettings::PublishStartupNotice() noexcept {
 	if (_recoveredConfigPath.empty()) return;
-	ErrorService::Get().Report(_recoveredFromBackup ? ScalingError::ConfigurationRecoveredBackup :
-		ScalingError::ConfigurationRecoveredPartial, StrHelper::UTF16ToUTF8(_recoveredConfigPath.native()));
+	ErrorService::Get().Report(_recoveryNotice,
+		StrHelper::UTF16ToUTF8(_recoveredConfigPath.native()) + _recoveryDetails);
 }
 
 bool AppSettings::Save() noexcept {

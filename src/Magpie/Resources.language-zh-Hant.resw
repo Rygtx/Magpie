@@ -1481,5 +1481,10 @@
   <data name="AppSettings_ReadAccessDenied" xml:space="preserve"><value>請在檔案總管中開啟下方位置，確認目前帳戶具有該檔案的讀取權限，然後重新啟動 Magpie。原設定檔未被修改。</value></data>
   <data name="AppSettings_CopyFailed" xml:space="preserve"><value>尚未能複製。請記錄下方路徑與錯誤碼，處理後重新啟動 Magpie。</value></data>
   <data name="AppSettings_ConfigLocationFailed" xml:space="preserve"><value>尚未能存取設定位置。請確認設定所在磁碟已連接、目前帳戶具有存取與寫入權限，然後重新啟動 Magpie。相關位置：</value></data>
-  <data name="AppSettings_BackupFailed" xml:space="preserve"><value>設定檔損壞，但尚未能保留原件，復原尚未開始。請檢查下方備份路徑的寫入權限與磁碟空間，再重新啟動 Magpie。原設定檔保持原樣。備份目標：</value></data>
+  <data name="AppSettings_BackupFailed" xml:space="preserve"><value>尚未能保留設定原件。請檢查下方備份路徑的寫入權限與磁碟空間，再重新啟動 Magpie；原設定仍可用於復原。備份目標：</value></data>
+  <data name="Message_ConfigurationRepaired" xml:space="preserve"><value>已修復舊設定中的失效項目，其餘設定已保留。請檢查效果組與程式設定後重新嘗試縮放；詳細資料列出了修復項目，可按「開啟設定目錄」查看原件備份。</value></data>
+  <data name="Message_ConfigurationResetDefaults" xml:space="preserve"><value>原設定與備份均無法復原，已產生預設設定。可以重新嘗試縮放，再依需要設定效果組與快捷鍵；按「開啟設定目錄」可查看保留的原設定。</value></data>
+  <data name="AppSettings_RecoveredGroup" xml:space="preserve"><value>已復原的效果組</value></data>
+  <data name="AppSettings_RecoveryRecordFailed" xml:space="preserve"><value>已找到這份設定的復原記錄，但記錄暫不可用。請開啟下方目錄，從保留的原件或其他備份中選擇可用設定，取代 config.json 後重新啟動 Magpie。</value></data>
+  <data name="AppSettings_RecoveryWriteFailed" xml:space="preserve"><value>尚未能完成設定復原。請檢查設定目錄的寫入權限、檔案占用與磁碟空間，再重新啟動 Magpie；已儲存的復原結果會繼續使用。相關位置：</value></data>
 </root>

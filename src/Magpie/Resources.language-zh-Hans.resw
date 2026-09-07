@@ -1514,5 +1514,10 @@
   <data name="AppSettings_ReadAccessDenied" xml:space="preserve"><value>请在文件资源管理器中打开下方位置，确认当前账户具有该文件的读取权限，然后重新启动 Magpie。原配置未被修改。</value></data>
   <data name="AppSettings_CopyFailed" xml:space="preserve"><value>暂未能复制。请记录下方路径和错误码，处理后重新启动 Magpie。</value></data>
   <data name="AppSettings_ConfigLocationFailed" xml:space="preserve"><value>暂未能访问配置位置。请确认配置所在磁盘已连接、当前账户有访问和写入权限，然后重新启动 Magpie。相关位置：</value></data>
-  <data name="AppSettings_BackupFailed" xml:space="preserve"><value>配置文件损坏，但暂未能保留原件，恢复尚未开始。请检查下方备份路径的写入权限和磁盘空间，再重新启动 Magpie。原配置保持原样。备份目标：</value></data>
+  <data name="AppSettings_BackupFailed" xml:space="preserve"><value>暂未能保留配置原件。请检查下方备份路径的写入权限和磁盘空间，再重新启动 Magpie；原配置仍可用于恢复。备份目标：</value></data>
+  <data name="Message_ConfigurationRepaired" xml:space="preserve"><value>已修复旧配置中的失效设置，其余设置已保留。请检查效果组和程序配置后重新尝试缩放；详情列出了修复项目，可点击“打开配置目录”查看原件备份。</value></data>
+  <data name="Message_ConfigurationResetDefaults" xml:space="preserve"><value>原配置及备份均无法恢复，已生成默认设置。可以重新尝试缩放，再按需设置效果组和快捷键；点击“打开配置目录”可查看保留的原配置。</value></data>
+  <data name="AppSettings_RecoveredGroup" xml:space="preserve"><value>已恢复的效果组</value></data>
+  <data name="AppSettings_RecoveryRecordFailed" xml:space="preserve"><value>已找到这份配置的恢复记录，但记录暂不可用。请打开下方目录，从保留的原件或其他备份中选择可用配置，替换 config.json 后重新启动 Magpie。</value></data>
+  <data name="AppSettings_RecoveryWriteFailed" xml:space="preserve"><value>暂未能完成配置恢复。请检查配置目录的写入权限、文件占用及磁盘空间，再重新启动 Magpie；已保存的恢复结果会继续使用。相关位置：</value></data>
 </root>

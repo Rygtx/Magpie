@@ -40,7 +40,8 @@ int main() {
 
 	// A recovered configuration needs an explanation, not another failure action.
 	for (auto error : { ScalingError::ConfigurationRecoveredBackup,
-		ScalingError::ConfigurationRecoveredPartial }) {
+		ScalingError::ConfigurationRecoveredPartial, ScalingError::ConfigurationRepaired,
+		ScalingError::ConfigurationResetDefaults }) {
 		assert(IsRecoveryNotice(error));
 		assert(GetIssueAction(error) == IssueAction::ConfigurationDirectory);
 		assert(GetFileOperation(error) == FileOperation::None);

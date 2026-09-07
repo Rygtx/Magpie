@@ -79,6 +79,8 @@ static const wchar_t* MessageKey(ScalingError error) noexcept {
 	case ScalingError::ScreenshotIntermediateEncodeFailed: return L"Message_ScreenshotIntermediateEncodeFailed";
 	case ScalingError::ConfigurationRecoveredBackup: return L"Message_ConfigurationRecoveredBackup";
 	case ScalingError::ConfigurationRecoveredPartial: return L"Message_ConfigurationRecoveredPartial";
+	case ScalingError::ConfigurationRepaired: return L"Message_ConfigurationRepaired";
+	case ScalingError::ConfigurationResetDefaults: return L"Message_ConfigurationResetDefaults";
 	default: return L"Message_ScalingFailedGeneral";
 	}
 }
