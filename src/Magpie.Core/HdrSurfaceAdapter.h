@@ -9,6 +9,10 @@ class DeviceResources;
 
 class HdrSurfaceAdapter {
 public:
+	bool MapSdrWhiteToHdr(ID3D11Texture2D* input, ID3D11Texture2D* output,
+		const HdrTransformParameters& parameters) const noexcept;
+	bool ToneMapHdrForSdrDisplay(ID3D11Texture2D* input, ID3D11Texture2D* output,
+		const HdrTransformParameters& parameters) const noexcept;
 	bool Initialize(DeviceResources& deviceResources, BackendDescriptorStore& descriptorStore) noexcept;
 
 	bool ConvertHdrToSdr(

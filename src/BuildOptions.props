@@ -49,6 +49,7 @@
     <VFXSdkDir></VFXSdkDir>
     <VFXRuntimeDir></VFXRuntimeDir>
     <VFXLicenseDir></VFXLicenseDir>
+    <RtxVideoSdkDir>$(MSBuildThisFileDirectory)..\..\dependencies\RTX-Video-SDK-1.1.0</RtxVideoSdkDir>
     
     <MajorVersion></MajorVersion>
     <MinorVersion></MinorVersion>

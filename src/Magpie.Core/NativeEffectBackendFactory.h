@@ -22,7 +22,8 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 	DeviceResources& resources,
 	NgxD3D12Core& ngxCore,
 	ID3D11Texture2D* input,
-	ID3D11Texture2D* output
+	ID3D11Texture2D* output,
+	std::optional<bool> hdrDomain = std::nullopt
 ) noexcept;
 
 }

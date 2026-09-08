@@ -50,8 +50,11 @@ bool EffectDrawer::Initialize(
 ) noexcept {
 	_d3dDC = deviceResources.GetD3DDC();
 	_descriptorStore = &descriptorStore;
-	_hdrEnabled = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled();
-	if (_hdrEnabled && !_hdrSurfaceAdapter.Initialize(deviceResources, descriptorStore)) {
+	_hdrEnabled = ScalingWindow::Get().Options().hdrComponents.enabled
+		? _hdrBoundary.hdrEnabled : ScalingWindow::Get().Options().IsHdrCompatibilityEnabled();
+	if ((_hdrEnabled || _component.kind == HdrComponentKind::HdrToSdr ||
+		_component.kind == HdrComponentKind::SdrToHdr) &&
+		!_hdrSurfaceAdapter.Initialize(deviceResources, descriptorStore)) {
 		Logger::Get().Error("初始化 HDR 效果边界适配器失败");
 		return false;
 	}
@@ -247,7 +250,33 @@ void EffectDrawer::Draw(EffectsProfiler& profiler) const noexcept {
 	}
 }
 
+bool EffectDrawer::DrawHdrComponent(EffectsProfiler& profiler) const noexcept {
+	const bool succeeded = _DrawHdrComponent();
+	profiler.OnEndPass(_d3dDC);
+	return succeeded;
+}
+
+bool EffectDrawer::_DrawHdrComponent() const noexcept {
+	bool succeeded = false;
+	if (_component.kind == HdrComponentKind::HdrToSdr) {
+		succeeded = _component.mode == 0
+			? _hdrSurfaceAdapter.ConvertHdrToSdr(_hdrInputSource, _textures[1].get(), _componentTransform)
+			: _hdrSurfaceAdapter.ToneMapHdrForSdrDisplay(_hdrInputSource, _textures[1].get(), _componentTransform);
+	} else {
+		succeeded = _component.pairIndex != static_cast<size_t>(-1)
+			? _hdrSurfaceAdapter.ConvertSdrToHdr(_hdrInputSource, _textures[1].get(), _componentTransform)
+			: _hdrSurfaceAdapter.MapSdrWhiteToHdr(_hdrInputSource, _textures[1].get(), _componentTransform);
+	}
+	return succeeded;
+}
+
 void EffectDrawer::DrawForExport(const EffectDesc& desc, uint32_t passIdx) const noexcept {
+	if (_component.kind != HdrComponentKind::None) {
+		// RTX output has already been produced by its native backend. Its marker
+		// shader must never overwrite that FP16 output during screenshot export.
+		if (_component.kind != HdrComponentKind::RtxVideoHdr) (void)_DrawHdrComponent();
+		return;
+	}
 	if (!PrepareHdrInput()) {
 		Logger::Get().Error("准备 HDR 导出输入失败");
 		return;

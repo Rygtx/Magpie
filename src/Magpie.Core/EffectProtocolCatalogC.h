@@ -90,7 +90,8 @@ inline HdrFormatRoutes RTXVideoDenoiser() {
 }
 
 inline HdrFormatRoutes RTXVideoHdr() {
-	// Product-level SDR->HDR10 behavior has no verified callable texture route.
+	// Explicit SDR->HDR components are planned by HdrComponentPlan. They do not
+	// participate in the legacy automatic HDR-in/HDR-out adapter selection.
 	return {};
 }
 

@@ -75,7 +75,7 @@ bool ZeroFrameGuidanceResources::_CreateTextures(
 
 	static constexpr float ZERO[4]{};
 	static constexpr float ONE[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
-	const float* depthClear = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()
+	const float* depthClear = (!ScalingWindow::Get().Options().hdrComponents.enabled && ScalingWindow::Get().Options().IsHdrCompatibilityEnabled())
 		? ONE : ZERO;
 	_context->ClearUnorderedAccessViewFloat(depthUav.get(), depthClear);
 	_context->ClearUnorderedAccessViewFloat(motionUav.get(), ZERO);

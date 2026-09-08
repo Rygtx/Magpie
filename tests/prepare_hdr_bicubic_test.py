@@ -64,8 +64,8 @@ struct EffectDesc { std::string name; DXGI_FORMAT input{}, output{}; bool hdr=fa
 static int compiles[2]{};
 static bool failed=false;
 static std::optional<EffectDesc> CompileEffect(const EffectOption& option, bool, bool,
-    DXGI_FORMAT in=DXGI_FORMAT_UNKNOWN, DXGI_FORMAT out=DXGI_FORMAT_UNKNOWN) {
-    bool hdr=ScalingWindow::Get().Options().hdr;
+    DXGI_FORMAT in=DXGI_FORMAT_UNKNOWN, DXGI_FORMAT out=DXGI_FORMAT_UNKNOWN, bool enabled=false) {
+    bool hdr=enabled;
     ++compiles[hdr ? 1 : 0];
     return EffectDesc{option.name, in==DXGI_FORMAT_UNKNOWN ? DXGI_FORMAT_R8G8B8A8_UNORM : in,
         out==DXGI_FORMAT_UNKNOWN ? DXGI_FORMAT_R8G8B8A8_UNORM : out, hdr};
@@ -105,6 +105,7 @@ struct FrameSource {
 };
 struct Renderer {
     FrameSource* _frameSource;
+    HdrFrameMetadata _pipelineOutputMetadata{};
     int _backendResources=0, _backendDescriptorStore=0;
     std::vector<EffectDrawer> _effectDrawers;
     bool _AppendBicubic(ID3D11Texture2D**) noexcept;
@@ -130,5 +131,6 @@ int main() {
 }
 '''
 (output / "hdr_bicubic.cpp").write_text(prefix + "\nstatic EffectDesc bicubicDescs[2];\n" +
+    function("static HdrFrame MakePipelineInputFrame(") + "\n" +
     function("static EffectDesc& GetBicubicDesc(") + "\n" +
     function("bool Renderer::_AppendBicubic(") + "\n" + suffix, encoding="utf-8")

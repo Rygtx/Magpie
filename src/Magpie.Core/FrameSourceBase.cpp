@@ -49,7 +49,7 @@ bool FrameSourceBase::Initialize(DeviceResources& deviceResources, BackendDescri
 		return false;
 	}
 
-	_hdrEnabled = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled();
+	_hdrEnabled = ScalingWindow::Get().Options().IsHdrCaptureEnabled();
 	if (_hdrEnabled &&
 		!_hdrProcessor.Initialize(deviceResources, descriptorStore)) {
 		Logger::Get().Error("初始化 HDR 捕获处理器失败");

@@ -96,6 +96,9 @@ foreach ($family in @('Denoise', 'VSR')) {
     $entry.search = $entry.id + ' ' + (($aliases | ForEach-Object { $_.search }) -join ' ')
     $effects += $entry
 }
+$hdrComponents = Get-Content -LiteralPath (Join-Path $repoRoot 'src/Magpie/EffectCatalog/hdr-components.json') -Raw | ConvertFrom-Json
+$categories += $hdrComponents.category
+$effects += @($hdrComponents.effects)
 $result = [ordered]@{ schemaVersion = 1; language = 'zh-Hans'; categories = $categories; effects = $effects } | ConvertTo-Json -Depth 8
 $output = Join-Path $repoRoot 'src/Magpie/EffectCatalog/zh-Hans.json'
 if ($Check) {

@@ -4,6 +4,7 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
+#include <DirectXPackedVector.h>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -78,7 +79,7 @@ struct Harness {
 	std::vector<Pixel> Read(ID3D11Texture2D* texture) {
 		D3D11_TEXTURE2D_DESC desc;
 		texture->GetDesc(&desc);
-		Check(desc.Format == DXGI_FORMAT_R32G32B32A32_FLOAT || desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM,
+		Check(desc.Format == DXGI_FORMAT_R32G32B32A32_FLOAT || desc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT || desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM,
 			"Readback format");
 		desc.Usage = D3D11_USAGE_STAGING; desc.BindFlags = 0; desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 		ComPtr<ID3D11Texture2D> staging;
@@ -91,6 +92,11 @@ struct Harness {
 			const auto* bytes = static_cast<const unsigned char*>(mapped.pData);
 			for (UINT i = 0; i < Width; ++i)
 				for (int channel = 0; channel < 4; ++channel) result[i][channel] = bytes[i * 4 + channel] / 255.0f;
+		} else if (desc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT) {
+			const auto* halves = static_cast<const DirectX::PackedVector::HALF*>(mapped.pData);
+			for (UINT i = 0; i < Width; ++i)
+				for (int channel = 0; channel < 4; ++channel)
+					result[i][channel] = DirectX::PackedVector::XMConvertHalfToFloat(halves[i * 4 + channel]);
 		} else {
 			const auto* begin = static_cast<const Pixel*>(mapped.pData);
 			std::copy(begin, begin + Width, result.begin());
@@ -146,6 +152,53 @@ struct Harness {
 		cb.mode = 4;
 		Dispatch(input.Get(), output.Get(), cb);
 		Check(Read(output.Get()) == pixels, "Canonical pass-through changed pixels");
+	}
+
+	void TestExplicitComponents(float white, float peak) {
+		std::vector<Pixel> pixels(Width);
+		for (UINT i = 0; i < Width; ++i) {
+			const float value = peak / 80.0f * i / (Width - 1);
+			pixels[i] = { value, value * 0.5f, value * 0.25f, 0.375f };
+		}
+		auto source32 = Texture(DXGI_FORMAT_R32G32B32A32_FLOAT, pixels.data());
+		auto source16 = Texture(DXGI_FORMAT_R16G16B16A16_FLOAT);
+		auto proxy = Texture(DXGI_FORMAT_R8G8B8A8_UNORM);
+		auto hdr = Texture(DXGI_FORMAT_R16G16B16A16_FLOAT);
+		AdapterConstants cb{1, 1, white / peak, peak, 1, 80, white, 1, 2, 4, 1, 1};
+		Dispatch(source32.Get(), source16.Get(), cb);
+		cb.mode = 0;
+		Dispatch(source16.Get(), proxy.Get(), cb);
+		cb.mode = 1; cb.inputTransfer = 2; cb.outputTransfer = 1;
+		Dispatch(proxy.Get(), hdr.Get(), cb);
+		const auto paired = Read(hdr.Get());
+		for (UINT i = 0; i < Width; ++i) {
+			for (int c = 0; c < 3; ++c)
+				Check(std::abs(paired[i][c] - pixels[i][c]) < peak / 80.0f * 0.04f + 0.002f,
+					"FP16/RGBA8 compatibility pair exceeded quantization budget");
+			Check(std::abs(paired[i][3] - 96.0f / 255) < 0.001f, "FP16 pair alpha changed");
+		}
+		// The same SDR proxy must map to SDR white, not to the old HDR peak.
+		const auto sdr = Read(proxy.Get());
+		cb.mode = 7;
+		Dispatch(proxy.Get(), hdr.Get(), cb);
+		const auto native = Read(hdr.Get());
+		for (UINT i = 0; i < Width; ++i) for (int c = 0; c < 3; ++c) {
+			const float expected = HdrColorTransform::DecodeTransfer(sdr[i][c], HdrTransferFunction::SRGB) * white / 80.0f;
+			Check(std::abs(native[i][c] - expected) < 0.005f, "Native SDR white mapping used the pair inverse");
+		}
+		Check(std::abs(native.back()[0] - white / 80.0f) < 0.005f, "SDR white did not map to requested nits");
+		cb.mode = 8; cb.inputTransfer = 1; cb.outputTransfer = 2;
+		Dispatch(source16.Get(), proxy.Get(), cb);
+		const auto display = Read(proxy.Get());
+		for (UINT i = 1; i < Width; ++i)
+			Check(display[i][0] >= display[i - 1][0] && display[i][0] <= 1, "Display tone map reversed or overflowed");
+		// Negative scene values and highlights must stay finite on the SDR boundary.
+		pixels[0] = {-1, 100, 0, 0.375f};
+		auto extremes = Texture(DXGI_FORMAT_R32G32B32A32_FLOAT, pixels.data());
+		Dispatch(extremes.Get(), proxy.Get(), cb);
+		const auto bounded = Read(proxy.Get());
+		for (int c = 0; c < 4; ++c) Check(std::isfinite(bounded[0][c]) && bounded[0][c] >= 0 && bounded[0][c] <= 1,
+			"Display boundary emitted invalid values");
 	}
 
 	void TestAutomaticDlssnrBoundary(float white) {
@@ -211,8 +264,10 @@ int main() {
 				for (float exposure : {0.5f, 1.0f, 2.0f})
 					for (bool quantized : {false, true}) harness.Test(white, peak, exposure, quantized);
 		harness.TestResizedBoundaries();
+		for (float white : {80.0f, 203.0f, 360.0f})
+			for (float peak : {400.0f, 1000.0f, 4000.0f}) harness.TestExplicitComponents(white, peak);
 		for (float white : {80.0f, 203.0f, 360.0f}) harness.TestAutomaticDlssnrBoundary(white);
-		std::cout << "PASS: production HDR shader on D3D11 WARP; 54 ramp/round-trip cases, "
+		std::cout << "PASS: production HDR shader on D3D11 WARP; 9 explicit FP16/RGBA8 component pipelines, native white mapping and SDR display maps; 54 ramp/round-trip cases, "
 			"R8 quantization, CPU/HLSL parity, alpha, resized boundaries and three automatic DLSSNR white-point round trips\n";
 	} catch (const std::exception& error) {
 		std::cerr << "FAIL: " << error.what() << '\n';

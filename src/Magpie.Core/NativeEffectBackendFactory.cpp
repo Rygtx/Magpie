@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "RTXVideoHdr.h"
 #include "NativeEffectBackendFactory.h"
 #include "NgxD3D12Core.h"
 #include "NgxRuntimeGuard.h"
@@ -68,9 +69,16 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 	DeviceResources& resources,
 	NgxD3D12Core& ngxCore,
 	ID3D11Texture2D* input,
-	ID3D11Texture2D* output
+	ID3D11Texture2D* output,
+	std::optional<bool> hdrDomain
 ) noexcept {
-	const bool hdrEnabled = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled();
+	const bool hdrEnabled = hdrDomain.value_or(ScalingWindow::Get().Options().IsHdrCompatibilityEnabled());
+	if (effectName == "RTXVideo\\RTXVideo_HDR") {
+		auto result = CreateBackend<RTXVideoHdr>(effectName, resources, input, output, option);
+		if (!result.backend) result.error = NgxRuntimeGuard::IsFaulted()
+			? ScalingError::NgxRestartRequired : ScalingError::RtxHdrUnavailable;
+		return result;
+	}
 	if (effectName == "Diagnostics\\FrameGuidance_Motion" ||
 		effectName == "Diagnostics\\FrameGuidance_Confidence") {
 		auto getParameter = [&](std::string_view name, float defaultValue) {

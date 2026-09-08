@@ -1524,4 +1524,29 @@
   <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_3" xml:space="preserve">
     <value>极高</value>
   </data>
+  <data name="Message_HdrComponentExpectedHdr" xml:space="preserve"><value>HDR → SDR 前面的畫面已經是 SDR。請移除重複的 HDR → SDR，或把它移到產生 HDR 的元件之後。</value></data>
+  <data name="Message_HdrComponentExpectedSdr" xml:space="preserve"><value>SDR → HDR 或 RTX Video HDR 需要 SDR 輸入。請移除前一個 HDR 擴展元件，或在本項之前新增 HDR → SDR。</value></data>
+  <data name="Message_HdrComponentMissingPair" xml:space="preserve"><value>目前沒有可還原的相容映射。請在前面新增 HDR → SDR 並選擇相容配對，或將 SDR → HDR 改為自動／原生 SDR 映射。</value></data>
+  <data name="Message_HdrComponentInvalidParameters" xml:space="preserve"><value>HDR 元件參數超出可用範圍。請開啟效果組參數，還原該元件的預設值後重試；仍有問題時複製詳細資料。</value></data>
+  <data name="Message_HdrCaptureRequired" xml:space="preserve"><value>HDR → SDR 需要保留 HDR 來源畫面。請在 Windows 顯示設定中開啟來源應用程式所在螢幕的 HDR；處理原生 SDR 時可直接使用 SDR 效果，再按需新增 SDR → HDR。</value></data>
+  <data name="Message_HdrDisplayRequired" xml:space="preserve"><value>效果組輸出 HDR。請在 Windows 顯示設定中開啟目標螢幕的 HDR，或在效果組末尾使用 HDR → SDR 的顯示映射。跨螢幕輸出時，各目標螢幕都需要開啟 HDR。</value></data>
+  <data name="Message_HdrCaptureMethodRequired" xml:space="preserve"><value>請在目前設定中將擷取方式改為 Graphics Capture，再嘗試 HDR → SDR。此路徑可以保留 HDR 擷取的亮度範圍。</value></data>
+  <data name="Message_RtxHdrUnavailable" xml:space="preserve"><value>RTX Video HDR 未能完成處理。請更新 NVIDIA 驅動程式，確認使用 RTX 20 系或更新顯示卡，並檢查本程式目錄中的 Magpie.RtxVideo.dll 與 nvngx_truehdr.dll 是否完整。可先將本項替換為 SDR → HDR 的原生 SDR 映射；仍失敗時完全結束 Magpie，重新開啟並複製詳細資料。</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_mode_Label" xml:space="preserve"><value>轉換模式</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_mode_Option_0" xml:space="preserve"><value>相容配對</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_mode_Option_1" xml:space="preserve"><value>SDR 顯示映射</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_whiteNits_Label" xml:space="preserve"><value>SDR 白點（尼特）</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_peakNits_Label" xml:space="preserve"><value>HDR 峰值（尼特）</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_exposure_Label" xml:space="preserve"><value>曝光</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_shoulder_Label" xml:space="preserve"><value>高光壓縮</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_mode_Label" xml:space="preserve"><value>轉換模式</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_mode_Option_0" xml:space="preserve"><value>自動：配對還原／SDR 白點映射</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_mode_Option_1" xml:space="preserve"><value>原生 SDR 白點映射</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_mode_Option_2" xml:space="preserve"><value>還原相容配對</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_whiteNits_Label" xml:space="preserve"><value>原生 SDR 白點（尼特）</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_exposure_Label" xml:space="preserve"><value>原生 SDR 曝光</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_contrast_Label" xml:space="preserve"><value>對比度</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_saturation_Label" xml:space="preserve"><value>飽和度</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_middleGray_Label" xml:space="preserve"><value>中間灰</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_peakNits_Label" xml:space="preserve"><value>峰值亮度（尼特）</value></data>
 </root>

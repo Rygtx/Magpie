@@ -4,6 +4,7 @@
 #include <memory>
 #include "EffectParameterPersistence.h"
 #include "FramePacingOptions.h"
+#include "HdrComponents.h"
 #include "OverlayWindowGeometry.h"
 #include <mutex>
 #include <functional>
@@ -382,7 +383,15 @@ enum class ScalingError {
 	ConfigurationRecoveredPartial,
 	ConfigurationRepaired,
 	ConfigurationResetDefaults,
-	CaptureMethodUnavailable
+	CaptureMethodUnavailable,
+	HdrComponentExpectedHdr,
+	HdrComponentExpectedSdr,
+	HdrComponentMissingPair,
+	HdrComponentInvalidParameters,
+	HdrCaptureRequired,
+	HdrDisplayRequired,
+	HdrCaptureMethodRequired,
+	RtxHdrUnavailable
 };
 
 struct ScalingFlags {
@@ -432,6 +441,16 @@ struct ScalingOptions {
 	DEFINE_FLAG_ACCESSOR(IsHdrCompatibilityEnabled, ScalingFlags::EnableHdrCompatibility, flags)
 
 	std::vector<EffectOption> effects;
+	// Session-only plan. Persisted HDR flags remain retired; explicit components
+	// select capture and output independently before creating graphics resources.
+	HdrComponentPlan hdrComponents;
+	bool IsHdrCaptureEnabled() const noexcept {
+		return hdrComponents.enabled ? hdrComponents.captureHdr : IsHdrCompatibilityEnabled();
+	}
+	bool IsEffectHdrEnabled(size_t index) const noexcept {
+		return hdrComponents.enabled && index < hdrComponents.stages.size()
+			? hdrComponents.stages[index].inputHdr : IsHdrCompatibilityEnabled();
+	}
 	uint32_t scalingModeIdx = 0;
 	std::shared_ptr<EffectParameterSessionState> parameterSession;
 	std::wstring scalingModeName;

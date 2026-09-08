@@ -178,7 +178,11 @@ bool DeviceResources::_TryCreateD3DDevice(const winrt::com_ptr<IDXGIAdapter1>& a
 		ScalingWindow::Get().Options().effects, [](const EffectOption& effect) {
 			return effect.name == "DLSSFG\\DLSS_FrameGeneration";
 		});
-	if (!reflexPresentationDevice &&
+	const bool rtxHdrDevice = !isForeground && std::ranges::any_of(
+		ScalingWindow::Get().Options().effects, [](const EffectOption& effect) {
+			return ClassifyHdrComponent(effect.name) == HdrComponentKind::RtxVideoHdr;
+		});
+	if (!reflexPresentationDevice && !rtxHdrDevice &&
 		(isForeground || ScalingWindow::Get().Options().captureMethod != CaptureMethod::GraphicsCapture)) {
 		createDeviceFlags |= D3D11_CREATE_DEVICE_SINGLETHREADED;
 	}

@@ -27,6 +27,14 @@ static const wchar_t* MessageKey(ScalingError error) noexcept {
 	case ScalingError::BannedInWindowedMode: return L"Message_BannedInWindowedMode";
 	case ScalingError::ScalingFailedGeneral: return L"Message_ScalingFailedGeneral";
 	case ScalingError::CaptureFailed: return L"Message_CaptureFailed";
+	case ScalingError::HdrComponentExpectedHdr: return L"Message_HdrComponentExpectedHdr";
+	case ScalingError::HdrComponentExpectedSdr: return L"Message_HdrComponentExpectedSdr";
+	case ScalingError::HdrComponentMissingPair: return L"Message_HdrComponentMissingPair";
+	case ScalingError::HdrComponentInvalidParameters: return L"Message_HdrComponentInvalidParameters";
+	case ScalingError::HdrCaptureRequired: return L"Message_HdrCaptureRequired";
+	case ScalingError::HdrDisplayRequired: return L"Message_HdrDisplayRequired";
+	case ScalingError::HdrCaptureMethodRequired: return L"Message_HdrCaptureMethodRequired";
+	case ScalingError::RtxHdrUnavailable: return L"Message_RtxHdrUnavailable";
 	case ScalingError::CaptureMethodUnavailable: return L"Message_CaptureMethodUnavailable";
 	case ScalingError::CreateFenceFailed: return L"Message_CreateFenceFailed";
 	case ScalingError::NvidiaVsrPathUnsupported: return L"Message_NvidiaVsrPathUnsupported";

@@ -33,10 +33,12 @@ foreach ($name in @('HdrFrame.cpp', 'HdrColorTransform.cpp', 'HdrProtocol.cpp', 
 if ($LASTEXITCODE -ne 0) { throw 'HDR shader extraction failed.' }
 & python (Join-Path $root 'tests\prepare_hdr_bicubic_test.py') $OutputDirectory
 if ($LASTEXITCODE -ne 0) { throw 'Bicubic regression extraction failed.' }
+& python (Join-Path $root 'tests\prepare_hdr_components_boundary_test.py') $OutputDirectory
+if ($LASTEXITCODE -ne 0) { throw 'HDR component boundary extraction failed.' }
 
 Push-Location $OutputDirectory
 try {
-    $common = @('/nologo', '/std:c++20', '/EHsc', '/O2', '/MT', '/utf-8', '/DNOMINMAX', "/I$core")
+    $common = @('/nologo', '/std:c++20', '/EHsc', '/O2', '/MT', '/utf-8', '/DNOMINMAX', "/I$core", "/I$core/include")
     & cl.exe @common /DFMT_HEADER_ONLY /FIfmt/format.h "/I$FmtIncludeDirectory" `
         HdrFrame.cpp HdrColorTransform.cpp HdrProtocol.cpp HdrAdapterDispatcher.cpp HdrEffectBoundary.cpp `
         (Join-Path $root 'tests\HdrMechanicalTests.cpp') /Fe:hdr_mechanical.exe
@@ -50,6 +52,13 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Bicubic regression compilation failed; inspect the compiler output above.' }
     & '.\hdr_bicubic.exe'
     if ($LASTEXITCODE -ne 0) { throw 'Bicubic session/cache regressions failed; inspect the failing cases above.' }
+
+    & cl.exe @common /DFMT_HEADER_ONLY /FIfmt/format.h "/I$FmtIncludeDirectory" `
+        HdrFrame.cpp HdrColorTransform.cpp HdrProtocol.cpp HdrAdapterDispatcher.cpp HdrEffectBoundary.cpp `
+        hdr_components_boundary.cpp /Fe:hdr_components_boundary.exe
+    if ($LASTEXITCODE -ne 0) { throw 'HDR component boundary test compilation failed.' }
+    & '.\hdr_components_boundary.exe'
+    if ($LASTEXITCODE -ne 0) { throw 'HDR component boundary traversal failed.' }
 
     & cl.exe @common /I. /DFMT_HEADER_ONLY /FIfmt/format.h "/I$FmtIncludeDirectory" `
         HdrFrame.cpp HdrColorTransform.cpp HdrProtocol.cpp HdrAdapterDispatcher.cpp HdrEffectBoundary.cpp `

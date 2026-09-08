@@ -36,7 +36,7 @@ DLSS SR 与 FSR2／3／4、XeSS SR 一同归入「放大与超分 → 时序重�
 
 ## DLSSNR 自动 HDR
 
-当前 `067 local` 暂时隐藏并关闭全局 HDR，旧配置也在加载时关闭；以下自动 HDR 路径保留为实现说明，本版本实际使用 SDR 路径。三个显式转换效果器尚未加入，见 [转换方案](../reviews/20260908-v0.6.7-hdr-conversion-effects-plan.md)。
+当前 `067 local` 的旧 HDR 开关继续隐藏并在加载时关闭。新增「HDR 组件」主分类：HDR → SDR、SDR → HDR、RTX Video HDR。组件决定各节点的实际颜色域，NR 根据自身输入选择 SDR／HDR 路径；例如放在 HDR → SDR 后面时使用 SDR。见 [实施记录与使用组合](../reviews/20260908-v0.6.7-hdr-conversion-effects-plan.md)。
 
 参数按钮和工具栏已移除 `HDR Processing Path`、`Experimental HDR Scale` 及对应空分组；旧配置中的这两个值在读取／导入时移除，保留风格、细节与运动参数。
 
@@ -57,7 +57,7 @@ FP16 路径的高光、颜色和实际 AI 观感仍需验证；该路径下现�
 
 说明来源：[原始 review](../reviews/20260908-effect-content-catalog.json)；产品目录由 `scripts/Generate-EffectCatalog.ps1` 生成并嵌入 EXE。r1 将 RTX 元数据合并为两项，更新 DLSSNR 自动路径说明。
 
-实际 Magpie UI、NVIDIA GPU 效果与画质由用户自行测试。建议重点检查：点击添加及参数按钮，树形分类与搜索，RTX 四档切换及失败回退，旧组重开／导入后的档位和尺寸，以及 DLSSNR 在当前 SDR 路径下的亮度与停止缩放操作。当前 HDR 入口应隐藏，旧配置重开后 HDR 保持关闭；HDR 画质验收待显式转换管线开放后进行。
+实际 Magpie UI、NVIDIA GPU 效果与画质由用户自行测试。建议重点检查：点击添加及参数按钮，树形分类与搜索，RTX VSR／Denoise 四档切换及失败回退，旧组重开／导入后的档位和尺寸。HDR 组件接入后共 158 项；旧 HDR 开关仍隐藏。HDR 捕获需要 Graphics Capture 和源屏幕开启 Windows HDR，HDR 输出需要目标屏幕开启 Windows HDR。检查普通转换的配对／重启、RTX HDR 四项参数实时应用、原画对比、NR 所在颜色段及补帧组合的亮度与停止操作。
 
 ## 2026-09-08 回归修复
 

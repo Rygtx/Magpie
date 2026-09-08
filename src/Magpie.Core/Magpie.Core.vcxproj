@@ -32,6 +32,9 @@
     <Import Project="$(MagpieIntermediateRoot)_ConanDeps\Magpie\conandeps.props" Condition="'$(MagpieIntermediateRoot)' != '' And Exists('$(MagpieIntermediateRoot)_ConanDeps\Magpie\conandeps.props')" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <Target Name="BuildRtxVideoBridge" BeforeTargets="PrepareForBuild" Condition="'$(Platform)' == 'x64' And Exists('$(RtxVideoSdkDir)\include\nvsdk_ngx_helpers_truehdr.h')">
+    <MSBuild Projects="..\RtxVideoBridge\RtxVideoBridge.vcxproj" Targets="Build" Properties="Configuration=$(Configuration);Platform=x64;OutDir=$(OutDir);MagpieIntermediateRoot=$(MagpieIntermediateRoot);RtxVideoSdkDir=$(RtxVideoSdkDir)" />
+  </Target>
   <Target Name="CheckNvapiHeaders" BeforeTargets="PrepareForBuild" Condition="$(EnableDLSSFrameGeneration) And '$(Platform)' == 'x64'">
     <Error Condition="!Exists('$(NvapiSdkDir)\nvapi.h') Or !Exists('$(NvapiSdkDir)\nvapi_interface.h')" Text="DLSS FG Reflex needs the official NVAPI headers. Run scripts/Fetch-NvapiHeaders.ps1 or set NvapiSdkDir to that SDK directory, then rebuild." />
   </Target>
@@ -51,6 +54,10 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="RTXVideoHdr.h" />
+    <ClInclude Include="HdrComponentRuntime.h" />
+    <ClInclude Include="HdrDisplayPreflight.h" />
+    <ClInclude Include="include\HdrComponents.h" />
     <ClInclude Include="HdrEffectBoundary.h" />
     <ClInclude Include="DlssnrAutoHdr.h" />
     <ClInclude Include="include\RTXVideoParameters.h" />
@@ -154,6 +161,7 @@
     <ClInclude Include="GroupBHdrRoutes.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="RTXVideoHdr.cpp" />
     <ClCompile Include="HdrEffectBoundary.cpp" />
     <ClCompile Include="BackendDescriptorStore.cpp" />
     <ClCompile Include="CompSwapchainPresenter.cpp" />

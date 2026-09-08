@@ -72,7 +72,8 @@ void PassThroughFrames::_ClearBackend() noexcept {
 bool PassThroughFrames::InitializeBackend(DeviceResources& resources,
 	ID3D11Texture2D* input, ID3D11Texture2D* output, uint32_t slotCount,
 	bool hdrEnabled, const HdrTransformParameters& hdrParameters,
-	const HdrFrameMetadata& frameMetadata) noexcept {
+	const HdrFrameMetadata& frameMetadata, std::optional<bool> sourceHdr) noexcept {
+	const bool inputHdr = sourceHdr.value_or(hdrEnabled);
 	_ClearBackend();
 	_backendResources = &resources;
 	_hdrEnabled = hdrEnabled;
@@ -104,13 +105,32 @@ bool PassThroughFrames::InitializeBackend(DeviceResources& resources,
 	if (SUCCEEDED(hr)) hr = device->CreateUnorderedAccessView(_current.get(), nullptr, _outputView.put());
 	if (FAILED(hr)) return fail();
 	winrt::com_ptr<ID3DBlob> blob;
+	std::string referenceShader = hdrEnabled ? REFERENCE_HDR_HLSL : REFERENCE_LDR_HLSL;
+	// Comparison must enter the same output domain even when conversion effects
+	// change it. Preserve source appearance using a display mapping, not the AI.
+	if (hdrEnabled && !inputHdr) {
+		const std::string marker = "Output[id.xy] = float4(rgb, 1.0);";
+		const auto position = referenceShader.find(marker);
+		referenceShader.replace(position, marker.size(),
+			"rgb = lerp(pow(max((rgb + 0.055) / 1.055, 0.0), 2.4), rgb / 12.92, step(rgb, 0.04045));"
+			"Output[id.xy] = float4(rgb * (sdrWhiteNits / 80.0), 1.0);");
+	} else if (!hdrEnabled && inputHdr) {
+		referenceShader = REFERENCE_HDR_HLSL;
+		const std::string marker = "Output[id.xy] = float4(rgb, 1.0);";
+		const auto position = referenceShader.find(marker);
+		referenceShader.replace(position, marker.size(),
+			"rgb = max(rgb, 0.0) / (sdrWhiteNits / 80.0);"
+			"rgb = saturate(rgb / (1.0 + dot(rgb, float3(0.2126, 0.7152, 0.0722))));"
+			"rgb = lerp(1.055 * pow(rgb, 1.0 / 2.4) - 0.055, 12.92 * rgb, step(rgb, 0.0031308));"
+			"Output[id.xy] = float4(rgb, 1.0);");
+	}
 	if (!DirectXHelper::CompileComputeShader(
-		hdrEnabled ? REFERENCE_HDR_HLSL : REFERENCE_LDR_HLSL,
+		referenceShader.c_str(),
 		"Reference", blob.put(),
 		"PassThroughReference", nullptr, {}, true)) return fail();
 	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, _shader.put());
 	if (FAILED(hr)) return fail();
-	if (hdrEnabled) {
+	if (hdrEnabled || inputHdr) {
 		struct ReferenceConstants {
 			uint32_t hdrEnabled;
 			float exposure;

@@ -23,7 +23,7 @@ foreach ($id in @('FSR2\FSR2_SR', 'FSR3\FSR3_SR', 'FSR4\FSR4_SR', 'XeSS\XeSS_SR'
     $peer = $catalog.effects | Where-Object id -eq $id
     if ($peer.category -ne $dlss.category -or $peer.subcategory -ne $dlss.subcategory) { throw 'Temporal SR entries are in different categories' }
 }
-$rtx = @($catalog.effects | Where-Object id -like 'RTXVideo\*')
+$rtx = @($catalog.effects | Where-Object id -in @('RTXVideo\RTXVideo_Denoise','RTXVideo\RTXVideo_VSR'))
 if ($rtx.Count -ne 2 -or @($rtx.name | Sort-Object -Unique).Count -ne 2) { throw 'RTX Video grouping regression' }
 foreach ($entry in $rtx) {
     $file = Join-Path $effectRoot ($entry.id + '.hlsl')
@@ -35,4 +35,4 @@ $cunny = @($catalog.effects | Where-Object { $_.family.id -eq 'cunny' })
 if ($cunny.Count -ne 29 -or @($cunny.subfamily.id | Sort-Object -Unique).Count -ne 2) { throw 'CuNNy generation grouping regression' }
 if (@($catalog.effects | Where-Object { $_.family.id -eq 'nnedi3' }).Count -ne 10) { throw 'NNEDI3 family regression' }
 if (@($catalog.effects | Where-Object { $_.id -match '^(CRT|Sharpen|Diagnostics|RTXVideo)\\' -and $_.family }).Count) { throw 'Mixed algorithms were merged into a family' }
-"Catalog validated: $($ids.Count) source effects, 155 built-in picker entries; eight RTX names retained as aliases."
+"Catalog validated: $($ids.Count) source effects, 158 built-in picker entries; eight RTX names retained as aliases."

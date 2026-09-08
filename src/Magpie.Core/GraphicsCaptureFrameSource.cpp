@@ -78,7 +78,7 @@ bool GraphicsCaptureFrameSource::_Initialize() noexcept {
 
 	_output = DirectXHelper::CreateTexture2D(
 		d3dDevice,
-		ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()
+		ScalingWindow::Get().Options().IsHdrCaptureEnabled()
 			? DXGI_FORMAT_R16G16B16A16_FLOAT
 			: DXGI_FORMAT_B8G8R8A8_UNORM,
 		_frameBox.right - _frameBox.left,
@@ -96,7 +96,7 @@ bool GraphicsCaptureFrameSource::_Initialize() noexcept {
 
 ColorDescription GraphicsCaptureFrameSource::_GetSourceColorDescription() const noexcept {
 	ColorDescription result = FrameSourceBase::_GetSourceColorDescription();
-	if (!ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
+	if (!ScalingWindow::Get().Options().IsHdrCaptureEnabled()) {
 		return result;
 	}
 
@@ -463,7 +463,7 @@ bool GraphicsCaptureFrameSource::_StartCapture(const char* reason) noexcept {
 #endif
 		_captureFramePool = winrt::Direct3D11CaptureFramePool::CreateFreeThreaded(
 			_wrappedD3DDevice,
-			ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()
+			ScalingWindow::Get().Options().IsHdrCaptureEnabled()
 				? winrt::DirectXPixelFormat::R16G16B16A16Float
 				: winrt::DirectXPixelFormat::B8G8R8A8UIntNormalized,
 			4,	// 帧的缓存数量，更大的值有利于在低帧率下降低延迟

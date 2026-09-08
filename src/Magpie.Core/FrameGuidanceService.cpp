@@ -218,7 +218,7 @@ struct FrameGuidanceService::AdapterCache {
 		}
 		static constexpr float ZERO[4]{};
 		static constexpr float ONE[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
-		const float* depthClear = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()
+		const float* depthClear = (!ScalingWindow::Get().Options().hdrComponents.enabled && ScalingWindow::Get().Options().IsHdrCompatibilityEnabled())
 			? ONE : ZERO;
 		for (size_t i = 0; i < entry->zeroUavs.size(); ++i) {
 			context->ClearUnorderedAccessViewFloat(

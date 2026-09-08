@@ -2,6 +2,7 @@
 #include "EffectDesc.h"
 #include "HdrEffectBoundary.h"
 #include "HdrSurfaceAdapter.h"
+#include "HdrComponentRuntime.h"
 #include <utility>
 #include "SmallVector.h"
 // Conan 的 muparser 不含 UNICODE 支持
@@ -37,6 +38,11 @@ public:
 	) noexcept;
 
 	void Draw(EffectsProfiler& profiler) const noexcept;
+	void SetHdrComponent(const HdrComponentStage& stage, HdrTransformParameters parameters) noexcept {
+		_component = stage;
+		_componentTransform = parameters;
+	}
+	bool DrawHdrComponent(EffectsProfiler& profiler) const noexcept;
 
 	void SetHdrBoundary(HdrEffectBoundaryContext context) noexcept { _hdrBoundary = std::move(context); }
 	const HdrEffectBoundaryContext& GetHdrBoundary() const noexcept { return _hdrBoundary; }
@@ -99,6 +105,7 @@ private:
 	void _PrepareForDraw() const noexcept;
 
 	void _DrawPass(uint32_t i) const noexcept;
+	bool _DrawHdrComponent() const noexcept;
 	bool _UsesDirectHdrPath() const noexcept;
 	DXGI_FORMAT _GetHdrInputFormat(const EffectDesc& desc) const noexcept;
 	DXGI_FORMAT _GetHdrOutputFormat(const EffectDesc& desc) const noexcept;
@@ -128,6 +135,8 @@ private:
 	winrt::com_ptr<ID3D11Texture2D> _hdrOutput;
 	ID3D11Texture2D* _hdrInputSource = nullptr;
 	bool _hdrEnabled = false;
+	HdrComponentStage _component;
+	HdrTransformParameters _componentTransform;
 
 	static inline mu::Parser _exprParser;
 };

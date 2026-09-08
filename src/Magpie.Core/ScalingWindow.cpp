@@ -9,6 +9,7 @@
 #include "NgxRuntimeGuard.h"
 #include "ScalingWindowOwner.h"
 #include "EffectParameterValue.h"
+#include "HdrDisplayPreflight.h"
 #include "Win32Helper.h"
 #include "WindowHelper.h"
 #include <dwmapi.h>
@@ -94,6 +95,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 	}
 	if (NgxRuntimeGuard::IsFaulted() && std::ranges::any_of(_options.effects, [](const auto& effect) {
 		return effect.name == "DLSSNR\\DLSSNR_AI_Filter" ||
+			ClassifyHdrComponent(effect.name) == HdrComponentKind::RtxVideoHdr ||
 			ClassifyFrameGenerationEffect(effect.name) == FrameGenerationEffectKind::DLSS;
 	})) {
 		Logger::Get().Error("Effect group blocked after NGX fault; fully restart Magpie");
@@ -170,6 +172,14 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 
 	if (ScalingError error = CheckCapturePrerequisites(_options.captureMethod);
 		error != ScalingError::NoError) {
+		return error;
+	}
+	if (const auto error = CheckHdrComponentPrerequisites(hwndSrc, _options); error != ScalingError::NoError) {
+		const auto index = _options.hdrComponents.errorIndex;
+		if (_options.hdrComponents.error != HdrComponentError::None) {
+			Logger::Get().Error(fmt::format("HDR component preflight failed at effect {}: {}", index + 1,
+				index < _options.effects.size() ? _options.effects[index].name : "unknown"));
+		} else Logger::Get().Error("HDR display, capture or runtime prerequisites need attention");
 		return error;
 	}
 	// Fullscreen layout calculation may move the source. Check responsiveness
@@ -406,9 +416,10 @@ void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 	assert(!options.screenshotsDir.empty());
 	assert(options.showToast && options.showError && options.save);
 
-	// Apply the temporary HDR suspension before capture, window and GPU setup,
-	// including direct callers and automatic/explicit session restarts.
-	options.IsHdrCompatibilityEnabled(false);
+	// Retired profile flags cannot enable HDR. Explicit conversion components
+	// derive capture/output domains for this session and every parameter restart.
+	options.hdrComponents = BuildHdrComponentPlan(options.effects);
+	options.IsHdrCompatibilityEnabled(options.hdrComponents.enabled && options.hdrComponents.outputHdr);
 	options.Log();
 	// 缩放结束后失效
 	// Automatic and explicit parameter restarts pass our own options back in.

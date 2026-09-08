@@ -202,6 +202,10 @@ private:
 	ID3D11Texture2D* _BuildEffects() noexcept;
 
 	void _UpdateHdrEffectBoundaryContexts() noexcept;
+	void _FailColorPipeline(std::string effect, ScalingError error) noexcept;
+	HdrFrameMetadata _pipelineOutputMetadata{};
+	HdrComponentPlan _runtimeHdrComponents;
+	bool _colorPipelineFailed = false;
 
 	void _UpdateActiveEffectDescs() noexcept;
 

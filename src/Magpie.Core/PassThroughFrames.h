@@ -2,6 +2,7 @@
 #include "HdrColorTransform.h"
 #include <array>
 #include <atomic>
+#include <optional>
 #include <d3d11_4.h>
 
 namespace Magpie {
@@ -16,7 +17,7 @@ public:
 	bool InitializeBackend(DeviceResources& resources, ID3D11Texture2D* input,
 		ID3D11Texture2D* output, uint32_t slotCount, bool hdrEnabled = false,
 		const HdrTransformParameters& hdrParameters = {},
-		const HdrFrameMetadata& frameMetadata = {}) noexcept;
+		const HdrFrameMetadata& frameMetadata = {}, std::optional<bool> inputHdr = std::nullopt) noexcept;
 	bool OpenFrontend(DeviceResources& resources, uint32_t slotCount) noexcept;
 	void UpdateBackend(uint64_t captureFrameId, bool newCapture) noexcept;
 	void UpdateBackend(const HdrFrame& frame, bool newCapture) noexcept;

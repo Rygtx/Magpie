@@ -44,6 +44,12 @@ constexpr IssueAction GetIssueAction(ScalingError error) noexcept {
 	case ScalingError::ConfigurationRepaired:
 	case ScalingError::ConfigurationResetDefaults:
 	case ScalingError::ConfigurationRecoveredPartial: return IssueAction::ConfigurationDirectory;
+	case ScalingError::HdrComponentExpectedHdr:
+	case ScalingError::HdrComponentExpectedSdr:
+	case ScalingError::HdrComponentMissingPair:
+	case ScalingError::HdrComponentInvalidParameters:
+	case ScalingError::HdrDisplayRequired:
+	case ScalingError::RtxHdrUnavailable:
 	case ScalingError::ScalingModeEmpty:
 	case ScalingError::ScalingModeUnknownEffect:
 	case ScalingError::EffectCompileFailed:
@@ -64,6 +70,8 @@ constexpr IssueAction GetIssueAction(ScalingError error) noexcept {
 	case ScalingError::ScalingModeNotSelected:
 	case ScalingError::InvalidScalingMode:
 	case ScalingError::CaptureFailed:
+	case ScalingError::HdrCaptureRequired:
+	case ScalingError::HdrCaptureMethodRequired:
 	case ScalingError::CaptureMethodUnavailable:
 	case ScalingError::CreateFenceFailed:
 	case ScalingError::GraphicsDeviceInitFailed:

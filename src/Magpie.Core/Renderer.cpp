@@ -13,6 +13,7 @@
 #include "EffectCompiler.h"
 #include "EffectHelper.h"
 #include "EffectDrawer.h"
+#include "HdrComponentRuntime.h"
 #include "GroupAHdrRoutes.h"
 #include "GroupBHdrRoutes.h"
 #include "EffectProtocolCatalogC.h"
@@ -164,6 +165,24 @@ static HdrFormatRoutes GetHdrRoutesForEffect(
 		return EffectProtocolC::FrameGenerationMarker(group);
 	}
 	return EffectProtocolC::GetGroupCHdrRoutes(group);
+}
+
+static HdrFrame MakePipelineInputFrame(ID3D11Texture2D* texture, HdrFrameMetadata metadata, bool hdr) noexcept {
+	D3D11_TEXTURE2D_DESC desc{};
+	texture->GetDesc(&desc);
+	metadata.width = desc.Width;
+	metadata.height = desc.Height;
+	metadata.sourceFormat = desc.Format;
+	metadata.valid = true;
+	metadata.stage = HdrFrameStage::CanonicalInput;
+	if (!metadata.color.IsValid()) {
+		metadata.color.primaries = HdrColorPrimaries::Rec709;
+		metadata.color.transfer = hdr ? HdrTransferFunction::Linear : HdrTransferFunction::SRGB;
+		metadata.color.range = hdr ? HdrColorRange::SceneLinear : HdrColorRange::Full;
+		metadata.color.dxgiColorSpace = hdr ? DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709 : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+		metadata.color.isInferred = true;
+	}
+	return { texture, std::move(metadata), desc.Format };
 }
 
 static void ConfigureHdrBackendProtocol(
@@ -1570,7 +1589,8 @@ static std::optional<EffectDesc> CompileEffect(
 	bool noFP16,
 	bool forceInlineParams = false,
 	DXGI_FORMAT routeInputFormat = DXGI_FORMAT_UNKNOWN,
-	DXGI_FORMAT routeOutputFormat = DXGI_FORMAT_UNKNOWN
+	DXGI_FORMAT routeOutputFormat = DXGI_FORMAT_UNKNOWN,
+	bool hdrEnabled = false
 ) noexcept {
 	// 指定效果名
 	EffectDesc result{ .name = effectOption.name };
@@ -1592,7 +1612,7 @@ static std::optional<EffectDesc> CompileEffect(
 	if (noFP16) {
 		compileFlag |= EffectCompilerFlags::NoFP16;
 	}
-	if (scalingOptions.IsHdrCompatibilityEnabled()) {
+	if (hdrEnabled) {
 		compileFlag |= EffectCompilerFlags::HdrCompatibility;
 	}
 	const auto encodeFormat = [](DXGI_FORMAT format, uint32_t shift) {
@@ -1628,8 +1648,8 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 	_backendInitSystemError = 0;
 	const ScalingOptions& options = ScalingWindow::Get().Options();
 	const bool noFP16 = !_backendResources.IsFP16Supported() || options.IsFP16Disabled();
-	_dlssnrAutoHdr = UseDlssnrAutoHdr(options.IsHdrCompatibilityEnabled(), !noFP16,
-		_frameSource->GetHdrFrameMetadata());
+	_dlssnrAutoHdr = _runtimeHdrComponents.enabled ? !noFP16 :
+		UseDlssnrAutoHdr(options.IsHdrCompatibilityEnabled(), !noFP16, _frameSource->GetHdrFrameMetadata());
 	Logger::Get().Info(fmt::format("DLSSNR automatic HDR: fp16={} normalizationScale=1 colorValid={} inferred={}",
 		_dlssnrAutoHdr, _frameSource->GetHdrFrameMetadata().IsValid(),
 		_frameSource->GetHdrFrameMetadata().color.isInferred));
@@ -1647,16 +1667,21 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 		Win32Helper::RunParallel([&](uint32_t id) {
 			DXGI_FORMAT routeInput = DXGI_FORMAT_UNKNOWN;
 			DXGI_FORMAT routeOutput = DXGI_FORMAT_UNKNOWN;
-			if (options.IsHdrCompatibilityEnabled()) {
-				const HdrFormatRoutes routes = GetHdrRoutesForEffect(
-					effects[id], options.IsHdrCompatibilityEnabled(), _dlssnrAutoHdr);
+			const bool component = ClassifyHdrComponent(effects[id].name) != HdrComponentKind::None;
+			const bool hdrInput = options.IsEffectHdrEnabled(id);
+			if (component) {
+				const auto& stage = _runtimeHdrComponents.stages[id];
+				routeInput = stage.inputHdr ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
+				routeOutput = stage.outputHdr ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
+			} else if (hdrInput) {
+				const HdrFormatRoutes routes = GetHdrRoutesForEffect(effects[id], true, _dlssnrAutoHdr);
 				if (const auto* route = HdrEffectBoundary::SelectRoute(true, routes)) {
 					routeInput = route->inputFormat;
 					routeOutput = route->outputFormat;
 				}
 			}
 			std::optional<EffectDesc> desc = CompileEffect(
-				effects[id], noFP16, false, routeInput, routeOutput);
+				effects[id], noFP16, false, routeInput, routeOutput, hdrInput && !component);
 
 			auto lk = writeLock.lock_exclusive();
 			if (desc) {
@@ -1691,22 +1716,19 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 		return nullptr;
 	}
 	inOutTexture = _frameSource->GetPipelineTexture();
-	HdrFrame initialHdrFrame{};
-	if (options.IsHdrCompatibilityEnabled()) {
-		initialHdrFrame.texture = _frameSource->GetPipelineTexture();
-		initialHdrFrame.metadata = _frameSource->GetHdrFrameMetadata();
-		initialHdrFrame.workingFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-	}
+	HdrFrame initialHdrFrame = MakePipelineInputFrame(inOutTexture,
+		_frameSource->GetHdrFrameMetadata(), options.IsHdrCaptureEnabled());
 	for (uint32_t i = 0; i < effectCount; ++i) {
+		const bool component = ClassifyHdrComponent(effects[i].name) != HdrComponentKind::None;
+		const bool hdrInput = options.IsEffectHdrEnabled(i) && !component;
 		HdrEffectBoundaryContext initialHdrBoundary{};
-		if (options.IsHdrCompatibilityEnabled()) {
-			const EffectOption& effectOption = effects[i];
-			initialHdrBoundary = HdrEffectBoundary::Prepare(
-				true, initialHdrFrame,
-				GetHdrRoutesForEffect(effectOption, options.IsHdrCompatibilityEnabled(), _dlssnrAutoHdr),
-				initialHdrFrame.metadata.color);
-			_effectDrawers[i].SetHdrBoundary(initialHdrBoundary);
+		if (hdrInput) {
+			initialHdrBoundary = HdrEffectBoundary::Prepare(true, initialHdrFrame,
+				GetHdrRoutesForEffect(effects[i], true, _dlssnrAutoHdr), initialHdrFrame.metadata.color);
 		}
+		_effectDrawers[i].SetHdrBoundary(initialHdrBoundary);
+		if (component) _effectDrawers[i].SetHdrComponent(_runtimeHdrComponents.stages[i],
+			HdrComponentTransform(_runtimeHdrComponents, i));
 		if (!_effectDrawers[i].Initialize(
 			_effectDescs[i],
 			effects[i],
@@ -1726,7 +1748,7 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 			_backendResources,
 			_ngxD3D12Core,
 			_effectDrawers[i].GetTexture(0),
-			_effectDrawers[i].GetOutputTexture());
+			_effectDrawers[i].GetOutputTexture(), hdrInput);
 		if (nativeBackend.recognized && !nativeBackend.backend) {
 			_backendInitError = nativeBackend.error == ScalingError::NoError
 				? ScalingError::NativeEffectInitFailed : nativeBackend.error;
@@ -1736,7 +1758,7 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 			return nullptr;
 		}
 		_nativeEffectBackends[i] = std::move(nativeBackend.backend);
-		if (_nativeEffectBackends[i] && options.IsHdrCompatibilityEnabled()) {
+		if (_nativeEffectBackends[i] && hdrInput) {
 			_nativeEffectBackends[i]->SetHdrBoundary(std::move(initialHdrBoundary));
 			ConfigureHdrBackendProtocol(effects[i].name, *_nativeEffectBackends[i],
 				initialHdrFrame.metadata, true);
@@ -1747,6 +1769,11 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 				ScalingError::DlssNrUnavailable, effects[i].name + "\n" + nativeBackend.diagnostic,
 				nativeBackend.systemError);
 		}
+
+		ApplyHdrComponentOutputColor(initialHdrFrame.metadata, _runtimeHdrComponents, i);
+		initialHdrFrame = MakePipelineInputFrame(inOutTexture, initialHdrFrame.metadata,
+			_runtimeHdrComponents.enabled ? _runtimeHdrComponents.stages[i].outputHdr : hdrInput);
+		_pipelineOutputMetadata = initialHdrFrame.metadata;
 
 		if (IsDLSSFrameGenerationEffect(effects[i].name)) {
 			if (dlssFrameGenerationSettings) {
@@ -1816,67 +1843,45 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 }
 
 void Renderer::_UpdateHdrEffectBoundaryContexts() noexcept {
-	const ScalingOptions& options = ScalingWindow::Get().Options();
-	if (!options.IsHdrCompatibilityEnabled()) {
-		for (size_t i = 0; i < _effectDrawers.size(); ++i) {
-			_effectDrawers[i].SetHdrBoundary({});
-			if (i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) {
-				_nativeEffectBackends[i]->SetHdrBoundary({});
-			}
-		}
-		return;
-	}
-	if (!_frameSource) {
-		return;
-	}
-
-	HdrFrame inputFrame{};
-	inputFrame.texture = _frameSource->GetPipelineTexture();
-	inputFrame.metadata = _frameSource->GetHdrFrameMetadata();
-	inputFrame.workingFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-
-	// The automatically appended downsampler has a drawer but no user option.
+	const auto& options = ScalingWindow::Get().Options();
+	if (!_runtimeHdrComponents.enabled && !options.IsHdrCompatibilityEnabled()) return;
+	if (!_frameSource) return;
+	HdrFrame inputFrame = MakePipelineInputFrame(_frameSource->GetPipelineTexture(),
+		_frameSource->GetHdrFrameMetadata(), options.IsHdrCaptureEnabled());
+	inputFrame.metadata.frameId = _capturedFrameId;
+	inputFrame.metadata.captureSequence = _frameSource->CaptureSequence();
+	inputFrame.metadata.resourceGeneration = _frameSource->ResourceGeneration();
+	inputFrame.metadata.timestamp100ns = _frameSource->CaptureTimestamp100ns();
 	const EffectOption bicubicOption{ .name = "Bicubic" };
 	for (size_t i = 0; i < _effectDrawers.size(); ++i) {
-		const EffectOption& effectOption = i < _runtimeEffectOptions.size()
-			? _runtimeEffectOptions[i] : bicubicOption;
-		const HdrFormatRoutes routes = GetHdrRoutesForEffect(effectOption, options.IsHdrCompatibilityEnabled(), _dlssnrAutoHdr);
-		HdrEffectBoundaryContext context = HdrEffectBoundary::Prepare(
-			true, inputFrame, routes, inputFrame.metadata.color);
-		if (effectOption.name == "DLSSNR\\DLSSNR_AI_Filter") {
-			D3D11_TEXTURE2D_DESC sourceDesc{};
-			inputFrame.texture->GetDesc(&sourceDesc);
-			const auto diagnostic = fmt::format(
-				"DLSSNR HDR boundary: enabled={} route={} profile={} requiresBounded={} "
-				"normalizationScale={} sourceFormat={} source={}x{} sdrWhiteNits={} inferred={}",
-				options.IsHdrCompatibilityEnabled(),
-				context.SelectedRoute() ? context.SelectedRoute()->Id() : "(none)",
-				ToString(context.plan.profile), context.plan.requiresBoundedMapping,
-				context.plan.normalizationScale, static_cast<uint32_t>(sourceDesc.Format),
-				sourceDesc.Width, sourceDesc.Height, inputFrame.metadata.color.sdrWhiteNits,
-				inputFrame.metadata.color.isInferred);
-			if (_dlssnrHdrDiagnostic != diagnostic) {
-				_dlssnrHdrDiagnostic = diagnostic;
-				Logger::Get().Info(diagnostic);
-			}
-		}
+		const auto& effect = i < _runtimeEffectOptions.size() ? _runtimeEffectOptions[i] : bicubicOption;
+		const bool component = ClassifyHdrComponent(effect.name) != HdrComponentKind::None;
+		const bool hdrInput = options.IsEffectHdrEnabled(i) && !component;
+		HdrEffectBoundaryContext context{};
+		if (hdrInput) context = HdrEffectBoundary::Prepare(true, inputFrame,
+			GetHdrRoutesForEffect(effect, true, _dlssnrAutoHdr), inputFrame.metadata.color);
+		else context.inputFrame = inputFrame;
 		_effectDrawers[i].SetHdrBoundary(context);
+		_effectDrawers[i].SetHdrInputSource(inputFrame.texture);
 		if (i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) {
 			_nativeEffectBackends[i]->SetHdrBoundary(std::move(context));
-			ConfigureHdrBackendProtocol(effectOption.name,
-				*_nativeEffectBackends[i], inputFrame.metadata, true);
+			ConfigureHdrBackendProtocol(effect.name, *_nativeEffectBackends[i], inputFrame.metadata, hdrInput);
 		}
+		ApplyHdrComponentOutputColor(inputFrame.metadata, _runtimeHdrComponents, i);
+		inputFrame = MakePipelineInputFrame(_effectDrawers[i].GetExternalOutputTexture(),
+			inputFrame.metadata, options.IsEffectHdrEnabled(i + 1));
 	}
+	_pipelineOutputMetadata = inputFrame.metadata;
 }
 
 void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 	_effectParameterRuntimeInfos.clear();
 	_effectParameterRuntimeInfos.resize(_effectDescs.size());
-	const bool hdrEnabled = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled();
 
 	for (uint32_t effectIdx = 0; effectIdx < _effectDescs.size(); ++effectIdx) {
 		const EffectDesc& desc = _effectDescs[effectIdx];
 		const EffectOption& option = _runtimeEffectOptions[effectIdx];
+		const bool hdrEnabled = ScalingWindow::Get().Options().IsEffectHdrEnabled(effectIdx);
 		std::vector<EffectParameterRuntimeInfo>& infos =
 			_effectParameterRuntimeInfos[effectIdx];
 		infos.reserve(desc.params.size());
@@ -1885,7 +1890,14 @@ void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 			EffectParameterRuntimeInfo info{ .name = parameter.name };
 			const bool isHdrOnlyParameter =
 				(option.name == "CAS\\CAS" || option.name == "CAS\\CAS_Scaling") && parameter.name == "hdrFormat";
-			if (!hdrEnabled && isHdrOnlyParameter) {
+			if (ClassifyHdrComponent(option.name) == HdrComponentKind::HdrToSdr ||
+				ClassifyHdrComponent(option.name) == HdrComponentKind::SdrToHdr) {
+				const auto& plan = ScalingWindow::Get().Options().hdrComponents;
+				const bool pairedParameter = parameter.name != "mode" && plan.enabled &&
+					plan.stages[effectIdx].pairIndex != static_cast<size_t>(-1);
+				info.applyMode = pairedParameter ? EffectParameterApplyMode::Unavailable : EffectParameterApplyMode::RestartRequired;
+				info.restartReason = pairedParameter ? EffectParameterRestartReason::None : EffectParameterRestartReason::ResourceRecreation;
+			} else if (!hdrEnabled && isHdrOnlyParameter) {
 				info.applyMode = EffectParameterApplyMode::Unavailable;
 				info.restartReason = EffectParameterRestartReason::None;
 			} else if (isHdrOnlyParameter) {
@@ -2093,6 +2105,10 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 	}
 
 	if (anySucceeded) {
+		if (_runtimeHdrComponents.enabled) {
+			_runtimeHdrComponents = BuildHdrComponentPlan(_runtimeEffectOptions);
+			_UpdateHdrEffectBoundaryContexts();
+		}
 		ScalingWindow::Get().Options().parameterSession->Applied(_runtimeEffectOptions);
 		_forceNextRender = true;
 	}
@@ -2153,7 +2169,7 @@ bool Renderer::_AppendBicubic(ID3D11Texture2D** inOutTexture) noexcept {
 		const HdrFormatRoute* route = HdrEffectBoundary::SelectRoute(hdrEnabled, routes);
 		std::optional<EffectDesc> desc = CompileEffect(bicubicOption, true, true,
 			route ? route->inputFormat : DXGI_FORMAT_UNKNOWN,
-			route ? route->outputFormat : DXGI_FORMAT_UNKNOWN);
+			route ? route->outputFormat : DXGI_FORMAT_UNKNOWN, hdrEnabled);
 		if (!desc) {
 			Logger::Get().Error("编译降采样效果失败");
 			return false;
@@ -2164,7 +2180,7 @@ bool Renderer::_AppendBicubic(ID3D11Texture2D** inOutTexture) noexcept {
 
 	EffectDrawer& bicubicDrawer = _effectDrawers.emplace_back();
 	if (hdrEnabled) {
-		HdrFrame inputFrame = _frameSource->GetCanonicalFrame();
+		HdrFrame inputFrame = MakePipelineInputFrame(*inOutTexture, _pipelineOutputMetadata, true);
 		inputFrame.texture = *inOutTexture;
 		D3D11_TEXTURE2D_DESC inputDesc{};
 		inputFrame.texture->GetDesc(&inputDesc);
@@ -2506,7 +2522,7 @@ HANDLE Renderer::_CreateSharedTexture(ID3D11Texture2D* effectsOutput) noexcept {
 	SIZE textureSize = { (LONG)desc.Width, (LONG)desc.Height };
 	_dlssFgHdrNormalizationScale = 1.0f;
 	if (hdrEnabled && _dlssFrameGenerator && _frameSource) {
-		const auto color = _frameSource->GetHdrFrameMetadata().color;
+		const auto color = _pipelineOutputMetadata.color;
 		if (color.IsValid() && color.sdrWhiteNits > 80.0f) {
 			_dlssFgHdrNormalizationScale = 80.0f / color.sdrWhiteNits;
 			_dlssFgNormalizedInput = DirectXHelper::CreateTexture2D(
@@ -2642,8 +2658,8 @@ HANDLE Renderer::_CreateSharedTexture(ID3D11Texture2D* effectsOutput) noexcept {
 	if (!_passThroughFrames.InitializeBackend(_backendResources,
 		_frameSource->GetPipelineTexture(), effectsOutput, _sharedTextureSlotCount,
 		ScalingWindow::Get().Options().IsHdrCompatibilityEnabled(),
-		HdrColorTransform::ForFrame(_frameSource->GetHdrFrameMetadata().color),
-		_frameSource->GetHdrFrameMetadata())) {
+		HdrColorTransform::ForFrame(_pipelineOutputMetadata.color),
+		_pipelineOutputMetadata, ScalingWindow::Get().Options().IsHdrCaptureEnabled())) {
 		const auto& window = ScalingWindow::Get();
 		if (const auto& report = window.Options().reportErrorDetails) {
 			report(window.SrcTracker().Handle(), ScalingError::PassThroughUnavailable,
@@ -2928,6 +2944,7 @@ HANDLE Renderer::_InitBackend() noexcept {
 	}
 
 	_runtimeEffectOptions = ScalingWindow::Get().Options().effects;
+	_runtimeHdrComponents = ScalingWindow::Get().Options().hdrComponents;
 	ScalingWindow::Get().Options().parameterSession->Applied(_runtimeEffectOptions);
 
 	Logger::DiagnosticCapture backendDiagnostic;
@@ -2974,7 +2991,7 @@ HANDLE Renderer::_InitBackend() noexcept {
 		CollectFrameGuidanceRequirements(
 			_nativeEffectBackends, _dlssFrameGenerator.get(), _xessMotionRequest);
 	_motionConsumers.clear();
-	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() && guidanceRequirements.HasMotion()) {
+	if (ScalingWindow::Get().Options().IsHdrCaptureEnabled() && guidanceRequirements.HasMotion()) {
 		Logger::Get().Info("HDR mode: optical-flow providers receive the canonical frame and perform provider-local format adaptation");
 	}
 	for (size_t i = 0; i < _runtimeEffectOptions.size(); ++i) {
@@ -3070,10 +3087,23 @@ HANDLE Renderer::_InitBackend() noexcept {
 	return sharedHandle;
 }
 
+void Renderer::_FailColorPipeline(std::string effect, ScalingError error) noexcept {
+	if (std::exchange(_colorPipelineFailed, true)) return;
+	ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime, effect = std::move(effect), error]() {
+		auto& window = ScalingWindow::Get();
+		if (!session->IsCurrent(ScalingWindow::RunId()) || !window) return;
+		if (auto report = window.Options().reportErrorDetails)
+			report(window.SrcTracker().Handle(), error, effect, 0);
+		else window.ShowError(error);
+		window.Stop();
+	});
+}
+
 void Renderer::_BackendRender(
 	ID3D11Texture2D* effectsOutput,
 	bool isNewCaptureFrame
 ) noexcept {
+	if (_colorPipelineFailed) return;
 	FrameTrace::Scope traceRender(FrameTrace::Event::BackendRender, isNewCaptureFrame);
 	_stepTimer.PrepareForRender();
 	if (isNewCaptureFrame) {
@@ -3136,7 +3166,7 @@ void Renderer::_BackendRender(
 	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() && isNewCaptureFrame && _capturedFrameId <= 2) {
 		_LogHdrTextureStats(_frameSource->GetPipelineTexture(), "capture-canonical");
 	}
-	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
+	if (ScalingWindow::Get().Options().IsHdrCaptureEnabled()) {
 		HdrFrame captureFrame = _frameSource->GetCanonicalFrame();
 		captureFrame.metadata.frameId = _capturedFrameId;
 		captureFrame.metadata.captureSequence = _captureSequence;
@@ -3160,7 +3190,11 @@ void Renderer::_BackendRender(
 
 	for (uint32_t i = 0; i < _effectDrawers.size(); ++i) {
 		const EffectDrawer& effectDrawer = _effectDrawers[i];
-		if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
+		// Native SDKs may clear the context. Restore dynamic constants for the
+		// next image effect instead of relying on the first binding of the frame.
+		if (ID3D11Buffer* dynamic = _dynamicCB.get()) d3dDC->CSSetConstantBuffers(1, 1, &dynamic);
+		if (ScalingWindow::Get().Options().hdrComponents.enabled ||
+			ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
 			// Rebind every boundary to the actual upstream canonical handoff for
 			// this frame. Initialization-time pointers become stale after the
 			// first capture and after any resize/rebuild.
@@ -3168,6 +3202,15 @@ void Renderer::_BackendRender(
 				? _frameSource->GetPipelineTexture()
 				: _effectDrawers[i - 1].GetExternalOutputTexture();
 			_effectDrawers[i].SetHdrInputSource(upstream);
+		}
+		const auto component = i < _runtimeEffectOptions.size()
+			? ClassifyHdrComponent(_runtimeEffectOptions[i].name) : HdrComponentKind::None;
+		if (component == HdrComponentKind::HdrToSdr || component == HdrComponentKind::SdrToHdr) {
+			if (!effectDrawer.DrawHdrComponent(_effectsProfiler)) {
+				_FailColorPipeline(_runtimeEffectOptions[i].name, ScalingError::EffectResourceFailed);
+				return;
+			}
+			continue;
 		}
 		if (i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) {
 			if (!effectDrawer.PrepareHdrInput()) {
@@ -3184,9 +3227,9 @@ void Renderer::_BackendRender(
 			const NativeEffectDrawContext drawContext{
 				.input = effectDrawer.GetTexture(0),
 				.output = effectDrawer.GetOutputTexture(),
-				.inputMetadata = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()
+				.inputMetadata = effectDrawer.GetHdrBoundary().hdrEnabled
 					? effectDrawer.GetHdrBoundary().inputFrame.metadata : HdrFrameMetadata{},
-				.outputMetadata = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()
+				.outputMetadata = effectDrawer.GetHdrBoundary().hdrEnabled
 					? effectDrawer.GetHdrBoundary().inputFrame.metadata : HdrFrameMetadata{},
 				.frameId = _capturedFrameId,
 				.inputRevision = i < _effectInputRevisions.size()
@@ -3199,6 +3242,10 @@ void Renderer::_BackendRender(
 			if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() && isNewCaptureFrame && _capturedFrameId <= 2) {
 				_LogHdrTextureStats(drawContext.input, fmt::format("effect-{}-input", i));
 				_LogHdrTextureStats(drawContext.output, fmt::format("effect-{}-backend-output", i));
+			}
+			if (!nativeDrawSucceeded && component == HdrComponentKind::RtxVideoHdr) {
+				_FailColorPipeline(_runtimeEffectOptions[i].name, ScalingError::RtxHdrUnavailable);
+				return;
 			}
 			if (!nativeDrawSucceeded) {
 				const HdrEffectBoundaryContext& boundary = effectDrawer.GetHdrBoundary();
@@ -3250,6 +3297,11 @@ void Renderer::_BackendRender(
 }
 
 void Renderer::_LogHdrTextureStats(ID3D11Texture2D* texture, std::string_view label) noexcept {
+#ifndef MP_ENABLE_NATIVE_BACKEND_TIMING
+	(void)texture;
+	(void)label;
+	return;
+#else
 	if (!texture) {
 		Logger::Get().Warn(fmt::format("HDR texture stats: label={} texture=null", label));
 		return;
@@ -3292,6 +3344,7 @@ void Renderer::_LogHdrTextureStats(ID3D11Texture2D* texture, std::string_view la
 	_backendResources.GetD3DDC()->Unmap(readback.get(), 0);
 	const double pixels = double(sourceDesc.Width) * double(sourceDesc.Height);
 	Logger::Get().Info(fmt::format("HDR texture stats: label={} format={} size={}x{} finite={} invalid={} R=[{:.6g},{:.6g},{:.6g}] G=[{:.6g},{:.6g},{:.6g}] B=[{:.6g},{:.6g},{:.6g}] A=[{:.6g},{:.6g},{:.6g}]", label, static_cast<uint32_t>(sourceDesc.Format), sourceDesc.Width, sourceDesc.Height, finite, invalid, minimum[0], maximum[0], sum[0] / pixels, minimum[1], maximum[1], sum[1] / pixels, minimum[2], maximum[2], sum[2] / pixels, minimum[3], maximum[3], sum[3] / pixels));
+#endif
 }
 
 void Renderer::_CompleteBackendFrame(
@@ -3320,7 +3373,7 @@ void Renderer::_CompleteBackendFrame(
 		if (_dlssFgNormalizedInput && _dlssFgHdrNormalizationScale != 1.0f) {
 			if (!_hdrPresentationAdapter.ConvertHdrToBounded(
 				effectsOutput, _dlssFgNormalizedInput.get(),
-				HdrColorTransform::ForFrame(_frameSource->GetHdrFrameMetadata().color),
+				HdrColorTransform::ForFrame(_pipelineOutputMetadata.color),
 				_dlssFgHdrNormalizationScale)) {
 				Logger::Get().Error("DLSSFG canonical-to-bounded input conversion failed");
 				return;
@@ -3337,7 +3390,7 @@ void Renderer::_CompleteBackendFrame(
 				if (_dlssFgCanonicalGenerated && _dlssFgHdrNormalizationScale != 1.0f) {
 					if (!_hdrPresentationAdapter.ConvertBoundedToHdr(
 						generatedFrame, _dlssFgCanonicalGenerated.get(),
-						HdrColorTransform::ForFrame(_frameSource->GetHdrFrameMetadata().color),
+						HdrColorTransform::ForFrame(_pipelineOutputMetadata.color),
 						_dlssFgHdrNormalizationScale)) {
 						Logger::Get().Error("DLSSFG bounded-to-canonical output conversion failed");
 						return false;
@@ -3399,9 +3452,10 @@ bool Renderer::_PublishBackendTexture(
 	}
 	ID3D11DeviceContext4* d3dDC = _backendResources.GetD3DDC();
 	ID3D11Texture2D* publicationTexture = texture;
-	HdrFrameMetadata publicationMetadata{};
+	HdrFrameMetadata publicationMetadata = ScalingWindow::Get().Options().hdrComponents.enabled
+		? _pipelineOutputMetadata : HdrFrameMetadata{};
 	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
-		publicationMetadata = _frameSource->GetHdrFrameMetadata();
+		publicationMetadata = _pipelineOutputMetadata;
 		publicationMetadata.stage = generatedFrame
 			? HdrFrameStage::GeneratedOutput : HdrFrameStage::CanonicalOutput;
 		D3D11_TEXTURE2D_DESC textureDesc{};
@@ -3414,13 +3468,16 @@ bool Renderer::_PublishBackendTexture(
 			if (!_hdrPresentationTexture ||
 				!_hdrPresentationAdapter.ConvertCanonicalToHdr10(
 					texture, _hdrPresentationTexture.get(),
-					HdrColorTransform::ForFrame(_frameSource->GetHdrFrameMetadata().color))) {
+					HdrColorTransform::ForFrame(_pipelineOutputMetadata.color))) {
 				Logger::Get().Error("XeSSFG canonical-to-HDR10 conversion failed");
 				return false;
 			}
 			publicationTexture = _hdrPresentationTexture.get();
 			publicationMetadata.stage = HdrFrameStage::PublishedOutput;
 			publicationMetadata.color.transfer = HdrTransferFunction::PQ;
+			publicationMetadata.color.primaries = HdrColorPrimaries::Rec2020;
+			publicationMetadata.color.range = HdrColorRange::Full;
+			publicationMetadata.color.dxgiColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
 			publicationMetadata.sourceFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
 		}
 	}
@@ -3525,8 +3582,7 @@ bool Renderer::_PublishBackendTexture(
 			hr = AcquirePresentationTextures(mutexes, currentKey, 250);
 		}
 		if (SUCCEEDED(hr)) {
-			HdrFrameMetadata frameMetadata = _frameSource ?
-				_frameSource->GetHdrFrameMetadata() : HdrFrameMetadata{};
+			HdrFrameMetadata frameMetadata = publicationMetadata;
 			frameMetadata.frameId = _capturedFrameId;
 			frameMetadata.captureSequence = captureSequence;
 			frameMetadata.resourceGeneration = resourceGeneration != 0 ? resourceGeneration : currentGeneration;

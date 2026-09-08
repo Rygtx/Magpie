@@ -139,6 +139,16 @@ void Main(uint3 id : SV_DispatchThreadID) {
 		result = max(value.rgb, 0.0) * normalizationScale / max(sdrWhiteNits / 80.0, 1e-4);
 	} else if (mode == 3) {
 		result = max(value.rgb, 0.0) * (sdrWhiteNits / 80.0) / max(normalizationScale, 1e-4);
+	} else if (mode == 7) {
+		// Native SDR: white maps to paper white, not to the source HDR peak.
+		result = float3(DecodeSrgb(value.r), DecodeSrgb(value.g), DecodeSrgb(value.b))
+			* (sdrWhiteNits / 80.0) * exposure;
+	} else if (mode == 8) {
+		// Display tone map: luminance shoulder followed by SDR encoding.
+		float3 sceneColor = max(value.rgb, 0.0) * exposure / (sdrWhiteNits / 80.0);
+		float luminance = dot(sceneColor, float3(0.2126, 0.7152, 0.0722));
+		float3 mapped = sceneColor / (1.0 + luminance / max(shoulder, 0.001));
+		result = float3(EncodeSrgb(mapped.r), EncodeSrgb(mapped.g), EncodeSrgb(mapped.b));
 	} else if (mode == 5) {
 		// Canonical scRGB is linear with 1.0 == 80 nit. HDR10 also requires
 		// Rec.2020 primaries, so convert the canonical Rec.709 values first.
@@ -251,10 +261,6 @@ bool HdrSurfaceAdapter::_Convert(
 	context->CSSetShaderResources(0, 1, &inputSrv);
 	context->CSSetUnorderedAccessViews(0, 1, &outputUav, nullptr);
 	context->Dispatch((outputDesc.Width + 7) / 8, (outputDesc.Height + 7) / 8, 1);
-	Logger::Get().Info(fmt::format(
-		"HDR adapter dispatch: mode={} input={} output={} white={:.3f} peak={:.3f} scale={:.3f}",
-		mode, static_cast<uint32_t>(inputDesc.Format), static_cast<uint32_t>(outputDesc.Format),
-		parameters.sdrWhiteNits, parameters.hdrPeakNits, normalizationScale));
 	ID3D11ShaderResourceView* nullSrv = nullptr;
 	ID3D11UnorderedAccessView* nullUav = nullptr;
 	ID3D11Buffer* nullBuffer = nullptr;
@@ -270,6 +276,16 @@ bool HdrSurfaceAdapter::ConvertHdrToSdr(
 	const HdrTransformParameters& parameters, HdrTransferFunction outputTransfer
 ) const noexcept {
 	return _Convert(input, output, parameters, outputTransfer, true);
+}
+
+bool HdrSurfaceAdapter::MapSdrWhiteToHdr(ID3D11Texture2D* input, ID3D11Texture2D* output,
+	const HdrTransformParameters& parameters) const noexcept {
+	return _Convert(input, output, parameters, HdrTransferFunction::SRGB, false, 7u);
+}
+
+bool HdrSurfaceAdapter::ToneMapHdrForSdrDisplay(ID3D11Texture2D* input, ID3D11Texture2D* output,
+	const HdrTransformParameters& parameters) const noexcept {
+	return _Convert(input, output, parameters, HdrTransferFunction::SRGB, true, 8u);
 }
 
 bool HdrSurfaceAdapter::ConvertSdrToHdr(

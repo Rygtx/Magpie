@@ -1557,4 +1557,29 @@
   <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_3" xml:space="preserve">
     <value>Ultra</value>
   </data>
+  <data name="Message_HdrComponentExpectedHdr" xml:space="preserve"><value>The input to HDR to SDR is already SDR. Remove the duplicate conversion, or move it after a component that produces HDR.</value></data>
+  <data name="Message_HdrComponentExpectedSdr" xml:space="preserve"><value>SDR to HDR and RTX Video HDR need SDR input. Remove the preceding HDR expansion, or add HDR to SDR before this component.</value></data>
+  <data name="Message_HdrComponentMissingPair" xml:space="preserve"><value>No compatibility pair is available. Add an earlier HDR to SDR in compatibility mode, or select Auto / Native SDR mapping in SDR to HDR.</value></data>
+  <data name="Message_HdrComponentInvalidParameters" xml:space="preserve"><value>An HDR component parameter is outside its supported range. Restore the component defaults in the effect group and retry; copy the details if it still fails.</value></data>
+  <data name="Message_HdrCaptureRequired" xml:space="preserve"><value>HDR to SDR needs HDR capture. Enable HDR for the source display in Windows settings. For native SDR, use SDR effects directly and optionally append SDR to HDR.</value></data>
+  <data name="Message_HdrDisplayRequired" xml:space="preserve"><value>This group outputs HDR. Enable HDR for the target display in Windows settings, or finish the group with HDR to SDR in display mode. Enable HDR on every target when spanning displays.</value></data>
+  <data name="Message_HdrCaptureMethodRequired" xml:space="preserve"><value>Select Graphics Capture in this profile, then retry HDR to SDR. This capture path preserves the HDR brightness range.</value></data>
+  <data name="Message_RtxHdrUnavailable" xml:space="preserve"><value>RTX Video HDR could not process this frame. Update the NVIDIA driver, use an RTX 20-series or newer GPU, and restore Magpie.RtxVideo.dll and nvngx_truehdr.dll from the complete package. You can replace this component with native SDR mapping in SDR to HDR. If it still fails, fully restart Magpie and copy the details.</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_mode_Label" xml:space="preserve"><value>Mapping</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_mode_Option_0" xml:space="preserve"><value>Compatibility pair</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_mode_Option_1" xml:space="preserve"><value>SDR display tone map</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_whiteNits_Label" xml:space="preserve"><value>SDR white (nits)</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_peakNits_Label" xml:space="preserve"><value>HDR peak (nits)</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_exposure_Label" xml:space="preserve"><value>Exposure</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_shoulder_Label" xml:space="preserve"><value>Shoulder</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_mode_Label" xml:space="preserve"><value>Mapping</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_mode_Option_0" xml:space="preserve"><value>Auto: restore pair or map SDR white</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_mode_Option_1" xml:space="preserve"><value>Native SDR white mapping</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_mode_Option_2" xml:space="preserve"><value>Restore compatibility pair</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_whiteNits_Label" xml:space="preserve"><value>Native SDR white (nits)</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_exposure_Label" xml:space="preserve"><value>Native SDR exposure</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_contrast_Label" xml:space="preserve"><value>Contrast</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_saturation_Label" xml:space="preserve"><value>Saturation</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_middleGray_Label" xml:space="preserve"><value>Middle gray</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_peakNits_Label" xml:space="preserve"><value>Peak brightness (nits)</value></data>
 </root>
