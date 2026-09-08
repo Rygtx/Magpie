@@ -416,6 +416,8 @@
       <DependentUpon>PageFrame.xaml</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
+    <ClCompile Include="EffectCatalog.cpp" />
+    <ClCompile Include="ScalingModesPage.EffectPicker.cpp" />
     <ClCompile Include="ScalingModesPage.cpp">
       <DependentUpon>ScalingModesPage.xaml</DependentUpon>
       <SubType>Code</SubType>
@@ -685,6 +687,9 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Magpie.rc" />
+    <ClInclude Include="EffectCatalog.h" />
+    <ClInclude Include="EffectPickerModel.h" />
+    <None Include="EffectCatalog\zh-Hans.json" />
   </ItemGroup>
   <ItemGroup>
     <SDKReference Include="WindowsDesktop, Version=10.0.26100.0" />

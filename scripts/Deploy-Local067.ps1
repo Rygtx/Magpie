@@ -70,6 +70,7 @@ if ((& git -C $sourceRoot rev-parse HEAD).Trim() -ne $commit -or
 
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'LICENSE') -Destination (Join-Path $buildOutput 'LICENSE-Magpie.txt')
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'docs/experimental/testing/SCALING-PREFLIGHT.md') -Destination (Join-Path $buildOutput 'LOCAL-NOTES.md')
+Copy-Item -LiteralPath (Join-Path $sourceRoot 'docs/experimental/testing/EFFECT-PICKER.md') -Destination (Join-Path $buildOutput 'EFFECT-PICKER.md')
 $files = @(Get-ChildItem -LiteralPath $buildOutput -File -Recurse | Where-Object {
     $_.Extension -notin @('.lib', '.exp', '.obj', '.ilk')
 })

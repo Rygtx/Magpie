@@ -24,7 +24,6 @@ using namespace Windows::UI::Xaml::Input;
 namespace winrt::Magpie::implementation {
 
 ScalingModesPage::ScalingModesPage() {
-	_BuildEffectMenu();
 }
 
 void ScalingModesPage::ComboBox_DropDownOpened(IInspectable const& sender, IInspectable const&) {
@@ -185,10 +184,19 @@ void ScalingModesPage::EffectParametersFlyout_Opening(
 }
 
 void ScalingModesPage::AddEffectButton_Click(IInspectable const& sender, RoutedEventArgs const&) {
-	Button btn = sender.try_as<Button>();
-	_curScalingMode = get_self<ScalingModeItem>(btn.Tag().try_as<winrt::Magpie::ScalingModeItem>());
-	_RefreshEffectMenuAvailability();
-	_addEffectMenuFlyout.ShowAt(btn);
+	if (!_effectPicker) _BuildEffectPicker();
+	const auto btn = sender.as<Button>();
+	_pickerMode = btn.Tag().as<winrt::Magpie::ScalingModeItem>();
+	const auto size = XamlRoot().Size();
+	_pickerRoot.Width(std::max(280.0, std::min(820.0, double(size.Width) - 72.0)));
+	_pickerRoot.Height(std::max(220.0, std::min(640.0, double(size.Height) - 80.0)));
+	_pickerRoot.ColumnDefinitions().GetAt(0).Width({ _pickerRoot.Width() < 560 ? 140.0 : 184.0, GridUnitType::Pixel });
+	_pickerCategory.clear();
+	_pickerSubcategory.clear();
+	_pickerSearch.Text(L"");
+	_RefreshEffectPicker();
+	_effectPicker.XamlRoot(XamlRoot());
+	_effectPicker.ShowAt(btn);
 }
 
 void ScalingModesPage::NewScalingModeButton_Click(IInspectable const&, RoutedEventArgs const&) {
@@ -689,115 +697,6 @@ void ScalingModesPage::ReorderHandle_PointerCaptureLost(
 		Logger::Get().Warn("处理拖拽捕获丢失失败");
 		_QueueFinishReorder(false);
 	}
-}
-
-void ScalingModesPage::_BuildEffectMenu() noexcept {
-	std::vector<MenuFlyoutItemBase> rootItems;
-
-	phmap::flat_hash_map<std::wstring_view, MenuFlyoutSubItem> folders;
-	folders.reserve(13);
-	for (const auto& effect : EffectsService::Get().Effects()) {
-		std::wstring_view name(effect.name);
-
-		MenuFlyoutItem item;
-		item.Tag(box_value(effect.name));
-		item.Click({ this, &ScalingModesPage::_AddEffectMenuFlyoutItem_Click });
-
-		size_t delimPos = name.find_last_of(L'\\');
-		if (delimPos == std::wstring::npos) {
-			item.Text(name);
-			rootItems.emplace_back(std::move(item));
-			continue;
-		}
-
-		item.Text(EffectHelper::GetDisplayName(name));
-
-		std::wstring_view dir = name.substr(0, delimPos);
-		auto it = folders.find(dir);
-		if (it != folders.end()) {
-			it->second.Items().Append(item);
-		} else {
-			MenuFlyoutSubItem folder;
-			folder.Text(hstring(dir));
-			folder.Items().Append(item);
-
-			rootItems.push_back(folder);
-			folders.emplace(dir, folder);
-		}
-	}
-
-	std::sort(rootItems.begin(), rootItems.end(), [](MenuFlyoutItemBase const& l, MenuFlyoutItemBase const& r) {
-		bool isLSubMenu = get_class_name(l) == name_of<MenuFlyoutSubItem>();
-		bool isRSubMenu = get_class_name(r) == name_of<MenuFlyoutSubItem>();
-
-		if (isLSubMenu != isRSubMenu) {
-			return isLSubMenu;
-		}
-
-		if (isLSubMenu) {
-			return l.try_as<MenuFlyoutSubItem>().Text() < r.try_as<MenuFlyoutSubItem>().Text();
-		} else {
-			return l.try_as<MenuFlyoutItem>().Text() < r.try_as<MenuFlyoutItem>().Text();
-		}
-	});
-
-	// 排序文件夹中的项目
-	for (MenuFlyoutItemBase& item : rootItems) {
-		MenuFlyoutSubItem folder = item.try_as<MenuFlyoutSubItem>();
-		if (!folder) {
-			break;
-		}
-
-		IVector<MenuFlyoutItemBase> items = folder.Items();
-		// 读取到 std::vector 中以提高排序性能
-		std::vector<MenuFlyoutItemBase> itemsVec(items.Size(), nullptr);
-		items.GetMany(0, itemsVec);
-		std::sort(itemsVec.begin(), itemsVec.end(), [](const MenuFlyoutItemBase& l, const MenuFlyoutItemBase& r) {
-			hstring lEffectName = unbox_value<hstring>(l.try_as<MenuFlyoutItem>().Tag());
-			hstring rEffectName = unbox_value<hstring>(r.try_as<MenuFlyoutItem>().Tag());
-
-			const EffectInfo* lEffectInfo = EffectsService::Get().GetEffect(lEffectName);
-			const EffectInfo* rEffectInfo = EffectsService::Get().GetEffect(rEffectName);
-
-			return lEffectInfo->sortName < rEffectInfo->sortName;
-		});
-		items.ReplaceAll(itemsVec);
-	}
-
-	for (MenuFlyoutItemBase& item : rootItems) {
-		_addEffectMenuFlyout.Items().Append(std::move(item));
-	}
-}
-
-void ScalingModesPage::_RefreshEffectMenuAvailability() noexcept {
-	if (!_curScalingMode) {
-		return;
-	}
-
-	auto updateItem = [this](const MenuFlyoutItemBase& itemBase) noexcept {
-		const MenuFlyoutItem item = itemBase.try_as<MenuFlyoutItem>();
-		if (!item || !item.Tag()) {
-			return;
-		}
-		item.IsEnabled(_curScalingMode->CanAddEffect(
-			unbox_value<hstring>(item.Tag())));
-	};
-
-	for (const MenuFlyoutItemBase& rootItem : _addEffectMenuFlyout.Items()) {
-		if (const MenuFlyoutSubItem folder =
-			rootItem.try_as<MenuFlyoutSubItem>()) {
-			for (const MenuFlyoutItemBase& item : folder.Items()) {
-				updateItem(item);
-			}
-		} else {
-			updateItem(rootItem);
-		}
-	}
-}
-
-void ScalingModesPage::_AddEffectMenuFlyoutItem_Click(IInspectable const& sender, RoutedEventArgs const&) {
-	hstring effectName = unbox_value<hstring>(sender.try_as<MenuFlyoutItem>().Tag());
-	_curScalingMode->AddEffect(effectName);
 }
 
 }

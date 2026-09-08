@@ -192,11 +192,10 @@ void ScalingModeItem::AddEffect(const hstring& fullName) {
 		return;
 	}
 
+	const EffectInfo* effectInfo = EffectsService::Get().GetEffect(fullName);
+	if (!effectInfo) return;
 	EffectItem& effect = _Data().effects.emplace_back();
 	effect.name = fullName;
-
-	const EffectInfo* effectInfo = EffectsService::Get().GetEffect(fullName);
-	assert(effectInfo);
 	if (effectInfo->CanScale()) {
 		// 支持缩放的效果默认等比缩放到充满屏幕
 		effect.scalingType = ::Magpie::ScalingType::Fit;
@@ -213,7 +212,7 @@ void ScalingModeItem::AddEffect(const hstring& fullName) {
 }
 
 bool ScalingModeItem::CanAddEffect(const hstring& fullName) const noexcept {
-	if (_IsRemoved()) {
+	if (_IsRemoved() || !EffectsService::Get().GetEffect(fullName)) {
 		return false;
 	}
 
@@ -224,6 +223,19 @@ bool ScalingModeItem::CanAddEffect(const hstring& fullName) const noexcept {
 	}
 
 	return !ValidateFrameGenerationChain(_Data().effects).HasFrameGeneration();
+}
+
+hstring ScalingModeItem::EffectAddProblem(const hstring& fullName) const {
+	if (_IsRemoved()) return L"请重新打开要编辑的效果组，再添加效果器。";
+	if (!EffectsService::Get().GetEffect(fullName)) return L"请恢复对应效果器文件并重启 Magpie，再尝试添加。";
+	if (CanAddEffect(fullName)) return {};
+	for (const auto& effect : _Data().effects) {
+		if (ClassifyFrameGenerationEffect(effect.name) != FrameGenerationEffectKind::None) {
+			return hstring(fmt::format(L"当前组已使用 {}；如需改用 {}，请先移除现有补帧项。",
+				EffectHelper::GetDisplayName(effect.name), EffectHelper::GetDisplayName(fullName)));
+		}
+	}
+	return L"请重新打开当前效果组后再添加。";
 }
 
 hstring ScalingModeItem::Name() const noexcept {
