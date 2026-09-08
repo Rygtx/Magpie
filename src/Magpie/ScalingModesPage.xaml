@@ -24,6 +24,55 @@
 			<Setter Property="HorizontalAlignment" Value="Stretch" />
 			<Setter Property="HorizontalContentAlignment" Value="Stretch" />
 		</Style>
+		<Style x:Key="EffectPickerLetterButtonStyle" TargetType="Button"
+		       BasedOn="{StaticResource EffectPickerButtonStyle}">
+			<Setter Property="Width" Value="18" />
+			<Setter Property="Height" Value="18" />
+			<Setter Property="FontSize" Value="10" />
+			<Setter Property="Padding" Value="0" />
+			<Setter Property="HorizontalContentAlignment" Value="Center" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+			<Setter Property="UseSystemFocusVisuals" Value="True" />
+			<Setter Property="FocusVisualMargin" Value="0" />
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="Button">
+						<Grid x:Name="LetterRoot" Background="{TemplateBinding Background}"
+						      CornerRadius="{TemplateBinding CornerRadius}">
+							<VisualStateManager.VisualStateGroups>
+								<VisualStateGroup x:Name="CommonStates">
+									<VisualState x:Name="Normal" />
+									<VisualState x:Name="PointerOver">
+										<VisualState.Setters>
+											<Setter Target="LetterRoot.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+										</VisualState.Setters>
+									</VisualState>
+									<VisualState x:Name="Pressed">
+										<VisualState.Setters>
+											<Setter Target="LetterRoot.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+										</VisualState.Setters>
+									</VisualState>
+									<VisualState x:Name="Disabled">
+										<VisualState.Setters>
+											<Setter Target="LetterContent.Opacity" Value="0.3" />
+										</VisualState.Setters>
+									</VisualState>
+								</VisualStateGroup>
+							</VisualStateManager.VisualStateGroups>
+							<ContentPresenter x:Name="LetterContent"
+							                  Content="{TemplateBinding Content}"
+							                  ContentTemplate="{TemplateBinding ContentTemplate}"
+							                  Foreground="{TemplateBinding Foreground}"
+							                  FontFamily="{TemplateBinding FontFamily}"
+							                  FontSize="{TemplateBinding FontSize}"
+							                  FontWeight="{TemplateBinding FontWeight}"
+							                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+							                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+						</Grid>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
 		<SolidColorBrush x:Key="EffectPickerCategoryBackground" Color="{ThemeResource SystemBaseHighColor}" Opacity="0.025" />
 		<SolidColorBrush x:Key="EffectPickerListBackground" Color="{ThemeResource SystemBaseHighColor}" Opacity="0.06" />
 		<SolidColorBrush x:Key="EffectPickerDetailBackground" Color="{ThemeResource SystemBaseHighColor}" Opacity="0.10" />

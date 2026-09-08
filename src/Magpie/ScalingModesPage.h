@@ -139,13 +139,8 @@ private:
 	Grid _pickerDetailArea{ nullptr };
 	TextBlock _pickerDetailHint{ nullptr };
 	bool _pickerDetailsHintQueued = false;
-	Grid _pickerIndexPane{ nullptr }, _pickerIndexRail{ nullptr };
-	Button _pickerIndexButton{ nullptr };
-	Flyout _pickerIndexFlyout{ nullptr };
-	std::vector<Button> _pickerRailLetters, _pickerGridLetters;
+	std::vector<Button> _pickerLetters;
 	std::array<std::wstring, 27> _pickerLetterTargets;
-	int _pickerPendingLetter = -1;
-	bool _pickerIndexOpen = false;
 	Flyout _effectPicker{ nullptr };
 	Grid _pickerRoot{ nullptr };
 	TextBox _pickerSearch{ nullptr };

@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <cassert>
+#include <cmath>
 #include <vector>
 
 using namespace winrt;
@@ -52,6 +53,10 @@ int main() {
 		button.Style(styles.Lookup(box_value(L"EffectPickerButtonStyle")).as<Style>());
 		button.Content(box_value(L"CuNNy"));
 		root.Children().Append(button);
+		Button letter;
+		letter.Style(styles.Lookup(box_value(L"EffectPickerLetterButtonStyle")).as<Style>());
+		letter.Content(box_value(L"A"));
+		root.Children().Append(letter);
 		Border pane, categoryPane, detailPane, selected;
 		pane.Style(styles.Lookup(box_value(L"EffectPickerPaneStyle")).as<Style>());
 		categoryPane.Style(styles.Lookup(box_value(L"EffectPickerCategoryPaneStyle")).as<Style>());
@@ -75,6 +80,26 @@ int main() {
 			assert(presenter.BorderBrush() && button.Foreground());
 			assert(presenter.CornerRadius().TopLeft > 0);
 			assert(button.CornerRadius().TopLeft > 0);
+			assert(letter.ActualWidth() == 18 && letter.ActualHeight() == 18);
+			assert(letter.FontSize() == 10 && letter.UseSystemFocusVisuals());
+			const auto letterRoot = Media::VisualTreeHelper::GetChild(letter, 0).as<Grid>();
+			const auto letterContent = Media::VisualTreeHelper::GetChild(letterRoot, 0).as<ContentPresenter>();
+			const auto foreground = letterContent.Foreground().as<Media::SolidColorBrush>().Color();
+			assert(letterRoot.CornerRadius().TopLeft > 0);
+			// Reproduce disabling a hovered/pressed item. Only the text fades;
+			// the prior hover background must also return to transparent.
+			for (const auto* prior : {L"PointerOver", L"Pressed"}) {
+				assert(VisualStateManager::GoToState(letter, prior, false));
+				letter.IsEnabled(false);
+				assert(VisualStateManager::GoToState(letter, L"Disabled", false));
+				assert(letterRoot.Background().as<Media::SolidColorBrush>().Color().A == 0);
+				assert(letter.Opacity() == 1 && letterRoot.Opacity() == 1);
+				assert(std::abs(letterContent.Opacity() - 0.3) < 0.000001);
+				assert(letterContent.Foreground().as<Media::SolidColorBrush>().Color() == foreground);
+				letter.IsEnabled(true);
+				assert(VisualStateManager::GoToState(letter, L"Normal", false));
+				assert(letterContent.Opacity() == 1);
+			}
 			const auto category = categoryPane.Background().as<Media::SolidColorBrush>();
 			const auto list = pane.Background().as<Media::SolidColorBrush>();
 			const auto details = detailPane.Background().as<Media::SolidColorBrush>();
@@ -88,7 +113,7 @@ int main() {
 		assert(panelColors[0] != panelColors[1] && panelColors[0] == panelColors[2]);
 		std::cout << "Flyout material: " << to_string(get_class_name(presenter.Background())) << "\n";
 		manager.Close();
-		std::cout << "Production picker resources load with WinUI 2 Version2: themed brushes, rounded controls, translucent panes and inherited flyout template passed. No window shown.\n";
+		std::cout << "Production picker resources load with WinUI 2 Version2: themed brushes, rounded controls, translucent panes, inherited flyout and 18-DIP alphabet buttons with text-only disabled opacity passed. No window shown.\n";
 	} catch (hresult_error const& error) {
 		std::cerr << "Theme resource error: " << to_string(error.message()) << " (" << std::hex << error.code().value << ")\n";
 		return 1;

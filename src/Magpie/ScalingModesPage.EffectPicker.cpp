@@ -77,8 +77,7 @@ void ScalingModesPage::_BuildEffectPicker() {
 	_pickerRows.clear();
 	_pickerEntries.clear();
 	_pickerCategories.clear();
-	_pickerRailLetters.clear();
-	_pickerGridLetters.clear();
+	_pickerLetters.clear();
 	const auto weak = get_weak();
 	const auto &catalog = EffectCatalog::Get();
 	for (const auto &effect : EffectsService::Get().Effects()) {
@@ -280,78 +279,47 @@ void ScalingModesPage::_BuildEffectPicker() {
 	_pickerResults = StackPanel();
 	_pickerListScroll = PickerScroll(_pickerResults);
 	resultsArea.Children().Append(_pickerListScroll);
-	_pickerIndexPane = Grid();
-	_pickerIndexPane.Margin({6, 0, 0, 0});
-	Grid::SetColumn(_pickerIndexPane, 1);
-	resultsArea.Children().Append(_pickerIndexPane);
-	_pickerIndexRail = Grid();
-	_pickerIndexRail.VerticalAlignment(VerticalAlignment::Top);
-	for (int i = 0; i < 2; ++i) Column(_pickerIndexRail, 24, GridUnitType::Pixel);
-	for (int i = 0; i < 14; ++i) Row(_pickerIndexRail, 24, GridUnitType::Pixel);
-	_pickerIndexPane.Children().Append(_pickerIndexRail);
-	_pickerIndexButton = _EffectPickerButton(PickerText(L"A–Z\n#", 10));
-	_pickerIndexButton.Padding({4, 6, 4, 6});
-	_pickerIndexButton.VerticalAlignment(VerticalAlignment::Top);
-	AutomationProperties::SetName(_pickerIndexButton, L"按首字母定位效果器");
-	_pickerIndexPane.Children().Append(_pickerIndexButton);
 	Grid letters;
-	for (int i = 0; i < 6; ++i) Column(letters, 36, GridUnitType::Pixel);
-	for (int i = 0; i < 5; ++i) Row(letters, 36, GridUnitType::Pixel);
+	letters.VerticalAlignment(VerticalAlignment::Top);
+	Column(letters, 18, GridUnitType::Pixel);
+	const auto letterStyle = Resources().Lookup(box_value(L"EffectPickerLetterButtonStyle"))
+		.as<Windows::UI::Xaml::Style>();
 	for (int i = 0; i < 27; ++i) {
+		Row(letters, 18, GridUnitType::Pixel);
 		const std::wstring name(1, i == 26 ? L'#' : wchar_t(L'A' + i));
-		for (bool rail : {true, false}) {
-			auto button = _EffectPickerButton(PickerText(name, rail ? 10 : 13, true));
-			button.Padding({0});
-			button.HorizontalContentAlignment(HorizontalAlignment::Center);
-			button.Width(rail ? 24 : 36); button.Height(rail ? 24 : 36);
-			AutomationProperties::SetName(button, L"定位 " + name);
-			button.Click([weak, i](auto const&, auto const&) {
-				if (auto page = weak.get()) page->_JumpEffectPickerLetter(i);
-			});
-			button.KeyDown([weak, i, rail](auto const&, KeyRoutedEventArgs const& args) {
-				const auto page = weak.get();
-				if (!page) return;
-				const auto key = args.Key();
-				int step = 0;
-				if (key == VirtualKey::Down) step = rail ? 1 : 6;
-				else if (key == VirtualKey::Up) step = rail ? -1 : -6;
-				else if (key == VirtualKey::Right) step = rail ? 14 : 1;
-				else if (key == VirtualKey::Left) step = rail ? -14 : -1;
-				if (!step) return;
-				const auto& letters = rail ? page->_pickerRailLetters : page->_pickerGridLetters;
-				for (int next = i + step; next >= 0 && next < 27; next += step) {
-					if (letters[next].IsEnabled()) { letters[next].Focus(FocusState::Keyboard); break; }
+		Button button;
+		button.Style(letterStyle);
+		button.Content(box_value(name));
+		AutomationProperties::SetName(button, L"定位 " + name);
+		button.Click([weak, i](auto const&, auto const&) {
+			if (auto page = weak.get()) page->_JumpEffectPickerLetter(i);
+		});
+		button.KeyDown([weak, i](auto const&, KeyRoutedEventArgs const& args) {
+			const auto page = weak.get();
+			if (!page) return;
+			const auto key = args.Key();
+			const int step = key == VirtualKey::Down ? 1 : key == VirtualKey::Up ? -1 : 0;
+			if (!step) return;
+			for (int next = i + step; next >= 0 && next < 27; next += step) {
+				if (page->_pickerLetters[next].IsEnabled()) {
+					page->_pickerLetters[next].Focus(FocusState::Keyboard);
+					break;
 				}
-				args.Handled(true);
-			});
-			if (rail) {
-				Grid::SetColumn(button, i / 14); Grid::SetRow(button, i % 14);
-				_pickerIndexRail.Children().Append(button);
-				_pickerRailLetters.push_back(button);
-			} else {
-				Grid::SetColumn(button, i % 6); Grid::SetRow(button, i / 6);
-				letters.Children().Append(button);
-				_pickerGridLetters.push_back(button);
 			}
-		}
+			args.Handled(true);
+		});
+		Grid::SetRow(button, i);
+		letters.Children().Append(button);
+		_pickerLetters.push_back(button);
 	}
-	_pickerIndexFlyout = Flyout();
-	_pickerIndexFlyout.ShouldConstrainToRootBounds(false);
-	_pickerIndexFlyout.Content(letters);
-	_pickerIndexFlyout.Opened([weak](auto const&, auto const&) {
-		if (auto page = weak.get()) page->_pickerIndexOpen = true;
-	});
-	_pickerIndexFlyout.Closed([weak](auto const&, auto const&) {
-		if (auto page = weak.get()) {
-			page->_pickerIndexOpen = false;
-			const int letter = std::exchange(page->_pickerPendingLetter, -1);
-			if (page->_pickerMode && letter >= 0) page->_JumpEffectPickerLetter(letter);
-		}
-	});
-	_pickerIndexButton.Flyout(_pickerIndexFlyout);
-	_pickerIndexPane.SizeChanged([weak](auto const&, auto const&) {
-		if (auto page = weak.get()) page->_UpdateEffectPickerIndex();
-	});
+	// Keep one column even on a constrained monitor: scroll the narrow index
+	// instead of changing its reading order or opening a second letter panel.
+	auto indexScroll = PickerScroll(letters);
+	indexScroll.VerticalScrollBarVisibility(ScrollBarVisibility::Hidden);
+	indexScroll.Margin({6, 0, 0, 0});
+	Grid::SetColumn(indexScroll, 1);
+	AutomationProperties::SetName(indexScroll, L"按首字母定位效果器");
+	resultsArea.Children().Append(indexScroll);
 	_pickerSearch.TextChanged([weak](auto const &, auto const &) {
 		if (const auto page = weak.get(); page && !page->_pickerChangingCategory)
 			page->_RefreshEffectPicker();
@@ -373,8 +341,6 @@ void ScalingModesPage::_BuildEffectPicker() {
 	_effectPicker.Closed([weak](auto const &, auto const &) {
 		if (auto page = weak.get()) {
 			page->_pickerMode = nullptr;
-			page->_pickerPendingLetter = -1;
-			page->_pickerIndexFlyout.Hide();
 		}
 	});
 }
@@ -644,28 +610,13 @@ void ScalingModesPage::_EffectPickerRowKeyDown(std::wstring_view key, KeyRoutedE
 }
 
 void ScalingModesPage::_UpdateEffectPickerIndex() {
-	// Two narrow alphabet columns fit the preferred 800-DIP popup while retaining
-	// 24-DIP click targets. Small monitor work areas use the grid flyout instead.
-	const bool rail = _pickerIndexPane.ActualHeight() >= 14 * 24;
-	_pickerIndexRail.Visibility(rail ? Visibility::Visible : Visibility::Collapsed);
-	_pickerIndexButton.Visibility(rail ? Visibility::Collapsed : Visibility::Visible);
-	bool any = false;
 	for (int i = 0; i < 27; ++i) {
-		const bool enabled = !_pickerLetterTargets[i].empty();
-		_pickerRailLetters[i].IsEnabled(enabled);
-		_pickerGridLetters[i].IsEnabled(enabled);
-		any |= enabled;
+		_pickerLetters[i].IsEnabled(!_pickerLetterTargets[i].empty());
 	}
-	_pickerIndexButton.IsEnabled(any);
 }
 
 void ScalingModesPage::_JumpEffectPickerLetter(int letter) {
 	if (letter < 0 || letter >= 27 || _pickerLetterTargets[letter].empty()) return;
-	if (_pickerIndexOpen) {
-		_pickerPendingLetter = letter;
-		_pickerIndexFlyout.Hide();
-		return;
-	}
 	_pickerRoot.UpdateLayout();
 	for (const auto& row : _pickerRows) {
 		if (row.entry.key != _pickerLetterTargets[letter]) continue;
