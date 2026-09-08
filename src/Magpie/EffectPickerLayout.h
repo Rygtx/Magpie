@@ -11,7 +11,7 @@ inline winrt::Windows::Foundation::Size EffectPickerSize(double workWidth, doubl
 	// Reserve presenter padding, border, shadow and screen-edge clearance.
 	scale = std::max(1.0, scale);
 	return {float(std::floor(std::clamp(workWidth / scale - 64.0, 1.0, 820.0))),
-		float(std::floor(std::clamp(workHeight / scale - 64.0, 1.0, 640.0)))};
+		float(std::floor(std::clamp(workHeight / scale - 64.0, 1.0, 800.0)))};
 }
 
 inline void SetEffectPickerRowMargin(winrt::Windows::UI::Xaml::FrameworkElement const& row, double indent = 0) {
@@ -65,8 +65,10 @@ inline EffectPickerLayout MakeEffectPickerLayout() {
 	layout.root.ColumnDefinitions().Append(left);
 	layout.root.ColumnDefinitions().Append(right);
 	RowDefinition upper, lower;
-	upper.Height({7, GridUnitType::Star});
-	lower.Height({3, GridUnitType::Star});
+	// Preferred height: 640 -> 800; details: 192 -> 144. The remaining space
+	// goes to browsing. Both regions shrink with the monitor work-area limit.
+	upper.Height({82, GridUnitType::Star});
+	lower.Height({18, GridUnitType::Star});
 	layout.root.RowDefinitions().Append(upper);
 	layout.root.RowDefinitions().Append(lower);
 	layout.categories.Padding({6, 8, 6, 8});

@@ -16,7 +16,7 @@ using namespace Windows::UI::Xaml::Input;
 using Windows::UI::Xaml::Automation::AutomationProperties;
 namespace winrt::Magpie::implementation {
 namespace {
-TextBlock PickerText(std::wstring_view text, double size = 14, bool singleLine = false) {
+TextBlock PickerText(std::wstring_view text, double size = 13, bool singleLine = false) {
 	TextBlock block;
 	block.Text(text);
 	block.FontSize(size);
@@ -103,9 +103,9 @@ void ScalingModesPage::_BuildEffectPicker() {
 	_pickerDetailPane = layout.details;
 	StackPanel details;
 	details.Spacing(6);
-	_pickerDetailTitle = PickerText(L"全部", 16);
+	_pickerDetailTitle = PickerText(L"全部", 15);
 	_pickerDetailTitle.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
-	_pickerDetails = PickerText(L"查看已安装效果器的用途、适用场景和组合建议。", 13);
+	_pickerDetails = PickerText(L"查看已安装效果器的用途、适用场景和组合建议。", 12);
 	_pickerDetails.IsTextSelectionEnabled(true);
 	details.Children().Append(_pickerDetailTitle);
 	details.Children().Append(_pickerDetails);
@@ -141,11 +141,11 @@ void ScalingModesPage::_BuildEffectPicker() {
 		Grid label;
 		Column(label, 1, GridUnitType::Star);
 		Column(label, 1, GridUnitType::Auto);
-		label.Children().Append(PickerText(name, 13, true));
+		label.Children().Append(PickerText(name, 12, true));
 		const auto count = std::ranges::count_if(_pickerEntries, [&](const auto &effect) {
 			return MatchesEffectCategory(effect, category, subcategory);
 		});
-		auto number = PickerText(std::to_wstring(count), 11);
+		auto number = PickerText(std::to_wstring(count), 10);
 		number.Opacity(0.65);
 		number.Margin({5, 0, 0, 0});
 		number.VerticalAlignment(VerticalAlignment::Center);
@@ -239,10 +239,11 @@ void ScalingModesPage::_BuildEffectPicker() {
 	Row(right, 1, GridUnitType::Star);
 	_pickerListPane.Child(right);
 	_pickerSearch = TextBox();
+	_pickerSearch.FontSize(13);
 	_pickerSearch.PlaceholderText(L"搜索效果器、用途或关键词……");
 	AutomationProperties::SetName(_pickerSearch, L"搜索全部效果器");
 	right.Children().Append(_pickerSearch);
-	_pickerCount = PickerText(L"", 12);
+	_pickerCount = PickerText(L"", 11);
 	_pickerCount.Margin({2, 7, 0, 7});
 	_pickerCount.Opacity(0.7);
 	Grid::SetRow(_pickerCount, 1);
@@ -264,7 +265,7 @@ void ScalingModesPage::_BuildEffectPicker() {
 	for (int i = 0; i < 2; ++i) Column(_pickerIndexRail, 24, GridUnitType::Pixel);
 	for (int i = 0; i < 14; ++i) Row(_pickerIndexRail, 24, GridUnitType::Pixel);
 	_pickerIndexPane.Children().Append(_pickerIndexRail);
-	_pickerIndexButton = _EffectPickerButton(PickerText(L"A–Z\n#", 11));
+	_pickerIndexButton = _EffectPickerButton(PickerText(L"A–Z\n#", 10));
 	_pickerIndexButton.Padding({4, 6, 4, 6});
 	_pickerIndexButton.VerticalAlignment(VerticalAlignment::Top);
 	AutomationProperties::SetName(_pickerIndexButton, L"按首字母定位效果器");
@@ -275,7 +276,7 @@ void ScalingModesPage::_BuildEffectPicker() {
 	for (int i = 0; i < 27; ++i) {
 		const std::wstring name(1, i == 26 ? L'#' : wchar_t(L'A' + i));
 		for (bool rail : {true, false}) {
-			auto button = _EffectPickerButton(PickerText(name, rail ? 11 : 14, true));
+			auto button = _EffectPickerButton(PickerText(name, rail ? 10 : 13, true));
 			button.Padding({0});
 			button.HorizontalContentAlignment(HorizontalAlignment::Center);
 			button.Width(rail ? 24 : 36); button.Height(rail ? 24 : 36);
@@ -439,11 +440,11 @@ void ScalingModesPage::_RefreshEffectPicker(std::wstring anchor) {
 		Grid label;
 		Column(label, 1, GridUnitType::Star);
 		Column(label, 1, GridUnitType::Auto);
-		auto name = PickerText(entry.name, 14, true);
+		auto name = PickerText(entry.name, 13, true);
 		name.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
 		label.Children().Append(name);
 		if (entry.IsFamily()) {
-			auto count = PickerText(std::to_wstring(entry.count), 11);
+			auto count = PickerText(std::to_wstring(entry.count), 10);
 			count.Opacity(0.7); count.Margin({8, 0, 0, 0});
 			count.VerticalAlignment(VerticalAlignment::Center);
 			Grid::SetColumn(count, 1);
@@ -452,7 +453,7 @@ void ScalingModesPage::_RefreshEffectPicker(std::wstring anchor) {
 		}
 		text.Children().Append(label);
 		if (!entry.summary.empty()) {
-			auto summary = PickerText(entry.summary, 12, true);
+			auto summary = PickerText(entry.summary, 11, true);
 			summary.Opacity(0.75); summary.Margin({0, 3, 0, 0});
 			text.Children().Append(summary);
 		}
@@ -580,7 +581,7 @@ void ScalingModesPage::_EffectPickerRowKeyDown(std::wstring_view key, KeyRoutedE
 }
 
 void ScalingModesPage::_UpdateEffectPickerIndex() {
-	// Two narrow alphabet columns fit the preferred 640-DIP popup while retaining
+	// Two narrow alphabet columns fit the preferred 800-DIP popup while retaining
 	// 24-DIP click targets. Small monitor work areas use the grid flyout instead.
 	const bool rail = _pickerIndexPane.ActualHeight() >= 14 * 24;
 	_pickerIndexRail.Visibility(rail ? Visibility::Visible : Visibility::Collapsed);

@@ -17,7 +17,12 @@ foreach ($entry in $catalog.effects) {
 $dlssnr = $catalog.effects | Where-Object id -eq 'DLSSNR\DLSSNR_AI_Filter'
 if ($dlssnr.category -ne 'style' -or $dlssnr.purposes -contains 'cleanup' -or $dlssnr.summary -match '降噪') { throw 'DLSSNR purpose regression' }
 $dlss = $catalog.effects | Where-Object id -eq 'DLSS\DLSS_SR'
-if ($dlss.category -ne 'antialiasing' -or $dlss.details -notmatch 'J' -or $dlss.details -notmatch 'L／M') { throw 'DLSS SR classification regression' }
+if ($dlss.category -ne 'upscale' -or $dlss.subcategory -ne '时序重建' -or $dlss.name -ne 'DLSS SR' -or
+    $dlss.purposes -contains 'antialiasing' -or $dlss.details -notmatch 'J' -or $dlss.details -notmatch 'L／M') { throw 'DLSS SR classification regression' }
+foreach ($id in @('FSR2\FSR2_SR', 'FSR3\FSR3_SR', 'FSR4\FSR4_SR', 'XeSS\XeSS_SR')) {
+    $peer = $catalog.effects | Where-Object id -eq $id
+    if ($peer.category -ne $dlss.category -or $peer.subcategory -ne $dlss.subcategory) { throw 'Temporal SR entries are in different categories' }
+}
 $rtx = @($catalog.effects | Where-Object id -like 'RTXVideo\*')
 if ($rtx.Count -ne 2 -or @($rtx.name | Sort-Object -Unique).Count -ne 2) { throw 'RTX Video grouping regression' }
 foreach ($entry in $rtx) {

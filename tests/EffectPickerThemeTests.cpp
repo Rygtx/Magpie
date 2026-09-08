@@ -66,7 +66,7 @@ int main() {
 		for (ElementTheme theme : {ElementTheme::Dark, ElementTheme::Light, ElementTheme::Dark}) {
 			std::cerr << "Measure theme " << int(theme) << "\n";
 			presenter.RequestedTheme(theme);
-			presenter.Measure({828, 648}); presenter.Arrange({0, 0, 828, 648});
+			presenter.Measure({828, 808}); presenter.Arrange({0, 0, 828, 808});
 			assert(presenter.Background() && pane.Background() && selected.Background() && mark.Background());
 			assert(presenter.BorderBrush() && button.Foreground());
 			assert(presenter.CornerRadius().TopLeft > 0);

@@ -83,7 +83,7 @@ int main(int argc, char**) {
 		for (double dpi : {96.0, 144.0, 192.0, 288.0}) {
 			for (Size work : {Size{1920, 1040}, Size{1280, 680}, Size{800, 560}}) {
 				const auto size = Magpie::EffectPickerSize(work.Width, work.Height, dpi / 96);
-				assert(size.Width <= 820 && size.Height <= 640);
+				assert(size.Width <= 820 && size.Height <= 800);
 				assert((size.Width + 64) * dpi / 96 <= work.Width);
 				assert((size.Height + 64) * dpi / 96 <= work.Height);
 			}
@@ -98,7 +98,8 @@ int main(int argc, char**) {
 		TextBlock description;
 		description.Text(L"用途与组合建议");
 		layout.details.Child(description);
-		for (const Size size : { Size{820, 640}, Size{480, 360}, Size{280, 220} }) {
+		assert(Magpie::EffectPickerSize(1920, 1040, 1).Height == 800);
+		for (const Size size : { Size{820, 800}, Size{820, 640}, Size{480, 360}, Size{280, 220} }) {
 			layout.root.Width(size.Width); layout.root.Height(size.Height);
 			layout.root.ColumnDefinitions().GetAt(0).Width({ size.Width < 560 ? 160.0 : 220.0,
 				Windows::UI::Xaml::GridUnitType::Pixel });
@@ -106,8 +107,12 @@ int main(int argc, char**) {
 			layout.root.Arrange({ 0, 0, size.Width, size.Height });
 			assert(layout.details.ActualWidth() == size.Width);
 			assert(layout.list.ActualWidth() > 0 && layout.categories.ActualWidth() < size.Width);
+			if (size.Height == 800) {
+				assert(layout.details.ActualHeight() == 144);
+				assert(layout.list.ActualHeight() == 656);
+			}
 		}
 		manager.Close();
-		std::cout << "Real XAML: old ItemsSource throws E_INVALIDARG; fixed choices accept four values; three-region production layout passes at three sizes.\n";
+		std::cout << "Real XAML: old ItemsSource throws E_INVALIDARG; fixed choices accept four values; production layout passes at four sizes, with 800-DIP height and 144-DIP details.\n";
 	}
 }
