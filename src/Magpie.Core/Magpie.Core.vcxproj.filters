@@ -132,6 +132,7 @@
     <ClInclude Include="FrameGuidancePerformance.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="ReflexController.h" />
     <ClInclude Include="NativeBackendTiming.h">
       <Filter>Render</Filter>
     </ClInclude>
@@ -261,6 +262,7 @@
     <ClCompile Include="EffectDrawer.cpp">
       <Filter>Render</Filter>
     </ClCompile>
+    <ClCompile Include="ReflexController.cpp" />
     <ClCompile Include="Renderer.cpp">
       <Filter>Render</Filter>
     </ClCompile>

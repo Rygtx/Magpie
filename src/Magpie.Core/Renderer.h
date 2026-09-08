@@ -9,6 +9,7 @@
 #include "OverlayDrawer.h"
 #include "PassThroughFrames.h"
 #include "PresenterBase.h"
+#include "ReflexController.h"
 #include "PresentationFrameRate.h"
 #include "FramePresentationTiming.h"
 #include "ScalingOptions.h"
@@ -228,7 +229,8 @@ private:
 		bool synchronous,
 		bool generatedFrame = false,
 		uint64_t captureSequence = 0,
-		uint64_t resourceGeneration = 0
+		uint64_t resourceGeneration = 0,
+		uint64_t reflexPresentId = 0
 	) noexcept;
 
 	bool _InitializeDLSSFrameGenerator(
@@ -253,6 +255,7 @@ private:
 
 	// 只能由前台线程访问
 	DeviceResources _frontendResources;
+	ReflexController _dlssReflex;
 	std::unique_ptr<PresenterBase> _presenter;
 	
 	CursorDrawer _cursorDrawer;
@@ -364,6 +367,10 @@ private:
 		_sharedTextureTimestamps{};
 	std::array<HdrFrameMetadata, MAX_SHARED_TEXTURE_SLOTS> _sharedFrameMetadata{};
 	HdrFrameMetadata _frontendFrameMetadata{};
+	// Protected by the slot's existing publication/consumption mutex. These
+	// IDs survive retries and stay paired with exactly the copied colour image.
+	std::array<std::pair<uint64_t, uint64_t>, MAX_SHARED_TEXTURE_SLOTS> _sharedReflexIds{};
+	std::pair<uint64_t, uint64_t> _frontendReflexIds{};
 	HdrFrameMetadata _frontendPresentedFrameMetadata{};
 	std::atomic<uint64_t> _activeCaptureSequence = 0;
 	std::atomic<uint64_t> _activeResourceGeneration = 0;

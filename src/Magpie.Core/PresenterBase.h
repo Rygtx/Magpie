@@ -4,6 +4,7 @@
 namespace Magpie {
 
 class DeviceResources;
+class ReflexController;
 
 class PresenterBase {
 public:
@@ -25,6 +26,8 @@ public:
 	virtual bool SupportsDeferredPresent() const noexcept { return false; }
 	// SDK-owned frame generators implement their own input limiter.
 	virtual bool SetBaseFrameRateLimit(double) noexcept { return true; }
+	virtual void SetReflexController(ReflexController*) noexcept {}
+	virtual void SetReflexFrame(uint64_t, uint64_t, bool) noexcept {}
 	// Called only from the outer message pump, after BeginFrame found no capacity.
 	virtual bool WaitForFrameCapacity(DWORD) noexcept { return false; }
 	std::chrono::steady_clock::time_point LastSubmissionTime() const noexcept { return _lastSubmissionTime; }

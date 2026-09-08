@@ -6,6 +6,7 @@
 #include "Logger.h"
 #include "NgxD3D12Core.h"
 #include "NativeBackendTiming.h"
+#include "ReflexController.h"
 
 #ifdef MP_ENABLE_DLSS_FRAME_GENERATION
 #include <d3d12.h>
@@ -20,6 +21,7 @@ struct DLSSFrameGenerator::Impl {
 	ID3D11Device5* device11 = nullptr;
 	ID3D11DeviceContext4* context11 = nullptr;
 	NgxD3D12Core* coreOwner = nullptr;
+	ReflexController* reflex = nullptr;
 	winrt::com_ptr<ID3D12Device> device12;
 	winrt::com_ptr<ID3D12CommandQueue> queue12;
 	winrt::com_ptr<ID3D12CommandAllocator> allocator12;
@@ -631,6 +633,12 @@ uint32_t DLSSFrameGenerator::MaxSupportedMultiplier() const noexcept {
 	return _impl ? _impl->maxSupportedMultiplier : 2;
 }
 
+void DLSSFrameGenerator::SetReflexController(ReflexController* controller) noexcept {
+	if (!_impl) return;
+	_impl->reflex = controller;
+	if (controller) controller->RegisterGenerationQueue(_impl->queue12.get());
+}
+
 bool DLSSFrameGenerator::Draw(
 	ID3D11Texture2D* input,
 	FrameGuidanceFrameId frameId,
@@ -841,7 +849,13 @@ bool DLSSFrameGenerator::Draw(
 			return false;
 		}
 		ID3D12CommandList* lists[]{ impl.commandList12.get() };
+		const uint64_t reflexFrameId = impl.reflex ? impl.reflex->CaptureFrameId() : 0;
+		const uint64_t reflexPresentId = impl.reflex ? impl.reflex->NextPresentId() : 0;
+		if (impl.reflex) impl.reflex->Generation(
+			impl.queue12.get(), reflexFrameId, reflexPresentId, true);
 		impl.queue12->ExecuteCommandLists(1, lists);
+		if (impl.reflex) impl.reflex->Generation(
+			impl.queue12.get(), reflexFrameId, reflexPresentId, false);
 		const uint64_t outputReady = ++impl.fenceValue;
 		hr = impl.queue12->Signal(impl.fence12.get(), outputReady);
 		if (SUCCEEDED(hr) && sharedGuidanceBound) {
@@ -859,7 +873,7 @@ bool DLSSFrameGenerator::Draw(
 		const auto disabled = ReadInterpolationDisabled(impl, frameIndex);
 		if (!disabled) return false;
 		if (!resetThisFrame && !*disabled) {
-			if (!publishGeneratedFrame(impl.sharedGenerated11.get())) {
+			if (!publishGeneratedFrame(impl.sharedGenerated11.get(), reflexPresentId)) {
 				++impl.diagnosticGeneratedPublishFailure;
 				return false;
 			}
@@ -945,6 +959,7 @@ bool DLSSFrameGenerator::Draw(
 	return false;
 }
 void DLSSFrameGenerator::RequestHistoryReset() noexcept {}
+void DLSSFrameGenerator::SetReflexController(ReflexController*) noexcept {}
 bool DLSSFrameGenerator::Drain() noexcept { return true; }
 FrameGuidanceRequirements
 DLSSFrameGenerator::GetFrameGuidanceRequirements() const noexcept { return {}; }

@@ -2,6 +2,7 @@
 #include "FrameTrace.h"
 #include "AdaptivePresenter.h"
 #include "DeviceResources.h"
+#include "ReflexController.h"
 #include "Logger.h"
 #include "ScalingWindow.h"
 #include "Win32Helper.h"
@@ -127,11 +128,23 @@ bool AdaptivePresenter::_Initialize(HWND hwndAttach) noexcept {
 	return true;
 }
 
+void AdaptivePresenter::SetReflexController(ReflexController* controller) noexcept {
+	_reflex = controller;
+	if (_reflex) _reflex->SetPresentationAvailable(!_isDCompPresenting && !!_dxgiSwapChain);
+}
+
+void AdaptivePresenter::SetReflexFrame(uint64_t frameId, uint64_t presentId, bool generated) noexcept {
+	_reflexFrameId = frameId;
+	_reflexPresentId = presentId;
+	_reflexGenerated = generated;
+}
+
 bool AdaptivePresenter::BeginFrame(
 	winrt::com_ptr<ID3D11Texture2D>& frameTex,
 	winrt::com_ptr<ID3D11RenderTargetView>& frameRtv,
 	POINT& drawOffset
 ) noexcept {
+	if (_reflex) _reflex->SetPresentationAvailable(!_isDCompPresenting && !!_dxgiSwapChain);
 	if (_isDCompPresenting) {
 		HRESULT hr = _dcompSurface->BeginDraw(nullptr, IID_PPV_ARGS(&frameTex), &drawOffset);
 		if (FAILED(hr)) {
@@ -166,6 +179,10 @@ bool AdaptivePresenter::BeginFrame(
 
 		frameTex = _backBuffer;
 		frameRtv = _backBufferRtv;
+		if (_reflex && _reflexFrameId && _reflexPresentId) {
+			_reflex->FrontendRender(_reflexFrameId, _reflexPresentId, true);
+			_reflexRendering = true;
+		}
 	}
 	
 	return true;
@@ -233,7 +250,15 @@ bool AdaptivePresenter::EndFrame(bool waitForGpu) noexcept {
 		const UINT flags = ScalingWindow::Get().Options().isVRREnabled &&
 			_deviceResources->IsTearingSupported() ? DXGI_PRESENT_ALLOW_TEARING : 0;
 		_lastSubmissionTime = std::chrono::steady_clock::now();
+		if (_reflexRendering) {
+			_reflex->FrontendRender(_reflexFrameId, _reflexPresentId, false);
+			_reflex->Present(_reflexFrameId, _reflexPresentId, _reflexGenerated, true);
+		}
 		const HRESULT presentResult = _dxgiSwapChain->Present(0, flags);
+		if (_reflexRendering) {
+			_reflex->Present(_reflexFrameId, _reflexPresentId, _reflexGenerated, false);
+			_reflexRendering = false;
+		}
 		FrameTrace::Presentation(tracePresent, FrameTrace::Tick(), presentResult,
 			reinterpret_cast<uintptr_t>(_dxgiSwapChain.get()));
 		_lastPresentedFrameCount = presentResult == S_OK ? 1u : 0u;
@@ -280,6 +305,11 @@ bool AdaptivePresenter::EndFrame(bool waitForGpu) noexcept {
 }
 
 bool AdaptivePresenter::OnResize() noexcept {
+	if (_reflex) {
+		if (_reflexRendering) _reflex->FrontendRender(_reflexFrameId, _reflexPresentId, false);
+		_reflexRendering = false;
+		_reflex->SetPresentationAvailable(false);
+	}
 	_isResized = true;
 
 	if (ScalingWindow::Get().IsResizingOrMoving() || !_dxgiSwapChain) {

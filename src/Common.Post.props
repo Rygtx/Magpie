@@ -18,7 +18,7 @@
       <PreprocessorDefinitions Condition="$(EnableDLSSSR) And '$(Platform)' == 'x64'">MP_ENABLE_DLSS_SR;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories Condition="$(EnableDLSSSR) And '$(Platform)' == 'x64'">$(DLSSSdkDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="$(EnableDLSSFrameGeneration) And '$(Platform)' == 'x64'">MP_ENABLE_DLSS_FRAME_GENERATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories Condition="$(EnableDLSSFrameGeneration) And '$(Platform)' == 'x64'">$(DLSSSdkDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="$(EnableDLSSFrameGeneration) And '$(Platform)' == 'x64'">$(DLSSSdkDir)\include;$(NvapiSdkDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="$(EnableDLSSNR) And '$(Platform)' == 'x64'">MP_ENABLE_DLSSNR;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories Condition="$(EnableDLSSNR) And '$(Platform)' == 'x64'">$(DLSSSdkDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="$(EnableNvidiaOpticalFlow) And '$(Platform)' == 'x64'">MP_ENABLE_NVIDIA_OPTICAL_FLOW;%(PreprocessorDefinitions)</PreprocessorDefinitions>

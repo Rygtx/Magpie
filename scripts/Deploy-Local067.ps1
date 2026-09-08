@@ -90,7 +90,7 @@ $files = @(Get-ChildItem -LiteralPath $buildOutput -File | Where-Object {
     $_.Extension -in @('.exe', '.dll', '.pri', '.pdb', '.map') -or
     $_.Name -in @('LICENSE-Magpie.txt', 'LOCAL-NOTES.md', 'EFFECT-PICKER.md',
         'AMD-FSR-SDK-THIRD-PARTY.md', 'AMD-FSR2-DX11-LICENSE.txt', 'INTEL-XESS-LICENSE.txt',
-        'INTEL-XESS-THIRD-PARTY.txt', 'NVIDIA-DLSS-LICENSE.txt')
+        'INTEL-XESS-THIRD-PARTY.txt', 'NVIDIA-DLSS-LICENSE.txt', 'NVIDIA-NVAPI-LICENSE.txt')
 })
 $vfxLicenses = Join-Path $buildOutput 'NVIDIA-VFX-Licenses'
 if (Test-Path -LiteralPath $vfxLicenses) { $files += @(Get-ChildItem -LiteralPath $vfxLicenses -File -Recurse) }

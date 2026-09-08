@@ -246,6 +246,7 @@ Renderer::Renderer() noexcept :
 
 void Renderer::BeginShutdown() noexcept {
 	_sessionLifetime->RequestStop();
+	_dlssReflex.Stop();
 	// The backend can be waiting for a synchronous DLSSFG presentation while
 	// the frontend thread is destroying this Renderer. Stop issuing new
 	// synchronous sends before waiting for the backend thread to exit.
@@ -413,6 +414,13 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	}
 	}
 
+	if (frameGeneration.first == FrameGenerationEffectKind::DLSS &&
+		_presenter->UsesFrameLatencyWaitableObject()) {
+		_dlssReflex.Initialize(CreateNvReflexDriver(_frontendResources.GetD3DDevice()));
+		_presenter->SetReflexController(&_dlssReflex);
+	} else if (frameGeneration.first == FrameGenerationEffectKind::DLSS) {
+		Logger::Get().Info("DLSSFG Reflex: DXGI presentation required; enable DirectFlip to use Reflex");
+	}
 	const auto& pacingOptions = ScalingWindow::Get().Options();
 	_frontEdgeSyncEnabled = pacingOptions.isFrontEdgeSyncEnabled && !pacingOptions.IsBenchmarkMode();
 #ifdef MP_USE_COMPSWAPCHAIN
@@ -756,6 +764,7 @@ bool Renderer::_UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept {
 		_frontendResources.GetD3DDC()->CopyResource(_frontendBaseTexture.get(), source);
 		_frontendCaptureFrameId = _sharedTextureFrameIds[sharedTextureSlot].load(std::memory_order_acquire);
 		_frontendFrameMetadata = _sharedFrameMetadata[sharedTextureSlot];
+		_frontendReflexIds = _sharedReflexIds[sharedTextureSlot];
 		FrameTrace::SetFrame(_frontendCaptureFrameId);
 		traceBase.FrameId(_frontendCaptureFrameId);
 		if (!_passThroughFrames.Consume(sharedTextureSlot) && _isPassThroughActive) {
@@ -907,6 +916,9 @@ bool Renderer::_FrontendRender(
 		_frontendMotionReset || !_frontendMotionValid,
 		guidanceDestination);
 	FrameTrace::Scope traceBegin(FrameTrace::Event::BeginFrame);
+	const bool reflexContent = !stableBaseOnly && _frontendBaseNeedsPresent;
+	_presenter->SetReflexFrame(reflexContent ? _frontendReflexIds.first : 0,
+		reflexContent ? _frontendReflexIds.second : 0, _frontendFrameMetadata.generated);
 	const bool traceBegan = _presenter->BeginFrame(frameTex, frameRtv, drawOffset);
 	traceBegin.Data(traceBegan);
 	traceBegin.End();
@@ -1357,6 +1369,7 @@ bool Renderer::OnResize() noexcept {
 
 	_backendThreadDispatcher.TryEnqueue([this]() {
 		_pendingFrameGenerationInput = nullptr;
+		_dlssReflex.CompleteCapture();
 		_fgInputClock.Reset();
 		_frontEdgeAcknowledgedKey.store(0, std::memory_order_release);
 		ID3D11Texture2D* outputTexture = _ResizeEffects();
@@ -2354,6 +2367,7 @@ bool Renderer::_InitializeDLSSFrameGenerator(
 	_dlssFgRealPublishSuccess = 0;
 	_dlssFgRealPublishFailure = 0;
 	_dlssFrameGenerator = std::move(frameGenerator);
+	_dlssFrameGenerator->SetReflexController(&_dlssReflex);
 	return true;
 }
 
@@ -2385,6 +2399,7 @@ void Renderer::_HandleDLSSFrameGenerationFailure(ID3D11Texture2D* input) noexcep
 }
 
 void Renderer::_DisableDLSSFrameGenerationForSession() noexcept {
+	_dlssReflex.Stop();
 	if (_dlssFrameGenerator && !_dlssFrameGenerator->Drain()) {
 		Logger::Get().Warn("Drain DLSSFG queue before disabling failed");
 	}
@@ -2639,6 +2654,7 @@ HANDLE Renderer::_CreateSharedTexture(ID3D11Texture2D* effectsOutput) noexcept {
 }
 
 void Renderer::_BackendThreadProc() noexcept {
+	const auto finishReflexCapture = wil::scope_exit([this] { _dlssReflex.CompleteCapture(); });
 	FrameTrace::BindBackend();
 #ifdef _DEBUG
 	SetThreadDescription(GetCurrentThread(), L"Magpie-缩放后端线程");
@@ -2757,6 +2773,8 @@ void Renderer::_BackendThreadProc() noexcept {
 
 		FrameTrace::SetFrame(_capturedFrameId + 1); // Candidate id until CaptureAccepted.
 		FrameTrace::Scope traceCapture(FrameTrace::Event::CaptureUpdate);
+		if (_dlssFrameGenerator) _dlssReflex.BeginCapture(_capturedFrameId + 1);
+		if (_sessionLifetime->IsStopping()) continue;
 		const FrameSourceState frameSourceState = _frameSource->Update();
 		traceCapture.Data(static_cast<int64_t>(frameSourceState));
 		traceCapture.End();
@@ -3092,7 +3110,9 @@ void Renderer::_BackendRender(
 		if (_dlssFrameGenerator) _synchronousPresentInterval =
 			_captureCadence.Interval(_dlssFrameGenerator->Multiplier(), _baseFrameRateLimit);
 		_lastCapturedFrameTime = captureTime;
-		++_capturedFrameId;
+		// A cancelled Reflex candidate may leave a gap. Keep NGX's
+		// BackbufferFrameID, guidance and Reflex on the same monotonic base ID.
+		_capturedFrameId = std::max(_capturedFrameId + 1, _dlssReflex.CaptureFrameId());
 		FrameTrace::SetFrame(_capturedFrameId);
 		FrameTrace::Mark(FrameTrace::Event::CaptureAccepted, _frameSource->CaptureTimestamp100ns(), sequence);
 		const FrameGuidanceRequirements guidanceRequirements =
@@ -3280,6 +3300,10 @@ void Renderer::_CompleteBackendFrame(
 	uint64_t captureSequence
 ) noexcept {
 	auto* d3dDC = _backendResources.GetD3DDC();
+	// All normal capture/effect work has been submitted before asynchronous FG
+	// can publish its first generated image on the frontend thread.
+	_dlssReflex.EndCaptureRender();
+	const auto finishReflexCapture = wil::scope_exit([this] { _dlssReflex.CompleteCapture(); });
 	if (_frontEdgeSyncEnabled) _baseFrameRateLimit = _FrontEdgeFrameRate();
 	if (_dlssFrameGenerator) _synchronousPresentInterval =
 		_captureCadence.Interval(_dlssFrameGenerator->Multiplier(), _baseFrameRateLimit);
@@ -3308,7 +3332,7 @@ void Renderer::_CompleteBackendFrame(
 			_capturedFrameId,
 			guidance.produced,
 			guidance.zero,
-		[this, captureSequence](ID3D11Texture2D* generatedFrame) {
+		[this, captureSequence](ID3D11Texture2D* generatedFrame, uint64_t reflexPresentId) {
 				ID3D11Texture2D* canonicalGenerated = generatedFrame;
 				if (_dlssFgCanonicalGenerated && _dlssFgHdrNormalizationScale != 1.0f) {
 					if (!_hdrPresentationAdapter.ConvertBoundedToHdr(
@@ -3321,7 +3345,7 @@ void Renderer::_CompleteBackendFrame(
 					canonicalGenerated = _dlssFgCanonicalGenerated.get();
 				}
 				return _PublishBackendTexture(canonicalGenerated, true, true, captureSequence,
-					_frameSource ? _frameSource->ResourceGeneration() : 0);
+					_frameSource ? _frameSource->ResourceGeneration() : 0, reflexPresentId);
 			}
 		);
 		if (!generated && !_dlssFgPresentationStopping) {
@@ -3337,7 +3361,7 @@ void Renderer::_CompleteBackendFrame(
 	const bool synchronous = _dlssFrameGenerator &&
 		_synchronousFramePresentationEnabled.load(std::memory_order_acquire);
 	if (!_PublishBackendTexture(effectsOutput, synchronous, false, captureSequence,
-		_frameSource ? _frameSource->ResourceGeneration() : 0)) {
+		_frameSource ? _frameSource->ResourceGeneration() : 0, _dlssReflex.NextPresentId())) {
 		return;
 	}
 
@@ -3350,7 +3374,8 @@ bool Renderer::_PublishBackendTexture(
 	bool synchronous,
 	bool generatedFrame,
 	uint64_t captureSequence,
-	uint64_t resourceGeneration
+	uint64_t resourceGeneration,
+	uint64_t reflexPresentId
 ) noexcept {
 	const uint64_t currentGeneration = _frameSource ? _frameSource->ResourceGeneration() :
 		_sharedTextureGeneration.load(std::memory_order_acquire);
@@ -3377,13 +3402,8 @@ bool Renderer::_PublishBackendTexture(
 	HdrFrameMetadata publicationMetadata{};
 	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
 		publicationMetadata = _frameSource->GetHdrFrameMetadata();
-		publicationMetadata.frameId = _capturedFrameId;
-		publicationMetadata.captureSequence = captureSequence;
-		publicationMetadata.resourceGeneration = _frameSource->ResourceGeneration();
-		publicationMetadata.timestamp100ns = _frameSource->CaptureTimestamp100ns();
 		publicationMetadata.stage = generatedFrame
 			? HdrFrameStage::GeneratedOutput : HdrFrameStage::CanonicalOutput;
-		publicationMetadata.generated = generatedFrame;
 		D3D11_TEXTURE2D_DESC textureDesc{};
 		texture->GetDesc(&textureDesc);
 		if (textureDesc.Format != DXGI_FORMAT_R16G16B16A16_FLOAT) {
@@ -3404,6 +3424,14 @@ bool Renderer::_PublishBackendTexture(
 			publicationMetadata.sourceFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
 		}
 	}
+	// Frame identity belongs to every published image, including SDR. Keeping
+	// it inside the HDR branch erased SDR frame IDs and classified interpolation
+	// as real when the frontend consumed this metadata.
+	publicationMetadata.frameId = _capturedFrameId;
+	publicationMetadata.captureSequence = captureSequence;
+	publicationMetadata.resourceGeneration = currentGeneration;
+	publicationMetadata.timestamp100ns = _frameSource ? _frameSource->CaptureTimestamp100ns() : 0;
+	publicationMetadata.generated = generatedFrame;
 	const bool queuedPresentation = synchronous &&
 		_synchronousFramePresentationEnabled.load(std::memory_order_acquire);
 	const uint32_t sharedTextureSlot =
@@ -3530,6 +3558,7 @@ bool Renderer::_PublishBackendTexture(
 			_sharedTextureTimestamps[sharedTextureSlot].store(
 				_frameSource->CaptureTimestamp100ns(), std::memory_order_release);
 			_sharedFrameMetadata[sharedTextureSlot] = publicationMetadata;
+			_sharedReflexIds[sharedTextureSlot] = { _dlssReflex.CaptureFrameId(), reflexPresentId };
 			hr = ReleasePresentationTextures(mutexes, key);
 			if (SUCCEEDED(hr)) _sharedTextureMutexKeys[sharedTextureSlot].store(key, std::memory_order_release);
 		}

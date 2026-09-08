@@ -32,6 +32,9 @@
     <Import Project="$(MagpieIntermediateRoot)_ConanDeps\Magpie\conandeps.props" Condition="'$(MagpieIntermediateRoot)' != '' And Exists('$(MagpieIntermediateRoot)_ConanDeps\Magpie\conandeps.props')" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <Target Name="CheckNvapiHeaders" BeforeTargets="PrepareForBuild" Condition="$(EnableDLSSFrameGeneration) And '$(Platform)' == 'x64'">
+    <Error Condition="!Exists('$(NvapiSdkDir)\nvapi.h') Or !Exists('$(NvapiSdkDir)\nvapi_interface.h')" Text="DLSS FG Reflex needs the official NVAPI headers. Run scripts/Fetch-NvapiHeaders.ps1 or set NvapiSdkDir to that SDK directory, then rebuild." />
+  </Target>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -117,6 +120,7 @@
     <ClInclude Include="FrameGuidanceTypes.h" />
     <ClInclude Include="FrameGuidancePerformance.h" />
     <ClInclude Include="NativeBackendTiming.h" />
+    <ClInclude Include="ReflexController.h" />
     <ClInclude Include="ZeroFrameGuidanceProvider.h" />
     <ClInclude Include="NvidiaOpticalFlowProvider.h" />
     <ClInclude Include="AmdOpticalFlowProvider.h" />
@@ -189,6 +193,7 @@
     <ClCompile Include="GroupBHdrRoutes.cpp" />
     <ClCompile Include="PresenterBase.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="ReflexController.cpp" />
     <ClCompile Include="ScalingOptions.cpp" />
     <ClCompile Include="ScalingRuntime.cpp" />
     <ClCompile Include="ScalingWindow.cpp" />
