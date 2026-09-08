@@ -10,6 +10,13 @@
 
 namespace Magpie {
 
+// Curated shortcut, independent of recommendation levels and custom filenames.
+inline constexpr std::wstring_view ADVANCED_PICKER_EFFECTS[] = {
+	L"RTXVideo\\RTXVideo_VSR", L"DLSSFG\\DLSS_FrameGeneration",
+	L"XeSSFG\\XeSS_FrameGeneration_x2_ZeroMV", L"XeSSFG\\XeSS_MultiFrameGeneration_ZeroMV",
+	L"DLSSNR\\DLSSNR_AI_Filter", L"FrameRate_Filter"
+};
+
 struct EffectPickerFamily {
 	std::wstring id, name, summary;
 };
@@ -53,6 +60,7 @@ inline bool MatchesEffectCategory(const EffectPickerEntry& entry,
 	std::wstring_view category, std::wstring_view subcategory) {
 	if (category.empty()) return true;
 	if (category == L"first_try") return entry.firstTry;
+	if (category == L"advanced") return std::ranges::find(ADVANCED_PICKER_EFFECTS, entry.id) != std::end(ADVANCED_PICKER_EFFECTS);
 	if (category != entry.category && std::ranges::find(entry.purposes, category) == entry.purposes.end()) return false;
 	return subcategory.empty() || (entry.category == category && entry.subcategory == subcategory);
 }

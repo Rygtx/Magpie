@@ -4,6 +4,8 @@
 #include <winrt/Windows.UI.Xaml.Controls.Primitives.h>
 #include <winrt/Windows.UI.Xaml.Hosting.h>
 #include <winrt/Windows.UI.Xaml.Media.h>
+#include <winrt/Windows.Data.Json.h>
+#include <fstream>
 #include <cassert>
 #include <iostream>
 
@@ -112,6 +114,70 @@ int main(int argc, char**) {
 				assert(layout.list.ActualHeight() == 656);
 			}
 		}
+		StackPanel detailContent;
+		detailContent.Spacing(6);
+		TextBlock detailTitle, detailBody;
+		detailTitle.FontSize(15); detailTitle.TextWrapping(TextWrapping::Wrap);
+		detailBody.FontSize(12); detailBody.TextWrapping(TextWrapping::Wrap);
+		detailContent.Children().Append(detailTitle); detailContent.Children().Append(detailBody);
+		ScrollViewer detailScroll;
+		detailScroll.HorizontalScrollMode(ScrollMode::Disabled);
+		detailScroll.HorizontalScrollBarVisibility(ScrollBarVisibility::Disabled);
+		detailScroll.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
+		detailScroll.Content(detailContent);
+		layout.details.Child(detailScroll);
+		double lastMeasuredContent = 0;
+		auto measureDetails = [&](hstring const& title, hstring const& text, float width, float height) {
+			detailTitle.Text(title); detailBody.Text(text);
+			// Opening at a new monitor size resets the pixel row in production.
+			if (layout.root.Width() != width || layout.root.Height() != height)
+				layout.root.RowDefinitions().GetAt(1).Height({18, GridUnitType::Star});
+			layout.root.Width(width); layout.root.Height(height);
+			auto arrange = [&] {
+				layout.root.Measure({width, height}); layout.root.Arrange({0, 0, width, height});
+			};
+			arrange();
+			const auto required = Magpie::MeasureEffectPickerDetailsHeight(layout.root, layout.details, detailContent);
+			const double measuredContent = detailContent.DesiredSize().Height;
+			lastMeasuredContent = measuredContent;
+			layout.root.RowDefinitions().GetAt(1).Height({required, GridUnitType::Pixel});
+			arrange();
+			if (layout.categories.ActualHeight() < std::min(180.0, height * 0.45) - 1)
+				std::cerr << "Adaptive allocation: root=" << layout.root.ActualHeight() << " requested=" << height
+					<< " upper=" << layout.categories.ActualHeight() << " details=" << layout.details.ActualHeight()
+					<< " computed=" << required << "\n";
+			assert(layout.categories.ActualHeight() >= std::min(180.0, height * 0.45) - 1);
+			assert(layout.details.ActualHeight() >= height * 0.18 - 1);
+			assert(layout.details.ActualHeight() + layout.categories.ActualHeight() <= height + 1);
+			// The native text is measured even without a loaded ScrollContentPresenter.
+			// Compare its full wrapped extent with the actual allocated viewport.
+			if (required < height - std::min(180.0, height * 0.45) - 1)
+				assert(measuredContent + 25 <= layout.details.ActualHeight() + 1);
+			return required;
+		};
+		std::ifstream input("src/Magpie/EffectCatalog/zh-Hans.json", std::ios::binary);
+		const std::string bytes{std::istreambuf_iterator<char>(input), {}};
+		const auto entries = Windows::Data::Json::JsonObject::Parse(to_hstring(bytes)).GetNamedArray(L"effects");
+		assert(entries.Size() == 155);
+		size_t expanded = 0;
+		for (const auto value : entries) {
+			const auto entry = value.GetObject();
+			for (const auto width : {820.0f, 480.0f}) {
+				const double used = measureDetails(entry.GetNamedString(L"name"), entry.GetNamedString(L"details"), width, 800);
+				if (used > 144) ++expanded;
+			}
+		}
+		assert(expanded > 0);
+		assert(measureDetails(L"入门", L"从一个效果器开始比较画面。", 820, 800) == 144);
+		std::wstring veryLong;
+		for (int i = 0; i < 200; ++i) veryLong += L"极长说明仍可滚动阅读。\n";
+		assert(measureDetails(L"长说明", hstring(veryLong), 820, 800) == 620);
+		assert(lastMeasuredContent > layout.details.ActualHeight());
+		measureDetails(L"长说明", hstring(veryLong), 280, 220);
+		assert(lastMeasuredContent > layout.details.ActualHeight());
+		assert(detailScroll.VerticalScrollBarVisibility() == ScrollBarVisibility::Auto);
+		assert(measureDetails(L"入门", L"短说明", 820, 800) == 144);
+		std::cout << "Adaptive details: all 155 catalog entries at two widths, long-to-short reset, and small-screen scroll fallback passed.\n";
 		manager.Close();
 		std::cout << "Real XAML: old ItemsSource throws E_INVALIDARG; fixed choices accept four values; production layout passes at four sizes, with 800-DIP height and 144-DIP details.\n";
 	}

@@ -52,10 +52,13 @@ int main() {
 		button.Style(styles.Lookup(box_value(L"EffectPickerButtonStyle")).as<Style>());
 		button.Content(box_value(L"CuNNy"));
 		root.Children().Append(button);
-		Border pane, selected;
+		Border pane, categoryPane, detailPane, selected;
 		pane.Style(styles.Lookup(box_value(L"EffectPickerPaneStyle")).as<Style>());
+		categoryPane.Style(styles.Lookup(box_value(L"EffectPickerCategoryPaneStyle")).as<Style>());
+		detailPane.Style(styles.Lookup(box_value(L"EffectPickerDetailPaneStyle")).as<Style>());
 		selected.Style(styles.Lookup(box_value(L"EffectPickerSelectedCategoryStyle")).as<Style>());
 		root.Children().Append(pane); root.Children().Append(selected);
+		root.Children().Append(categoryPane); root.Children().Append(detailPane);
 		const auto mark = styles.Lookup(box_value(L"EffectPickerSelectionMark")).as<DataTemplate>().LoadContent().as<Border>();
 		root.Children().Append(mark);
 		FlyoutPresenter presenter;
@@ -63,6 +66,7 @@ int main() {
 		assert(presenter.Style().BasedOn());
 		presenter.Content(root);
 		std::vector<Windows::UI::Color> textColors;
+		std::vector<Windows::UI::Color> panelColors;
 		for (ElementTheme theme : {ElementTheme::Dark, ElementTheme::Light, ElementTheme::Dark}) {
 			std::cerr << "Measure theme " << int(theme) << "\n";
 			presenter.RequestedTheme(theme);
@@ -71,10 +75,17 @@ int main() {
 			assert(presenter.BorderBrush() && button.Foreground());
 			assert(presenter.CornerRadius().TopLeft > 0);
 			assert(button.CornerRadius().TopLeft > 0);
-			assert(pane.Background().as<Media::SolidColorBrush>().Color().A < 255);
+			const auto category = categoryPane.Background().as<Media::SolidColorBrush>();
+			const auto list = pane.Background().as<Media::SolidColorBrush>();
+			const auto details = detailPane.Background().as<Media::SolidColorBrush>();
+			assert(category.Color() == list.Color() && list.Color() == details.Color());
+			assert(category.Opacity() < list.Opacity() && list.Opacity() < details.Opacity());
+			assert(category.Opacity() > 0 && details.Opacity() < 1);
+			panelColors.push_back(list.Color());
 			textColors.push_back(button.Foreground().as<Media::SolidColorBrush>().Color());
 		}
 		assert(textColors[0] != textColors[1] && textColors[0] == textColors[2]);
+		assert(panelColors[0] != panelColors[1] && panelColors[0] == panelColors[2]);
 		std::cout << "Flyout material: " << to_string(get_class_name(presenter.Background())) << "\n";
 		manager.Close();
 		std::cout << "Production picker resources load with WinUI 2 Version2: themed brushes, rounded controls, translucent panes and inherited flyout template passed. No window shown.\n";

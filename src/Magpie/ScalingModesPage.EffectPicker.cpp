@@ -68,6 +68,7 @@ void ScalingModesPage::_SizeEffectPicker(Button const& anchor) {
 	const auto size = EffectPickerSize(info.rcWork.right - info.rcWork.left,
 		info.rcWork.bottom - info.rcWork.top, scale);
 	_pickerRoot.Width(size.Width); _pickerRoot.Height(size.Height);
+	_pickerRoot.RowDefinitions().GetAt(1).Height({18, GridUnitType::Star});
 	_pickerRoot.ColumnDefinitions().GetAt(0).Width({std::min(size.Width * 0.4,
 		size.Width < 560 ? 160.0 : 220.0), GridUnitType::Pixel});
 }
@@ -101,15 +102,15 @@ void ScalingModesPage::_BuildEffectPicker() {
 	_pickerCategoryPane = layout.categories;
 	_pickerListPane = layout.list;
 	_pickerDetailPane = layout.details;
-	StackPanel details;
-	details.Spacing(6);
+	_pickerDetailContent = StackPanel();
+	_pickerDetailContent.Spacing(6);
 	_pickerDetailTitle = PickerText(L"全部", 15);
 	_pickerDetailTitle.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
 	_pickerDetails = PickerText(L"查看已安装效果器的用途、适用场景和组合建议。", 12);
 	_pickerDetails.IsTextSelectionEnabled(true);
-	details.Children().Append(_pickerDetailTitle);
-	details.Children().Append(_pickerDetails);
-	_pickerDetailScroll = PickerScroll(details);
+	_pickerDetailContent.Children().Append(_pickerDetailTitle);
+	_pickerDetailContent.Children().Append(_pickerDetails);
+	_pickerDetailScroll = PickerScroll(_pickerDetailContent);
 	_pickerDetailPane.Child(_pickerDetailScroll);
 	StackPanel categories;
 	// Spacing belongs to visible row containers, including collapsed categories.
@@ -165,12 +166,11 @@ void ScalingModesPage::_BuildEffectPicker() {
 		auto show = [weak, index](auto const &, auto const &) {
 			if (auto page = weak.get()) {
 				const auto &item = page->_pickerCategories[index];
-				page->_pickerDetailTitle.Text(item.name);
-				page->_pickerDetails.Text(item.description);
-				page->_pickerDetailScroll.ChangeView(nullptr, 0.0, nullptr, true);
+				page->_SetEffectPickerDetails(item.name, item.description, item.button);
 			}
 		};
-		row.button.PointerEntered(show);
+		// Physical pointer movement avoids reselecting a row moved under a stationary cursor.
+		row.button.PointerMoved(show);
 		row.button.GotFocus(show);
 		row.button.KeyDown([weak, index](auto const &, KeyRoutedEventArgs const &args) {
 			const auto page = weak.get();
@@ -219,8 +219,10 @@ void ScalingModesPage::_BuildEffectPicker() {
 		categories.Children().Append(row.container);
 		_pickerCategories.push_back(std::move(row));
 	};
-	addCategory(L"推荐入门", L"first_try", L"", L"按适用场景选择容易上手的效果器，先从一个开始比较画面。", -1,
+	addCategory(L"入门", L"first_try", L"", L"按适用场景选择容易上手的效果器，先从一个开始比较画面。", -1,
 				false);
+	addCategory(L"进阶", L"advanced", L"",
+		L"视频超分、补帧、AI 画面重塑与帧率调节，按显卡条件和目标画面选择。", -1, false);
 	addCategory(L"全部", L"", L"", L"查看已安装效果器的用途、适用场景和组合建议。", -1, false);
 	for (const auto &category : catalog.Categories()) {
 		const int parent = int(_pickerCategories.size());
@@ -332,22 +334,28 @@ void ScalingModesPage::_BuildEffectPicker() {
 		if (const auto page = weak.get(); page && !page->_pickerChangingCategory)
 			page->_RefreshEffectPicker();
 	});
-	const auto paneStyle = Resources().Lookup(box_value(L"EffectPickerPaneStyle")).as<Windows::UI::Xaml::Style>();
-	_pickerCategoryPane.Style(paneStyle);
-	_pickerDetailPane.Style(paneStyle);
+	_pickerCategoryPane.Style(Resources().Lookup(box_value(L"EffectPickerCategoryPaneStyle")).as<Windows::UI::Xaml::Style>());
+	_pickerListPane.Style(Resources().Lookup(box_value(L"EffectPickerPaneStyle")).as<Windows::UI::Xaml::Style>());
+	_pickerDetailPane.Style(Resources().Lookup(box_value(L"EffectPickerDetailPaneStyle")).as<Windows::UI::Xaml::Style>());
+	_pickerRoot.SizeChanged([weak](auto const&, auto const&) {
+		if (auto page = weak.get()) page->_QueueEffectPickerDetailsLayout();
+	});
 	_UpdateEffectPickerColors();
 	_effectPicker = Flyout();
 	_effectPicker.ShouldConstrainToRootBounds(false);
 	_effectPicker.Content(_pickerRoot);
 	_effectPicker.FlyoutPresenterStyle(Resources().Lookup(box_value(L"EffectPickerPresenterStyle")).as<Windows::UI::Xaml::Style>());
 	_effectPicker.Opened([weak](auto const &, auto const &) {
-		if (auto page = weak.get())
+		if (auto page = weak.get()) {
 			page->_pickerSearch.Focus(FocusState::Programmatic);
+			page->_QueueEffectPickerDetailsLayout();
+		}
 	});
 	_effectPicker.Closed([weak](auto const &, auto const &) {
 		if (auto page = weak.get()) {
 			page->_pickerMode = nullptr;
 			page->_pickerPendingLetter = -1;
+			page->_pickerDetailSource = nullptr;
 			page->_pickerIndexFlyout.Hide();
 		}
 	});
@@ -395,8 +403,7 @@ void ScalingModesPage::_ChooseEffectCategory(std::wstring category, std::wstring
 	_pickerSearch.Text(L"");
 	_pickerChangingCategory = false;
 	_RefreshEffectPicker();
-	_pickerDetails.Text(description);
-	_pickerDetailScroll.ChangeView(nullptr, 0.0, nullptr, true);
+	_SetEffectPickerDetails(_pickerDetailTitle.Text(), description, _pickerDetailSource);
 }
 void ScalingModesPage::_RefreshEffectPicker(std::wstring anchor) {
 	double anchorTop = 0;
@@ -468,7 +475,8 @@ void ScalingModesPage::_RefreshEffectPicker(std::wstring anchor) {
 		auto show = [weak, key = entry.key](auto const&, auto const&) {
 			if (auto page = weak.get()) page->_ShowEffectPickerDetails(key);
 		};
-		row.button.PointerEntered(show);
+		// Physical pointer movement avoids reselecting a row moved under a stationary cursor.
+		row.button.PointerMoved(show);
 		row.button.GotFocus(show);
 		row.button.Click([weak, key = entry.key, id = entry.effectId](auto const&, auto const&) {
 			if (auto page = weak.get()) {
@@ -491,8 +499,7 @@ void ScalingModesPage::_RefreshEffectPicker(std::wstring anchor) {
 		for (const auto& item : _pickerCategories) {
 			if (item.category != _pickerCategory || item.subcategory != _pickerSubcategory) continue;
 			scope = item.parent >= 0 ? _pickerCategories[item.parent].name + L" › " + item.name : item.name;
-			_pickerDetailTitle.Text(item.name);
-			_pickerDetails.Text(item.description);
+			_SetEffectPickerDetails(item.name, item.description, item.button);
 			break;
 		}
 	} else if (!searching) {
@@ -502,8 +509,7 @@ void ScalingModesPage::_RefreshEffectPicker(std::wstring anchor) {
 	}
 	_pickerCount.Text(scope + L" · " + std::to_wstring(tree.effectCount));
 	if (!tree.effectCount) {
-		_pickerDetailTitle.Text(L"没有匹配的效果器");
-		_pickerDetails.Text(L"尝试缩短关键词、搜索算法家族名，或选择“全部”查看已安装效果器。");
+		_SetEffectPickerDetails(L"没有匹配的效果器", L"尝试缩短关键词、搜索算法家族名，或选择“全部”查看已安装效果器。");
 	} else if (searching && anchor.empty()) {
 		_ShowEffectPickerDetails(_pickerRows.front().entry.key);
 	}
@@ -528,7 +534,6 @@ void ScalingModesPage::_ShowEffectPickerDetails(std::wstring_view key) {
 	const auto it = std::ranges::find(_pickerRows, key, [](const auto& row) { return std::wstring_view(row.entry.key); });
 	if (it == _pickerRows.end()) return;
 	const auto& row = it->entry;
-	_pickerDetailTitle.Text(row.name);
 	std::wstring text = row.summary;
 	if (!row.IsFamily()) {
 		const auto entry = std::ranges::find(_pickerEntries, row.effectId, &EffectPickerEntry::id);
@@ -538,8 +543,50 @@ void ScalingModesPage::_ShowEffectPickerDetails(std::wstring_view key) {
 			if (!problem.empty()) text = std::wstring(problem) + L"\n\n" + text;
 		}
 	}
+	_SetEffectPickerDetails(row.name, text, it->button);
+}
+
+void ScalingModesPage::_SetEffectPickerDetails(std::wstring_view title, std::wstring_view text,
+	FrameworkElement const& source) {
+	_pickerDetailSource = source;
+	if (std::wstring_view(_pickerDetailTitle.Text()) == title && std::wstring_view(_pickerDetails.Text()) == text) return;
+	_pickerDetailTitle.Text(title);
 	_pickerDetails.Text(text);
 	_pickerDetailScroll.ChangeView(nullptr, 0.0, nullptr, true);
+	_QueueEffectPickerDetailsLayout();
+}
+
+void ScalingModesPage::_QueueEffectPickerDetailsLayout() {
+	if (_pickerDetailsLayoutQueued || !_pickerMode) return;
+	_pickerDetailsLayoutQueued = true;
+	if (!DispatcherQueue::GetForCurrentThread().TryEnqueue(DispatcherQueuePriority::Low, [weak = get_weak()] {
+		if (auto page = weak.get()) {
+			page->_pickerDetailsLayoutQueued = false;
+			if (page->_pickerMode && page->_pickerRoot && page->_pickerRoot.IsLoaded())
+				page->_UpdateEffectPickerDetailsLayout();
+		}
+	})) _pickerDetailsLayoutQueued = false;
+}
+
+void ScalingModesPage::_UpdateEffectPickerDetailsLayout() {
+	if (_pickerRoot.ActualWidth() <= 0 || _pickerRoot.ActualHeight() <= 0) return;
+	const double height = MeasureEffectPickerDetailsHeight(_pickerRoot, _pickerDetailPane, _pickerDetailContent);
+	const auto row = _pickerRoot.RowDefinitions().GetAt(1);
+	if (row.Height().GridUnitType == GridUnitType::Pixel && std::abs(row.Height().Value - height) < 0.5) return;
+	row.Height({height, GridUnitType::Pixel});
+	_pickerRoot.UpdateLayout();
+	// Keep the item that supplied the description visible after the viewport
+	// shrinks, without moving focus away from the search box or a clicked row.
+	if (!_pickerDetailSource) return;
+	for (const auto& scroll : {_pickerListScroll, _pickerCategoryScroll}) {
+		const auto content = scroll.Content().try_as<UIElement>();
+		if (!content || !XamlHelper::ContainsControl(content, _pickerDetailSource)) continue;
+		const double top = _pickerDetailSource.TransformToVisual(content).TransformPoint({0, 0}).Y;
+		const double bottom = top + _pickerDetailSource.ActualHeight();
+		const double offset = std::max(0.0, std::max(bottom - scroll.ViewportHeight(), std::min(top, scroll.VerticalOffset())));
+		scroll.ChangeView(nullptr, offset, nullptr, true);
+		break;
+	}
 }
 
 void ScalingModesPage::_ToggleEffectFamily(std::wstring_view key) {

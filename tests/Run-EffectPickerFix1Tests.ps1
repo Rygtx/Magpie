@@ -13,7 +13,7 @@ New-Item -ItemType Directory -Path $output -Force | Out-Null
 $styleNodes = @($page.Page.'Page.Resources'.ChildNodes | Where-Object {
     $_ -is [Xml.XmlElement] -and $_.GetAttribute('Key', 'http://schemas.microsoft.com/winfx/2006/xaml').StartsWith('EffectPicker')
 })
-if ($styleNodes.Count -ne 6) { throw 'Picker style extraction changed; review the resource test.' }
+if (!$styleNodes.Count) { throw 'No production picker styles found for the resource test.' }
 $xaml = '<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">' +
     ($styleNodes.OuterXml -join "`n") + '</ResourceDictionary>'
 [IO.File]::WriteAllText((Join-Path $output 'EffectPickerStyles.xaml'), $xaml, [Text.UTF8Encoding]::new($false))

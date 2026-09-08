@@ -22,6 +22,23 @@ int main() {
 	assert(!MatchesEffectCategory(aa, L"first_try", L""));
 	aa.firstTry = true;
 	assert(MatchesEffectCategory(aa, L"first_try", L""));
+	std::vector<EffectPickerEntry> advancedEntries;
+	for (const auto id : ADVANCED_PICKER_EFFECTS) {
+		EffectPickerEntry entry;
+		entry.id = id; entry.name = id; entry.category = L"style";
+		entry.searchText = NormalizeEffectSearch(id);
+		assert(MatchesEffectCategory(entry, L"advanced", L""));
+		assert(MatchesEffectCategory(entry, L"style", L""));
+		advancedEntries.push_back(entry);
+	}
+	for (const auto id : {L"RTXVideo\\RTXVideo_Denoise", L"custom\\DLSSNR_AI_Filter", L"DLSS\\DLSS_SR"}) {
+		EffectPickerEntry entry;
+		entry.id = id; entry.name = id; entry.recommendation = L"进阶／实验";
+		assert(!MatchesEffectCategory(entry, L"advanced", L""));
+		advancedEntries.push_back(entry);
+	}
+	const auto advancedTree = BuildEffectPickerTree(advancedEntries, L"advanced", L"", L"", {}, {});
+	assert(advancedTree.effectCount == 6 && advancedTree.rows.size() == 6);
 	for (int family = 0; family < 2; ++family) {
 		const auto canonical = RTXVideoCanonicalId<wchar_t>(family);
 		assert(RTXVideoFamily(canonical) == family);

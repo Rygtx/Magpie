@@ -4,6 +4,7 @@
 #include <winrt/Windows.UI.Xaml.Data.h>
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace Magpie {
 
@@ -18,6 +19,27 @@ inline void SetEffectPickerRowMargin(winrt::Windows::UI::Xaml::FrameworkElement 
 	// Collapsed children retain StackPanel.Spacing in Windows XAML. A collapsed
 	// element's own margin, however, does not contribute to the panel's extent.
 	row.Margin({indent, 0, 0, 2});
+}
+
+inline double EffectPickerDetailsHeight(double totalHeight, double contentHeight) {
+	const double initial = std::max(0.0, totalHeight * 0.18);
+	// Keep the search box and several rows usable. Very long descriptions can
+	// still scroll once the available screen space has been used.
+	const double browsing = std::min(180.0, totalHeight * 0.45);
+	return std::clamp(std::ceil(contentHeight), initial, std::max(initial, totalHeight - browsing));
+}
+
+inline double MeasureEffectPickerDetailsHeight(
+	winrt::Windows::UI::Xaml::Controls::Grid const& root,
+	winrt::Windows::UI::Xaml::Controls::Border const& pane,
+	winrt::Windows::UI::Xaml::FrameworkElement const& content) {
+	const auto padding = pane.Padding(), border = pane.BorderThickness();
+	// Reserve scrollbar/rounding space; include every wrapped line and paragraph.
+	const double width = std::max(1.0, root.ActualWidth() - padding.Left - padding.Right
+		- border.Left - border.Right - 16.0);
+	content.Measure({float(width), std::numeric_limits<float>::infinity()});
+	return EffectPickerDetailsHeight(root.ActualHeight(), content.DesiredSize().Height
+		+ padding.Top + padding.Bottom + border.Top + border.Bottom + 2.0);
 }
 
 struct EffectPickerToggleIcon {
