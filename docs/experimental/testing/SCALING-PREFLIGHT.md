@@ -31,4 +31,4 @@
 
 后续修复和更新覆盖此目录。只有维护者明确要求时才创建 `0.6.7-local-r1` 等新目录。
 
-使用 `scripts/Deploy-Local067.ps1` 构建并部署完整包。可用 `-BuildEnvironmentProps` 指定本机构建环境文件。脚本先检查 Magpie 已退出；构建输出在 `release/.build/v0.6.7-local/`，构建成功后更新固定运行包并校验每个文件，保留运行包内的配置、日志和诊断资料。构建日志在 `release/v0.6.7-local/build.log`，清单记录实际源码提交与文件哈希。未由当前构建生成的旧文件不自动清理，删除功能或运行库时需按旧清单另行核对。
+使用 `scripts/Deploy-Local067.ps1` 构建并部署完整包。可用 `-BuildEnvironmentProps` 指定本机构建环境文件。脚本先检查 Magpie 已退出，直接在 `release/v0.6.7-local/Magpie-Experimental-x64/` 构建；中间文件、Conan 配置和 WinUI 缓存位于同版本 `obj/`，不另建 `.build`。保留运行包内的配置、日志、自定义效果器与诊断资料。提交前可用 `-BuildOnly` 验证，最终从已提交源码构建并更新清单。构建日志在 `release/v0.6.7-local/build.log`，`deployment-state.json` 标明当前阶段；完成部署的清单记录实际源码提交与文件哈希。未由当前构建生成的旧文件不自动清理，删除功能或运行库时需按旧清单另行核对。

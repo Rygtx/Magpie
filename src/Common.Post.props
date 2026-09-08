@@ -113,7 +113,11 @@
   <Import Project="$(MSBuildThisFileDirectory)\Shared\Shared.vcxitems" Label="Shared" />
 
   <!-- Conan 依赖 -->
-  <Import Project="$(SolutionDir)\obj\$(Platform)\$(Configuration)\_ConanDeps\$(MSBuildProjectName)\conandeps.props" Condition="Exists('$(SolutionDir)\obj\$(Platform)\$(Configuration)\_ConanDeps\$(MSBuildProjectName)\conandeps.props')" />
+  <PropertyGroup>
+    <_MagpieConanRoot>$(SolutionDir)\obj\$(Platform)\$(Configuration)\</_MagpieConanRoot>
+    <_MagpieConanRoot Condition="'$(MagpieIntermediateRoot)' != ''">$(MagpieIntermediateRoot)</_MagpieConanRoot>
+  </PropertyGroup>
+  <Import Project="$(_MagpieConanRoot)_ConanDeps\$(MSBuildProjectName)\conandeps.props" Condition="Exists('$(_MagpieConanRoot)_ConanDeps\$(MSBuildProjectName)\conandeps.props')" />
 
   <!-- HybridCRT -->
   <Import Project="$(MSBuildThisFileDirectory)\HybridCRT.props" />
