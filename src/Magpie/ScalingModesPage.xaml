@@ -364,14 +364,6 @@
 															<Setter Property="FontSize" Value="15" />
 														</Style>
 													</local:SimpleStackPanel.Resources>
-													<ComboBox Width="96"
-													          Margin="0,0,8,0"
-													          Header="强度"
-													          ToolTipService.ToolTip="档位更改在下次启动缩放时生效；停止当前缩放后重新启动即可应用。"
-													          AutomationProperties.Name="RTX Video 强度"
-													          Visibility="{x:Bind HasStrength}"
-													          ItemsSource="{x:Bind StrengthChoices}"
-													          SelectedIndex="{x:Bind StrengthIndex, Mode=TwoWay}" />
 													<Button x:Uid="ScalingModes_Scale"
 													        Margin="0,0,4,0"
 													        Visibility="{x:Bind CanScale}">

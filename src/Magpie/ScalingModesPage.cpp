@@ -11,6 +11,7 @@
 #include "App.h"
 #include "CommonSharedConstants.h"
 #include "Logger.h"
+#include "ToastService.h"
 #include <cmath>
 #include <parallel_hashmap/phmap.h>
 #include <winrt/Windows.Devices.Input.h>
@@ -184,19 +185,31 @@ void ScalingModesPage::EffectParametersFlyout_Opening(
 }
 
 void ScalingModesPage::AddEffectButton_Click(IInspectable const& sender, RoutedEventArgs const&) {
-	if (!_effectPicker) _BuildEffectPicker();
-	const auto btn = sender.as<Button>();
-	_pickerMode = btn.Tag().as<winrt::Magpie::ScalingModeItem>();
-	const auto size = XamlRoot().Size();
-	_pickerRoot.Width(std::max(280.0, std::min(820.0, double(size.Width) - 72.0)));
-	_pickerRoot.Height(std::max(220.0, std::min(640.0, double(size.Height) - 80.0)));
-	_pickerRoot.ColumnDefinitions().GetAt(0).Width({ _pickerRoot.Width() < 560 ? 140.0 : 184.0, GridUnitType::Pixel });
-	_pickerCategory.clear();
-	_pickerSubcategory.clear();
-	_pickerSearch.Text(L"");
-	_RefreshEffectPicker();
-	_effectPicker.XamlRoot(XamlRoot());
-	_effectPicker.ShowAt(btn);
+	try {
+		if (!_effectPicker) _BuildEffectPicker();
+		const auto btn = sender.as<Button>();
+		_pickerMode = btn.Tag().as<winrt::Magpie::ScalingModeItem>();
+		const auto size = XamlRoot().Size();
+		_pickerRoot.Width(std::max(280.0, std::min(820.0, double(size.Width) - 72.0)));
+		_pickerRoot.Height(std::max(220.0, std::min(640.0, double(size.Height) - 80.0)));
+		_pickerRoot.ColumnDefinitions().GetAt(0).Width({ _pickerRoot.Width() < 560 ? 140.0 : 184.0, GridUnitType::Pixel });
+		_pickerCategory.clear();
+		_pickerSubcategory.clear();
+		_pickerSearch.Text(L"");
+		_RefreshEffectPicker();
+		_effectPicker.XamlRoot(XamlRoot());
+		_effectPicker.ShowAt(btn);
+	} catch (const hresult_error& error) {
+		Logger::Get().ComError("Open effect picker: " + to_string(error.message()), error.code());
+		_pickerMode = nullptr;
+		try { if (_effectPicker) _effectPicker.Hide(); } catch (...) {}
+		_effectPicker = nullptr;
+		_pickerRoot = nullptr;
+		_pickerRows.clear();
+		ToastService::Get().ShowMessageInApp(L"请重新打开效果器选择器",
+			fmt::format(L"本次打开未修改效果组。请再次点击“添加效果器”；若仍失败，请提供 logs\\magpie.log。错误码：0x{:08X}",
+				static_cast<uint32_t>(error.code().value)), std::chrono::seconds(8));
+	}
 }
 
 void ScalingModesPage::NewScalingModeButton_Click(IInspectable const&, RoutedEventArgs const&) {

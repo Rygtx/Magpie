@@ -689,6 +689,7 @@
     <ResourceCompile Include="Magpie.rc" />
     <ClInclude Include="EffectCatalog.h" />
     <ClInclude Include="EffectPickerModel.h" />
+    <ClInclude Include="EffectChoiceItems.h" />
     <None Include="EffectCatalog\zh-Hans.json" />
   </ItemGroup>
   <ItemGroup>

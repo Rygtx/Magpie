@@ -20,6 +20,8 @@
 #include "ScalingService.h"
 #include "EffectParameterLocalization.h"
 #include "App.h"
+#include "EffectPickerModel.h"
+#include "ToastService.h"
 
 using namespace Magpie;
 
@@ -182,6 +184,19 @@ EffectParametersViewModel::EffectParametersViewModel(uint32_t scalingModeIdx, ui
 			}
 		}
 	}
+	const int rtxStrength = RTXVideoStrength(_effectInfo->name);
+	if (rtxStrength >= 0) {
+		// Backend tier selection belongs in the parameters flyout, but is persisted
+		// as the legacy effect ID rather than as a shader constant.
+		_rtxStrengthParameter = make_self<ScalingModeParameter>(
+			std::numeric_limits<uint32_t>::max(),
+			L"强度\n更改在下次启动缩放时生效；停止当前缩放后重新启动即可应用。",
+			rtxStrength,
+			std::vector<std::pair<int, hstring>>{ {0, L"低"}, {1, L"中"}, {2, L"高"}, {3, L"极高"} });
+		_rtxStrengthParameter->PropertyChanged({
+			this, &EffectParametersViewModel::_ScalingModeParameter_PropertyChanged });
+		getGroup("").push_back(*_rtxStrengthParameter);
+	}
 	std::vector<IInspectable> groups;
 	groups.reserve(groupBuilders.size());
 	_groupImpls.reserve(groupBuilders.size());
@@ -268,6 +283,26 @@ void EffectParametersViewModel::_ScalingModeParameter_PropertyChanged(
 
 	ScalingModeParameter* paramImpl = get_self<ScalingModeParameter>(
 		sender.try_as<Magpie::ScalingModeParameter>());
+	if (paramImpl == _rtxStrengthParameter.get()) {
+		auto& mode = ScalingModesService::Get().GetScalingMode(_scalingModeIdx);
+		if (_effectIdx >= mode.effects.size()) return;
+		auto& effect = mode.effects[_effectIdx];
+		const auto id = RTXVideoId(effect.name, paramImpl->ChoiceValue());
+		const auto info = id.empty() ? nullptr : EffectsService::Get().GetEffect(id);
+		if (!info) {
+			_SynchronizeParameters();
+			ToastService::Get().ShowMessageInApp(L"请恢复 RTX Video 效果器文件",
+				L"当前档位文件未加载。请重新解压完整程序包，再打开参数设置。", std::chrono::seconds(6));
+			return;
+		}
+		if (effect.name == id) return;
+		effect.name = id;
+		_effectInfo = info;
+		ScalingModesService::Get().EffectParametersChanged.Invoke(_scalingModeIdx, _effectIdx);
+		AppSettings::Get().SaveAsync();
+		return;
+	}
+	if (paramImpl->Index() >= _effectInfo->params.size()) return;
 	const std::string& effectName = _effectInfo->params[paramImpl->Index()].name;
 	_Data()[StrHelper::UTF8ToUTF16(effectName)] = paramImpl->IsBoolean()
 		? static_cast<float>(paramImpl->BooleanValue())
@@ -311,10 +346,17 @@ void EffectParametersViewModel::_RefreshConditionalVisibility() {
 
 void EffectParametersViewModel::_SynchronizeParameters() {
 	const auto& modes = AppSettings::Get().ScalingModes();
-	if (_scalingModeIdx >= modes.size() || _effectIdx >= modes[_scalingModeIdx].effects.size() ||
-		modes[_scalingModeIdx].effects[_effectIdx].name != _effectInfo->name) return;
+	if (_scalingModeIdx >= modes.size() || _effectIdx >= modes[_scalingModeIdx].effects.size()) return;
+	const auto& name = modes[_scalingModeIdx].effects[_effectIdx].name;
+	if (name != _effectInfo->name) {
+		if (!_rtxStrengthParameter || RTXVideoFamily(name) != RTXVideoFamily(_effectInfo->name)) return;
+		const auto info = EffectsService::Get().GetEffect(name);
+		if (!info) return;
+		_effectInfo = info;
+	}
 	_synchronizing = true;
 	auto reset = wil::scope_exit([this] { _synchronizing = false; });
+	if (_rtxStrengthParameter) _rtxStrengthParameter->SynchronizeValue(float(RTXVideoStrength(name)));
 	const auto& values = _Data();
 	for (const auto& parameter : _parameterImpls) {
 		const auto& descriptor = _effectInfo->params[parameter->Index()];

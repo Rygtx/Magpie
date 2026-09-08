@@ -11,9 +11,6 @@ namespace Magpie {
 
 		Boolean CanScale { get; };
 		Boolean HasParameters { get; };
-		Boolean HasStrength { get; };
-		IVector<String> StrengthChoices { get; };
-		Int32 StrengthIndex;
 
 		IVector<IInspectable> ScalingTypes { get; };
 		Int32 ScalingType;

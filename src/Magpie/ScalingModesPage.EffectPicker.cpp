@@ -3,6 +3,7 @@
 #include "EffectCatalog.h"
 #include "EffectHelper.h"
 #include "EffectsService.h"
+#include "EffectChoiceItems.h"
 #include <winrt/Windows.UI.Xaml.Automation.h>
 
 using namespace ::Magpie;
@@ -47,6 +48,7 @@ void PickerTip(DependencyObject const& target, std::wstring_view text) {
 }
 
 void ScalingModesPage::_BuildEffectPicker() {
+	_pickerRows.clear();
 	const auto weak = get_weak();
 	const auto& catalog = EffectCatalog::Get();
 	_pickerRoot = Grid();
@@ -243,7 +245,7 @@ void ScalingModesPage::_BuildEffectPicker() {
 			strength.VerticalAlignment(VerticalAlignment::Top);
 			strength.Header(box_value(L"强度"));
 			AutomationProperties::SetName(strength, row.entry.name + L" 强度");
-			strength.ItemsSource(single_threaded_vector(std::vector<hstring>{ L"低", L"中", L"高", L"极高" }));
+			strength.ItemsSource(MakeEffectChoiceItems({ L"低", L"中", L"高", L"极高" }));
 			strength.SelectedIndex(RTXVideoStrength(row.entry.id));
 			strength.SelectionChanged([weak, index](auto const& sender, auto const&) {
 				if (const auto page = weak.get()) {
@@ -317,6 +319,7 @@ void ScalingModesPage::_RefreshEffectPicker() {
 }
 
 void ScalingModesPage::_ShowEffectPickerDetails(size_t index) {
+	if (index >= _pickerRows.size()) return;
 	const auto& entry = _pickerRows[index].entry;
 	const auto metadata = EffectCatalog::Get().Find(entry.id);
 	_pickerDetailTitle.Text(entry.name);
@@ -330,7 +333,7 @@ void ScalingModesPage::_ShowEffectPickerDetails(size_t index) {
 }
 
 void ScalingModesPage::_AddPickedEffect(size_t index) {
-	if (!_pickerMode) return;
+	if (!_pickerMode || index >= _pickerRows.size()) return;
 	const auto mode = _pickerMode;
 	const hstring id(_pickerRows[index].entry.id);
 	if (!get_self<ScalingModeItem>(mode)->EffectAddProblem(id).empty()) {

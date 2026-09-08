@@ -80,34 +80,7 @@ bool ScalingModeEffectItem::HasParameters() const noexcept {
 		return false;
 	}
 
-	return _effectInfo && !_effectInfo->params.empty();
-}
-
-bool ScalingModeEffectItem::HasStrength() const noexcept {
-	return !_IsRemoved() && _effectInfo && RTXVideoFamily(_Data().name) >= 0;
-}
-
-IVector<hstring> ScalingModeEffectItem::StrengthChoices() const {
-	return single_threaded_vector(std::vector<hstring>{ L"低", L"中", L"高", L"极高" });
-}
-
-int ScalingModeEffectItem::StrengthIndex() const noexcept {
-	return _IsRemoved() ? -1 : RTXVideoStrength(_Data().name);
-}
-
-void ScalingModeEffectItem::StrengthIndex(int value) {
-	if (!HasStrength() || value == StrengthIndex()) return;
-	auto& data = _Data();
-	const auto id = RTXVideoId(data.name, value);
-	if (id.empty()) return;
-	const auto info = EffectsService::Get().GetEffect(id);
-	if (!info) return;
-	// A tier is a backend selection, applied on the next scaling start. Preserve
-	// the same stage, dimensions and parameters rather than deleting/re-adding it.
-	data.name = id;
-	_effectInfo = info;
-	RaisePropertyChanged(L"StrengthIndex");
-	AppSettings::Get().SaveAsync();
+	return _effectInfo && (!_effectInfo->params.empty() || RTXVideoFamily(_Data().name) >= 0);
 }
 
 IVector<IInspectable> ScalingModeEffectItem::ScalingTypes() noexcept {
