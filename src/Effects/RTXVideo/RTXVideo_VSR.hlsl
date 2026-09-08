@@ -1,13 +1,20 @@
 // NVIDIA VideoSuperRes native backend replaces this placeholder pass.
 //!MAGPIE EFFECT
 //!VERSION 4
-//!SORT_NAME RTX Video Denoise High
+//!SORT_NAME RTX Video VSR
+
+//!PARAMETER
+//!LABEL Strength
+//!DEFAULT 1
+//!OPTION 0 Low
+//!OPTION 1 Medium
+//!OPTION 2 High
+//!OPTION 3 Ultra
+int strength;
 
 //!TEXTURE
 Texture2D INPUT;
 //!TEXTURE
-//!WIDTH INPUT_WIDTH
-//!HEIGHT INPUT_HEIGHT
 Texture2D OUTPUT;
 //!SAMPLER
 //!FILTER LINEAR

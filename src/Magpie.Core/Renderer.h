@@ -421,6 +421,8 @@ private:
 	std::vector<std::pair<std::string, MotionVectorRequest>> _motionConsumers;
 	std::wstring _motionConfigurationNotice;
 	std::vector<EffectDesc> _effectDescs;
+	bool _dlssnrAutoHdr = false;
+	std::string _dlssnrHdrDiagnostic;
 	// 包含追加的 Bicubic
 	std::vector<const EffectDesc*> _activeEffectDescs;
 	std::vector<std::vector<EffectParameterRuntimeInfo>>

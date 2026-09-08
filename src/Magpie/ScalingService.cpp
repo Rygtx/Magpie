@@ -539,6 +539,20 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 			}
 		);
 	};
+	options.revertEffectParameter = [modeIdx = options.scalingModeIdx, modeName = options.scalingModeName](
+		uint32_t effectIdx, const EffectOption& previousEffect, const std::string& parameter, float rejected, float previous) {
+		App::Get().Dispatcher().TryEnqueue([modeIdx, modeName, effectIdx, previousEffect, parameter, rejected, previous] {
+			auto& modes = AppSettings::Get().ScalingModes();
+			if (modeIdx >= modes.size() || modes[modeIdx].name != modeName || effectIdx >= modes[modeIdx].effects.size()) return;
+			auto& effect = modes[modeIdx].effects[effectIdx];
+			if (StrHelper::UTF16ToUTF8(effect.name) != previousEffect.name ||
+				effect.scale != previousEffect.scale || effect.scalingType != previousEffect.scalingType) return;
+			// A later settings/toolbar edit wins over this older failed request.
+			if (!RestoreRejectedEffectParameter(effect.parameters, StrHelper::UTF8ToUTF16(parameter), rejected, previous)) return;
+			ScalingModesService::Get().EffectParametersChanged.Invoke(modeIdx, effectIdx);
+			AppSettings::Get().SaveAsync();
+		});
+	};
 
 	options.requestEffectParameters = [](
 		const ScalingOptions& sessionOptions,

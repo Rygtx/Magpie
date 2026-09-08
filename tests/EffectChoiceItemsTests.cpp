@@ -1,4 +1,5 @@
 #include "../src/Magpie/EffectChoiceItems.h"
+#include "../src/Magpie/EffectPickerLayout.h"
 #include <winrt/Windows.UI.Xaml.Controls.h>
 #include <winrt/Windows.UI.Xaml.Controls.Primitives.h>
 #include <winrt/Windows.UI.Xaml.Hosting.h>
@@ -37,7 +38,26 @@ int main(int argc, char**) {
 			assert(combo.SelectedIndex() == tier);
 			assert(unbox_value<hstring>(combo.SelectedItem()) == fixed.GetAt(tier));
 		}
+		using namespace Windows::UI::Xaml::Controls;
+		const auto layout = Magpie::MakeEffectPickerLayout();
+		assert(Grid::GetColumn(layout.list) == 1);
+		assert(Grid::GetRow(layout.details) == 1 && Grid::GetColumnSpan(layout.details) == 2);
+		assert(layout.root.Children().Size() == 3);
+		TextBox search;
+		layout.list.Child(search);
+		TextBlock description;
+		description.Text(L"用途与组合建议");
+		layout.details.Child(description);
+		for (const Size size : { Size{820, 640}, Size{480, 360}, Size{280, 220} }) {
+			layout.root.Width(size.Width); layout.root.Height(size.Height);
+			layout.root.ColumnDefinitions().GetAt(0).Width({ size.Width < 560 ? 160.0 : 220.0,
+				Windows::UI::Xaml::GridUnitType::Pixel });
+			layout.root.Measure(size);
+			layout.root.Arrange({ 0, 0, size.Width, size.Height });
+			assert(layout.details.ActualWidth() == size.Width);
+			assert(layout.list.ActualWidth() > 0 && layout.categories.ActualWidth() < size.Width);
+		}
 		manager.Close();
-		std::cout << "Real XAML: old ItemsSource throws E_INVALIDARG; fixed ItemsSource accepts all four selected values.\n";
+		std::cout << "Real XAML: old ItemsSource throws E_INVALIDARG; fixed choices accept four values; three-region production layout passes at three sizes.\n";
 	}
 }

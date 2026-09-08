@@ -103,35 +103,11 @@
     <CopyFileToFolders Include="FSR\FSR_RCAS.hlsl">
       <FileType>Document</FileType>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="RTXVideo\RTXVideo_Denoise_Low.hlsl">
+    <CopyFileToFolders Include="RTXVideo\RTXVideo_Denoise.hlsl">
       <FileType>Document</FileType>
       <DeploymentContent>true</DeploymentContent>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="RTXVideo\RTXVideo_Denoise_Medium.hlsl">
-      <FileType>Document</FileType>
-      <DeploymentContent>true</DeploymentContent>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="RTXVideo\RTXVideo_Denoise_High.hlsl">
-      <FileType>Document</FileType>
-      <DeploymentContent>true</DeploymentContent>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="RTXVideo\RTXVideo_Denoise_Ultra.hlsl">
-      <FileType>Document</FileType>
-      <DeploymentContent>true</DeploymentContent>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="RTXVideo\RTXVideo_VSR_Low.hlsl">
-      <FileType>Document</FileType>
-      <DeploymentContent>true</DeploymentContent>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="RTXVideo\RTXVideo_VSR_Medium.hlsl">
-      <FileType>Document</FileType>
-      <DeploymentContent>true</DeploymentContent>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="RTXVideo\RTXVideo_VSR_High.hlsl">
-      <FileType>Document</FileType>
-      <DeploymentContent>true</DeploymentContent>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="RTXVideo\RTXVideo_VSR_Ultra.hlsl">
+    <CopyFileToFolders Include="RTXVideo\RTXVideo_VSR.hlsl">
       <FileType>Document</FileType>
       <DeploymentContent>true</DeploymentContent>
     </CopyFileToFolders>

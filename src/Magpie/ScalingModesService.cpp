@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "RTXVideoParameters.h"
 #include "AppSettings.h"
 #include "EffectHelper.h"
 #include "EffectsService.h"
@@ -478,6 +479,14 @@ bool ScalingModesService::Import(const rapidjson::GenericObject<true, rapidjson:
 
 	if (scalingModes.empty()) {
 		return true;
+	}
+
+	bool migratedR1 = false;
+	for (auto& mode : scalingModes) for (auto& effect : mode.effects)
+		migratedR1 |= MigrateEffectParametersR1(effect);
+	if (migratedR1) {
+		Logger::Get().Info("v0.6.7-r1: migrated RTX Video strength / DLSSNR automatic HDR parameters");
+		if (loadingSettings) AppSettings::Get().MarkConfigMigrationNeeded();
 	}
 
 	const V065NormalizationStats normalization =

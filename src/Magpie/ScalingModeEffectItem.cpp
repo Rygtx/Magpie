@@ -80,7 +80,7 @@ bool ScalingModeEffectItem::HasParameters() const noexcept {
 		return false;
 	}
 
-	return _effectInfo && (!_effectInfo->params.empty() || RTXVideoFamily(_Data().name) >= 0);
+	return _effectInfo && !_effectInfo->params.empty();
 }
 
 IVector<IInspectable> ScalingModeEffectItem::ScalingTypes() noexcept {

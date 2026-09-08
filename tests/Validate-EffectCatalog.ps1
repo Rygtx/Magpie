@@ -15,10 +15,11 @@ if ($dlssnr.category -ne 'style' -or $dlssnr.purposes -contains 'cleanup' -or $d
 $dlss = $catalog.effects | Where-Object id -eq 'DLSS\DLSS_SR'
 if ($dlss.category -ne 'antialiasing' -or $dlss.details -notmatch 'J' -or $dlss.details -notmatch 'L／M') { throw 'DLSS SR classification regression' }
 $rtx = @($catalog.effects | Where-Object id -like 'RTXVideo\*')
-if ($rtx.Count -ne 8 -or @($rtx.name | Sort-Object -Unique).Count -ne 2) { throw 'RTX Video grouping regression' }
+if ($rtx.Count -ne 2 -or @($rtx.name | Sort-Object -Unique).Count -ne 2) { throw 'RTX Video grouping regression' }
 foreach ($entry in $rtx) {
     $file = Join-Path $effectRoot ($entry.id + '.hlsl')
-    if ((Get-Content -LiteralPath $file -Raw) -match '//!PARAMETER') { throw 'RTX tier parameters changed: review parameter view model compatibility.' }
+    if ((Get-Content -LiteralPath $file -Raw) -notmatch '(?s)//!DEFAULT 1.*//!OPTION 0 Low.*//!OPTION 3 Ultra.*int strength;') { throw 'RTX strength metadata regression.' }
+    foreach ($tier in @('Low','Medium','High','Ultra')) { if (!$entry.search.Contains($entry.id + '_' + $tier)) { throw 'Missing legacy search alias' } }
 }
 if (@($catalog.effects | Where-Object { $_.id -like 'XeSSFG\*' -and $_.name -like '*ZeroMV*' }).Count) { throw 'XeSS display alias regression' }
-"Catalog validated: $($ids.Count) source effects, 155 built-in picker entries; all eight RTX IDs retained."
+"Catalog validated: $($ids.Count) source effects, 155 built-in picker entries; eight RTX names retained as aliases."

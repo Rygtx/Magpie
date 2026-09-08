@@ -46,6 +46,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="HdrEffectBoundary.h" />
+    <ClInclude Include="DlssnrAutoHdr.h" />
+    <ClInclude Include="include\RTXVideoParameters.h" />
     <ClInclude Include="BackendDescriptorStore.h" />
     <ClInclude Include="CompSwapchainPresenter.h" />
     <ClInclude Include="CursorManager.h" />

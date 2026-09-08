@@ -92,6 +92,7 @@ struct _AppSettingsData {
 
 class AppSettings : private _AppSettingsData {
 public:
+	void MarkConfigMigrationNeeded() noexcept { _isConfigMigrationNeeded = true; }
 	static AppSettings& Get() noexcept {
 		static AppSettings instance;
 		return instance;

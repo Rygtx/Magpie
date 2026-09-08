@@ -148,6 +148,32 @@ struct Harness {
 		Check(Read(output.Get()) == pixels, "Canonical pass-through changed pixels");
 	}
 
+	void TestAutomaticDlssnrBoundary(float white) {
+		std::vector<Pixel> pixels(Width);
+		for (UINT i = 0; i < Width; ++i) {
+			const float value = 12.5f * i / (Width - 1);
+			pixels[i] = { value, value * 0.5f, value * 0.25f, 1.0f };
+		}
+		auto input = Texture(DXGI_FORMAT_R32G32B32A32_FLOAT, pixels.data());
+		auto proxy = Texture(DXGI_FORMAT_R32G32B32A32_FLOAT);
+		auto output = Texture(DXGI_FORMAT_R32G32B32A32_FLOAT);
+		AdapterConstants cb{};
+		cb.exposure = cb.inverseExposure = cb.normalizationScale = 1.0f;
+		cb.sdrWhiteNits = white;
+		cb.mode = 2;
+		Dispatch(input.Get(), proxy.Get(), cb);
+		const auto normalized = Read(proxy.Get());
+		cb.mode = 3;
+		Dispatch(proxy.Get(), output.Get(), cb);
+		const auto restored = Read(output.Get());
+		for (UINT i = 0; i < Width; ++i) for (int channel = 0; channel < 3; ++channel) {
+			Check(std::abs(normalized[i][channel] - pixels[i][channel] / (white / 80.0f)) < 1e-4f,
+				"Automatic DLSSNR input white normalization mismatch");
+			Check(std::abs(restored[i][channel] - pixels[i][channel]) < 1e-4f,
+				"Automatic DLSSNR boundary round trip changed brightness");
+		}
+	}
+
 	void TestResizedBoundaries() {
 		for (const auto size : {std::array<UINT, 2>{640, 360}, {1280, 720}}) {
 			D3D11_TEXTURE2D_DESC desc{};
@@ -185,8 +211,9 @@ int main() {
 				for (float exposure : {0.5f, 1.0f, 2.0f})
 					for (bool quantized : {false, true}) harness.Test(white, peak, exposure, quantized);
 		harness.TestResizedBoundaries();
+		for (float white : {80.0f, 203.0f, 360.0f}) harness.TestAutomaticDlssnrBoundary(white);
 		std::cout << "PASS: production HDR shader on D3D11 WARP; 54 ramp/round-trip cases, "
-			"R8 quantization, CPU/HLSL parity, alpha, canonical pass-through and resized Bicubic/FG boundaries\n";
+			"R8 quantization, CPU/HLSL parity, alpha, resized boundaries and three automatic DLSSNR white-point round trips\n";
 	} catch (const std::exception& error) {
 		std::cerr << "FAIL: " << error.what() << '\n';
 		return 1;

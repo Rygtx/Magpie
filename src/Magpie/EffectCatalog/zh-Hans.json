@@ -1130,10 +1130,10 @@
         "style"
       ],
       "summary": "调用实验性 DLSSNR 原生适配器做同尺寸 AI 画面与纹理风格重塑。",
-      "details": "风格显示 › AI 画面重塑\n\n用于改变细节组织与整体观感；原生创建失败时工厂允许占位直通，因此会话启动不代表算法已实际启用。\n\n变体差异：同尺寸原生替换；依赖 NGX Feature 18 与受支持环境；底层接口标识只用于定位，不据此扩展用户功能说明。\n\n进阶／实验：这是实验性同尺寸 AI 风格重塑，且占位直通可能掩盖原生初始化失败。\n\n尝试建议：从日志确认原生功能创建成功；用代表性画面检查纹理重塑是否符合偏好\n\n组合建议：同尺寸 AI 画面重塑；在「主要尺寸整理（若希望在最终尺寸重塑纹理）」之后；在「最终锐化/显示风格」之前。前后位置会改变其处理到的纹理范围；先把它当主处理步骤，再做少量收尾。\n\n输出尺寸：保持输入尺寸\n\n组合注意：运行时由原生后端替换占位 pass；初始化失败可能继续使用直通占位\n\n使用条件：NVIDIA 驱动 615 及以上；RTX 50 系列原生支持（按用户提供的本项目兼容口径）；RTX 40／30／20 系列可能需要手动替换兼容 DLL，替换后仍需确认实际功能初始化结果；包含对应 NGX 功能的构建与运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：HDR 路由取决于实验开关与归一化倍率；请确认原生后端实际启用并检查颜色。",
+      "details": "风格显示 › AI 画面重塑\n\n用于改变细节组织与整体观感；原生创建失败时工厂允许占位直通，因此会话启动不代表算法已实际启用。 HDR 路径按输入颜色信息自动选择，亮度转换使用输入白点；画质与高光表现仍需在目标内容上比较。\n\n变体差异：同尺寸原生替换；依赖 NGX Feature 18 与受支持环境；底层接口标识只用于定位，不据此扩展用户功能说明。\n\n进阶／实验：这是实验性同尺寸 AI 风格重塑，且占位直通可能掩盖原生初始化失败。\n\n尝试建议：从日志确认原生功能创建成功；用代表性画面检查纹理重塑是否符合偏好\n\n组合建议：同尺寸 AI 画面重塑；在「主要尺寸整理（若希望在最终尺寸重塑纹理）」之后；在「最终锐化/显示风格」之前。前后位置会改变其处理到的纹理范围；先把它当主处理步骤，再做少量收尾。\n\n输出尺寸：保持输入尺寸\n\n组合注意：运行时由原生后端替换占位 pass；初始化失败可能继续使用直通占位\n\n使用条件：NVIDIA 驱动 615 及以上；RTX 50 系列原生支持（按用户提供的本项目兼容口径）；RTX 40／30／20 系列可能需要手动替换兼容 DLL，替换后仍需确认实际功能初始化结果；包含对应 NGX 功能的构建与运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：自动使用输入颜色信息与白点适配；FP16 路径仍需对比高光、亮度与颜色变化。输入分辨率调整在此路径下不生效。",
       "level": "advanced",
       "recommendation": "进阶／实验",
-      "search": "DLSSNR\\DLSSNR_AI_Filter DLSSNR AI Filter DLSSNR 风格显示 AI 画面重塑 DLSSNR AI Filter DLSSNR DLSSNR_AI_Filter 调用实验性 DLSSNR 原生适配器做同尺寸 AI 画面与纹理风格重塑。 用于改变细节组织与整体观感；原生创建失败时工厂允许占位直通，因此会话启动不代表算法已实际启用。 风格显示 AI 画面重塑"
+      "search": "DLSSNR\\DLSSNR_AI_Filter DLSSNR AI Filter DLSSNR 风格显示 AI 画面重塑 DLSSNR AI Filter DLSSNR DLSSNR_AI_Filter 调用实验性 DLSSNR 原生适配器做同尺寸 AI 画面与纹理风格重塑。 用于改变细节组织与整体观感；原生创建失败时工厂允许占位直通，因此会话启动不代表算法已实际启用。 HDR 路径按输入颜色信息自动选择，亮度转换使用输入白点；画质与高光表现仍需在目标内容上比较。 风格显示 AI 画面重塑"
     },
     {
       "id": "FrameRate_Filter",
@@ -1948,118 +1948,6 @@
       "search": "RAVU\\RAVU_Zoom_R3 RAVU Zoom R3 RAVU 放大与超分 通用 RAVU Zoom R3 RAVU RAVU_Zoom_R3 RAVU 任意输出尺寸 放大，用于一般视频、插画与边缘结构重建。 非 RGB 版采用该文件的默认颜色路径。  放大与超分 通用"
     },
     {
-      "id": "RTXVideo\\RTXVideo_Denoise_High",
-      "name": "RTXVideo_Denoise",
-      "category": "cleanup",
-      "subcategory": "降噪",
-      "purposes": [
-        "cleanup"
-      ],
-      "summary": "调用 RTX Video 原生后端做同尺寸视频降噪。",
-      "details": "清理修复 › 降噪\n\n适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。\n\n变体差异：强度：高。四档为离散质量设置，实际画质与成本依赖显卡和驱动。\n\n进阶／实验：需要 NVIDIA Video Effects 运行库与受支持硬件，质量档位应在目标机器比较。\n\n尝试建议：确认原生后端初始化成功；按视频噪声或缩放目标选择 Denoise/VSR\n\n组合建议：放大前；在「放大/超分、锐化」之前。先清理输入可减少后续放大噪声。\n\n输出尺寸：保持输入尺寸\n\n组合注意：强度过高会损失纹理\n\n使用条件：受支持的 NVIDIA RTX GPU/驱动；可加载 NVIDIA Video Effects 运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：当前 RTX Video 边界是 SDR/U8 兼容路径，HDR 高光会经过映射与量化。",
-      "level": "advanced",
-      "recommendation": "进阶／实验",
-      "search": "RTXVideo\\RTXVideo_Denoise_High RTXVideo_Denoise RTXVideo 清理修复 降噪 RTXVideo Denoise High RTXVideo RTXVideo_Denoise_High RTXVideo_Denoise 强度高 调用 RTX Video 原生后端做同尺寸视频降噪。 适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。 清理修复 降噪"
-    },
-    {
-      "id": "RTXVideo\\RTXVideo_Denoise_Low",
-      "name": "RTXVideo_Denoise",
-      "category": "cleanup",
-      "subcategory": "降噪",
-      "purposes": [
-        "cleanup"
-      ],
-      "summary": "调用 RTX Video 原生后端做同尺寸视频降噪。",
-      "details": "清理修复 › 降噪\n\n适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。\n\n变体差异：强度：低。四档为离散质量设置，实际画质与成本依赖显卡和驱动。\n\n进阶／实验：需要 NVIDIA Video Effects 运行库与受支持硬件，质量档位应在目标机器比较。\n\n尝试建议：确认原生后端初始化成功；按视频噪声或缩放目标选择 Denoise/VSR\n\n组合建议：放大前；在「放大/超分、锐化」之前。先清理输入可减少后续放大噪声。\n\n输出尺寸：保持输入尺寸\n\n组合注意：强度过高会损失纹理\n\n使用条件：受支持的 NVIDIA RTX GPU/驱动；可加载 NVIDIA Video Effects 运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：当前 RTX Video 边界是 SDR/U8 兼容路径，HDR 高光会经过映射与量化。",
-      "level": "advanced",
-      "recommendation": "进阶／实验",
-      "search": "RTXVideo\\RTXVideo_Denoise_Low RTXVideo_Denoise RTXVideo 清理修复 降噪 RTXVideo Denoise Low RTXVideo RTXVideo_Denoise_Low RTXVideo_Denoise 强度低 调用 RTX Video 原生后端做同尺寸视频降噪。 适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。 清理修复 降噪"
-    },
-    {
-      "id": "RTXVideo\\RTXVideo_Denoise_Medium",
-      "name": "RTXVideo_Denoise",
-      "category": "cleanup",
-      "subcategory": "降噪",
-      "purposes": [
-        "cleanup"
-      ],
-      "summary": "调用 RTX Video 原生后端做同尺寸视频降噪。",
-      "details": "清理修复 › 降噪\n\n适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。\n\n变体差异：强度：中。四档为离散质量设置，实际画质与成本依赖显卡和驱动。\n\n进阶／实验：需要 NVIDIA Video Effects 运行库与受支持硬件，质量档位应在目标机器比较。\n\n尝试建议：确认原生后端初始化成功；按视频噪声或缩放目标选择 Denoise/VSR\n\n组合建议：放大前；在「放大/超分、锐化」之前。先清理输入可减少后续放大噪声。\n\n输出尺寸：保持输入尺寸\n\n组合注意：强度过高会损失纹理\n\n使用条件：受支持的 NVIDIA RTX GPU/驱动；可加载 NVIDIA Video Effects 运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：当前 RTX Video 边界是 SDR/U8 兼容路径，HDR 高光会经过映射与量化。",
-      "level": "advanced",
-      "recommendation": "进阶／实验",
-      "search": "RTXVideo\\RTXVideo_Denoise_Medium RTXVideo_Denoise RTXVideo 清理修复 降噪 RTXVideo Denoise Medium RTXVideo RTXVideo_Denoise_Medium RTXVideo_Denoise 强度中 调用 RTX Video 原生后端做同尺寸视频降噪。 适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。 清理修复 降噪"
-    },
-    {
-      "id": "RTXVideo\\RTXVideo_Denoise_Ultra",
-      "name": "RTXVideo_Denoise",
-      "category": "cleanup",
-      "subcategory": "降噪",
-      "purposes": [
-        "cleanup"
-      ],
-      "summary": "调用 RTX Video 原生后端做同尺寸视频降噪。",
-      "details": "清理修复 › 降噪\n\n适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。\n\n变体差异：强度：极高。四档为离散质量设置，实际画质与成本依赖显卡和驱动。\n\n进阶／实验：需要 NVIDIA Video Effects 运行库与受支持硬件，质量档位应在目标机器比较。\n\n尝试建议：确认原生后端初始化成功；按视频噪声或缩放目标选择 Denoise/VSR\n\n组合建议：放大前；在「放大/超分、锐化」之前。先清理输入可减少后续放大噪声。\n\n输出尺寸：保持输入尺寸\n\n组合注意：强度过高会损失纹理\n\n使用条件：受支持的 NVIDIA RTX GPU/驱动；可加载 NVIDIA Video Effects 运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：当前 RTX Video 边界是 SDR/U8 兼容路径，HDR 高光会经过映射与量化。",
-      "level": "advanced",
-      "recommendation": "进阶／实验",
-      "search": "RTXVideo\\RTXVideo_Denoise_Ultra RTXVideo_Denoise RTXVideo 清理修复 降噪 RTXVideo Denoise Ultra RTXVideo RTXVideo_Denoise_Ultra RTXVideo_Denoise 强度极高 调用 RTX Video 原生后端做同尺寸视频降噪。 适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。 清理修复 降噪"
-    },
-    {
-      "id": "RTXVideo\\RTXVideo_VSR_High",
-      "name": "RTXVideo_VSR",
-      "category": "upscale",
-      "subcategory": "通用",
-      "purposes": [
-        "upscale"
-      ],
-      "summary": "调用 RTX Video 原生后端做视频超分。",
-      "details": "放大与超分 › 通用\n\n适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。\n\n变体差异：强度：高。四档为离散质量设置，实际画质与成本依赖显卡和驱动。\n\n进阶／实验：需要 NVIDIA Video Effects 运行库与受支持硬件，质量档位应在目标机器比较。\n\n尝试建议：确认原生后端初始化成功；按视频噪声或缩放目标选择 Denoise/VSR\n\n组合建议：主要缩放步骤；在「必要的降噪/修复」之后；在「抗锯齿、锐化、显示风格」之前。让尺寸重建先完成，再做输出分辨率相关的收尾。\n\n输出尺寸：使用效果组配置的输出尺寸\n\n使用条件：受支持的 NVIDIA RTX GPU/驱动；可加载 NVIDIA Video Effects 运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：当前 RTX Video 边界是 SDR/U8 兼容路径，HDR 高光会经过映射与量化。",
-      "level": "advanced",
-      "recommendation": "进阶／实验",
-      "search": "RTXVideo\\RTXVideo_VSR_High RTXVideo_VSR RTXVideo 放大与超分 通用 RTXVideo VSR High RTXVideo RTXVideo_VSR_High RTXVideo_VSR 强度高 调用 RTX Video 原生后端做视频超分。 适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。 放大与超分 通用"
-    },
-    {
-      "id": "RTXVideo\\RTXVideo_VSR_Low",
-      "name": "RTXVideo_VSR",
-      "category": "upscale",
-      "subcategory": "通用",
-      "purposes": [
-        "upscale"
-      ],
-      "summary": "调用 RTX Video 原生后端做视频超分。",
-      "details": "放大与超分 › 通用\n\n适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。\n\n变体差异：强度：低。四档为离散质量设置，实际画质与成本依赖显卡和驱动。\n\n进阶／实验：需要 NVIDIA Video Effects 运行库与受支持硬件，质量档位应在目标机器比较。\n\n尝试建议：确认原生后端初始化成功；按视频噪声或缩放目标选择 Denoise/VSR\n\n组合建议：主要缩放步骤；在「必要的降噪/修复」之后；在「抗锯齿、锐化、显示风格」之前。让尺寸重建先完成，再做输出分辨率相关的收尾。\n\n输出尺寸：使用效果组配置的输出尺寸\n\n使用条件：受支持的 NVIDIA RTX GPU/驱动；可加载 NVIDIA Video Effects 运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：当前 RTX Video 边界是 SDR/U8 兼容路径，HDR 高光会经过映射与量化。",
-      "level": "advanced",
-      "recommendation": "进阶／实验",
-      "search": "RTXVideo\\RTXVideo_VSR_Low RTXVideo_VSR RTXVideo 放大与超分 通用 RTXVideo VSR Low RTXVideo RTXVideo_VSR_Low RTXVideo_VSR 强度低 调用 RTX Video 原生后端做视频超分。 适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。 放大与超分 通用"
-    },
-    {
-      "id": "RTXVideo\\RTXVideo_VSR_Medium",
-      "name": "RTXVideo_VSR",
-      "category": "upscale",
-      "subcategory": "通用",
-      "purposes": [
-        "upscale"
-      ],
-      "summary": "调用 RTX Video 原生后端做视频超分。",
-      "details": "放大与超分 › 通用\n\n适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。\n\n变体差异：强度：中。四档为离散质量设置，实际画质与成本依赖显卡和驱动。\n\n进阶／实验：需要 NVIDIA Video Effects 运行库与受支持硬件，质量档位应在目标机器比较。\n\n尝试建议：确认原生后端初始化成功；按视频噪声或缩放目标选择 Denoise/VSR\n\n组合建议：主要缩放步骤；在「必要的降噪/修复」之后；在「抗锯齿、锐化、显示风格」之前。让尺寸重建先完成，再做输出分辨率相关的收尾。\n\n输出尺寸：使用效果组配置的输出尺寸\n\n使用条件：受支持的 NVIDIA RTX GPU/驱动；可加载 NVIDIA Video Effects 运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：当前 RTX Video 边界是 SDR/U8 兼容路径，HDR 高光会经过映射与量化。",
-      "level": "advanced",
-      "recommendation": "进阶／实验",
-      "search": "RTXVideo\\RTXVideo_VSR_Medium RTXVideo_VSR RTXVideo 放大与超分 通用 RTXVideo VSR Medium RTXVideo RTXVideo_VSR_Medium RTXVideo_VSR 强度中 调用 RTX Video 原生后端做视频超分。 适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。 放大与超分 通用"
-    },
-    {
-      "id": "RTXVideo\\RTXVideo_VSR_Ultra",
-      "name": "RTXVideo_VSR",
-      "category": "upscale",
-      "subcategory": "通用",
-      "purposes": [
-        "upscale"
-      ],
-      "summary": "调用 RTX Video 原生后端做视频超分。",
-      "details": "放大与超分 › 通用\n\n适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。\n\n变体差异：强度：极高。四档为离散质量设置，实际画质与成本依赖显卡和驱动。\n\n进阶／实验：需要 NVIDIA Video Effects 运行库与受支持硬件，质量档位应在目标机器比较。\n\n尝试建议：确认原生后端初始化成功；按视频噪声或缩放目标选择 Denoise/VSR\n\n组合建议：主要缩放步骤；在「必要的降噪/修复」之后；在「抗锯齿、锐化、显示风格」之前。让尺寸重建先完成，再做输出分辨率相关的收尾。\n\n输出尺寸：使用效果组配置的输出尺寸\n\n使用条件：受支持的 NVIDIA RTX GPU/驱动；可加载 NVIDIA Video Effects 运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：当前 RTX Video 边界是 SDR/U8 兼容路径，HDR 高光会经过映射与量化。",
-      "level": "advanced",
-      "recommendation": "进阶／实验",
-      "search": "RTXVideo\\RTXVideo_VSR_Ultra RTXVideo_VSR RTXVideo 放大与超分 通用 RTXVideo VSR Ultra RTXVideo RTXVideo_VSR_Ultra RTXVideo_VSR 强度极高 调用 RTX Video 原生后端做视频超分。 适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。 放大与超分 通用"
-    },
-    {
       "id": "SGSR",
       "name": "SGSR",
       "category": "upscale",
@@ -2380,6 +2268,34 @@
       "level": "advanced",
       "recommendation": "进阶／实验",
       "search": "XeSSFG\\XeSS_MultiFrameGeneration_ZeroMV XeSS_MultiFrameGeneration XeSSFG 补帧与帧率 补帧 XeSSFG XeSS MultiFrameGeneration ZeroMV XeSSFG XeSS_MultiFrameGeneration_ZeroMV XeSS_MultiFrameGeneration 可选估算运动 通过 XeSS 原生呈现后端在捕获的真实帧之间生成帧。 列表项是 identity marker；生成帧由呈现端独立发布，不是着色器在该列表位置输出。外部捕获的运动信息有限，UI、光标与遮挡场景需实测。 补帧与帧率 补帧"
+    },
+    {
+      "id": "RTXVideo\\RTXVideo_Denoise",
+      "name": "RTXVideo_Denoise",
+      "category": "cleanup",
+      "subcategory": "降噪",
+      "purposes": [
+        "cleanup"
+      ],
+      "summary": "调用 RTX Video 原生后端做同尺寸视频降噪。",
+      "details": "清理修复 › 降噪\n\n适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。\n\n进阶／实验：需要 NVIDIA Video Effects 运行库与受支持硬件，质量档位应在目标机器比较。\n\n尝试建议：确认原生后端初始化成功；按视频噪声或缩放目标选择 Denoise/VSR\n\n组合建议：放大前；在「放大/超分、锐化」之前。先清理输入可减少后续放大噪声。\n\n输出尺寸：保持输入尺寸\n\n组合注意：强度过高会损失纹理\n\n使用条件：受支持的 NVIDIA RTX GPU/驱动；可加载 NVIDIA Video Effects 运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：当前 RTX Video 边界是 SDR/U8 兼容路径，HDR 高光会经过映射与量化。",
+      "level": "advanced",
+      "recommendation": "进阶／实验",
+      "search": "RTXVideo\\RTXVideo_Denoise RTXVideo\\RTXVideo_Denoise_High RTXVideo_Denoise RTXVideo 清理修复 降噪 RTXVideo Denoise High RTXVideo RTXVideo_Denoise_High RTXVideo_Denoise 强度高 调用 RTX Video 原生后端做同尺寸视频降噪。 适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。 清理修复 降噪 RTXVideo\\RTXVideo_Denoise_Low RTXVideo_Denoise RTXVideo 清理修复 降噪 RTXVideo Denoise Low RTXVideo RTXVideo_Denoise_Low RTXVideo_Denoise 强度低 调用 RTX Video 原生后端做同尺寸视频降噪。 适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。 清理修复 降噪 RTXVideo\\RTXVideo_Denoise_Medium RTXVideo_Denoise RTXVideo 清理修复 降噪 RTXVideo Denoise Medium RTXVideo RTXVideo_Denoise_Medium RTXVideo_Denoise 强度中 调用 RTX Video 原生后端做同尺寸视频降噪。 适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。 清理修复 降噪 RTXVideo\\RTXVideo_Denoise_Ultra RTXVideo_Denoise RTXVideo 清理修复 降噪 RTXVideo Denoise Ultra RTXVideo RTXVideo_Denoise_Ultra RTXVideo_Denoise 强度极高 调用 RTX Video 原生后端做同尺寸视频降噪。 适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。 清理修复 降噪"
+    },
+    {
+      "id": "RTXVideo\\RTXVideo_VSR",
+      "name": "RTXVideo_VSR",
+      "category": "upscale",
+      "subcategory": "通用",
+      "purposes": [
+        "upscale"
+      ],
+      "summary": "调用 RTX Video 原生后端做视频超分。",
+      "details": "放大与超分 › 通用\n\n适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。\n\n进阶／实验：需要 NVIDIA Video Effects 运行库与受支持硬件，质量档位应在目标机器比较。\n\n尝试建议：确认原生后端初始化成功；按视频噪声或缩放目标选择 Denoise/VSR\n\n组合建议：主要缩放步骤；在「必要的降噪/修复」之后；在「抗锯齿、锐化、显示风格」之前。让尺寸重建先完成，再做输出分辨率相关的收尾。\n\n输出尺寸：使用效果组配置的输出尺寸\n\n使用条件：受支持的 NVIDIA RTX GPU/驱动；可加载 NVIDIA Video Effects 运行库\n\n性能成本：硬件/运行时相关；具体帧率需在目标画面实测。\n\nHDR 注意：当前 RTX Video 边界是 SDR/U8 兼容路径，HDR 高光会经过映射与量化。",
+      "level": "advanced",
+      "recommendation": "进阶／实验",
+      "search": "RTXVideo\\RTXVideo_VSR RTXVideo\\RTXVideo_VSR_High RTXVideo_VSR RTXVideo 放大与超分 通用 RTXVideo VSR High RTXVideo RTXVideo_VSR_High RTXVideo_VSR 强度高 调用 RTX Video 原生后端做视频超分。 适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。 放大与超分 通用 RTXVideo\\RTXVideo_VSR_Low RTXVideo_VSR RTXVideo 放大与超分 通用 RTXVideo VSR Low RTXVideo RTXVideo_VSR_Low RTXVideo_VSR 强度低 调用 RTX Video 原生后端做视频超分。 适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。 放大与超分 通用 RTXVideo\\RTXVideo_VSR_Medium RTXVideo_VSR RTXVideo 放大与超分 通用 RTXVideo VSR Medium RTXVideo RTXVideo_VSR_Medium RTXVideo_VSR 强度中 调用 RTX Video 原生后端做视频超分。 适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。 放大与超分 通用 RTXVideo\\RTXVideo_VSR_Ultra RTXVideo_VSR RTXVideo 放大与超分 通用 RTXVideo VSR Ultra RTXVideo RTXVideo_VSR_Ultra RTXVideo_VSR 强度极高 调用 RTX Video 原生后端做视频超分。 适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。 放大与超分 通用"
     }
   ]
 }

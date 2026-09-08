@@ -101,12 +101,23 @@ private:
 	void _ShowEffectPickerDetails(size_t index);
 	void _AddPickedEffect(size_t index);
 	void _ChooseEffectCategory(std::wstring category, std::wstring subcategory, std::wstring description);
+	void _SetEffectCategoryExpanded(size_t index, bool expanded);
+	void _UpdateEffectPickerColors();
 	struct PickerRow {
 		::Magpie::EffectPickerEntry entry;
 		Grid container{ nullptr };
 		Button button{ nullptr };
-		TextBlock problem{ nullptr };
 	};
+	struct PickerCategoryRow {
+		std::wstring category, subcategory, name, description;
+		Border container{ nullptr };
+		Button button{ nullptr }, toggle{ nullptr };
+		TextBlock arrow{ nullptr };
+		int parent = -1;
+		bool expanded = false;
+	};
+	std::vector<PickerCategoryRow> _pickerCategories;
+	Border _pickerCategoryPane{ nullptr }, _pickerListPane{ nullptr }, _pickerDetailPane{ nullptr };
 	std::vector<PickerRow> _pickerRows;
 	Flyout _effectPicker{ nullptr };
 	Grid _pickerRoot{ nullptr };

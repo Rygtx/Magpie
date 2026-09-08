@@ -1297,8 +1297,8 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 				_appliedEffectParameterValues[effectIdx][parameterIdx]);
 			if (changed && effectIdx < runtimeInfos.size() &&
 				parameterIdx < runtimeInfos[effectIdx].size() &&
-				runtimeInfos[effectIdx][parameterIdx].applyMode !=
-					EffectParameterApplyMode::Unavailable) {
+				runtimeInfos[effectIdx][parameterIdx].applyMode ==
+					EffectParameterApplyMode::RestartRequired) {
 				++restartChangeCount;
 			}
 		}
@@ -1384,6 +1384,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 
 	bool needRedraw = false;
 	bool queueFailure = false;
+	std::vector<std::tuple<uint32_t, uint32_t, float>> liveUpdates;
 	bool parameterEdited = false;
 	bool requestRestart = false;
 	ImGui::PushID("frameSync");
@@ -1604,11 +1605,8 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 			if (changed && parameterValid && parameterEnabled) {
 				parameterEdited = true;
 				value = NormalizeEffectParameterValue(parameter, value);
-				if (isLive && !renderer.QueueEffectParameterUpdate(
-					static_cast<uint32_t>(effectIdx),
-					static_cast<uint32_t>(parameterIdx), value)) {
-					queueFailure = true;
-				}
+				if (isLive) liveUpdates.emplace_back(static_cast<uint32_t>(effectIdx),
+					static_cast<uint32_t>(parameterIdx), value);
 				needRedraw = true;
 			}
 
@@ -1693,13 +1691,9 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 					parameterIdx <
 						_draftEffectParameterValues[effectIdx].size();
 					++parameterIdx) {
-					if (isSessionLive(effectIdx, parameterIdx) &&
-						!renderer.QueueEffectParameterUpdate(
-							static_cast<uint32_t>(effectIdx),
-							static_cast<uint32_t>(parameterIdx),
-							_draftEffectParameterValues[effectIdx][parameterIdx])) {
-						queueFailure = true;
-					}
+					if (isSessionLive(effectIdx, parameterIdx)) liveUpdates.emplace_back(
+						static_cast<uint32_t>(effectIdx), static_cast<uint32_t>(parameterIdx),
+						_draftEffectParameterValues[effectIdx][parameterIdx]);
 				}
 			}
 			needRedraw = true;
@@ -1715,21 +1709,24 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		}
 		ImGui::EndDisabled();
 	}
-	if (queueFailure) {
-		ScalingWindow::Get().ShowError(ScalingError::EffectParameterLiveFailed);
-	}
-
+	bool submitted = true;
 	if (parameterEdited || requestRestart) {
-		_RequestEffectParameters(requestRestart ? EffectParametersRequestKind::SaveAndRestart
+		submitted = _RequestEffectParameters(requestRestart ? EffectParametersRequestKind::SaveAndRestart
 			: EffectParametersRequestKind::AutoSave);
 	}
+	// Publish desired values and enqueue persistence before waking the backend.
+	// Otherwise an immediate load failure could race ahead of the edit it rolls back.
+	if (submitted && !requestRestart) for (const auto& [effect, parameter, value] : liveUpdates) {
+		if (!renderer.QueueEffectParameterUpdate(effect, parameter, value)) queueFailure = true;
+	}
+	if (queueFailure) ScalingWindow::Get().ShowError(ScalingError::EffectParameterLiveFailed);
 	// Recount after this frame's edits (including Revert), keeping persistence
 	// separate from the values that have actually reached the backend.
 	restartChangeCount = frameSyncChangeCount();
 	for (size_t i = 0; i < _draftEffectParameterValues.size(); ++i) {
 		for (size_t j = 0; j < _draftEffectParameterValues[i].size(); ++j) {
 			if (i < runtimeInfos.size() && j < runtimeInfos[i].size() &&
-				runtimeInfos[i][j].applyMode != EffectParameterApplyMode::Unavailable && !ParameterValuesEqual(
+				runtimeInfos[i][j].applyMode == EffectParameterApplyMode::RestartRequired && !ParameterValuesEqual(
 				_draftEffectParameterValues[i][j], _appliedEffectParameterValues[i][j])) {
 				++restartChangeCount;
 			}
@@ -1750,6 +1747,15 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		status = _GetResourceString(key);
 	} else if (_effectParametersRevision) {
 		status = _GetResourceString(L"Overlay_EffectParameters_AutoSaved");
+	}
+	uint32_t livePending = 0;
+	for (size_t i = 0; i < _draftEffectParameterValues.size(); ++i)
+		for (size_t j = 0; j < _draftEffectParameterValues[i].size(); ++j)
+			if (isSessionLive(i, j) && !ParameterValuesEqual(_draftEffectParameterValues[i][j], _appliedEffectParameterValues[i][j])) ++livePending;
+	if (_parameterSessionSnapshot.applying || livePending || _parameterSessionSnapshot.applyFailed) {
+		if (!status.empty()) status += "  ";
+		status += _GetResourceString(_parameterSessionSnapshot.applyFailed && !livePending
+			? L"Overlay_EffectParameters_ApplyRolledBack" : L"Overlay_EffectParameters_Applying");
 	}
 	if (restartChangeCount > 0) {
 		if (!status.empty()) status += "  ";

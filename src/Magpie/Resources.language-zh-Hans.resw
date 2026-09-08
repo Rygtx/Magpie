@@ -1349,7 +1349,7 @@
   <data name="Message_FrameGenerationDisabled" xml:space="preserve"><value>补帧连续失败，已在本次运行中停用，原始帧会继续显示。请尝试降低倍率或更换光流设置，然后重新启用效果组。</value></data>
   <data name="Message_ConfigurationWriteFailed" xml:space="preserve"><value>最近的修改尚未保存到磁盘。请先保持 Magpie 打开，在“查看详情”中核对配置路径和失败原因；处理后点击“重试保存”。保存成功后再退出。</value></data>
   <data name="Message_EffectParameterConflict" xml:space="preserve"><value>效果组或参数已在其他位置更新，本面板的修改未覆盖保存。请停用并重新启用效果组，载入最新配置后再调整。</value></data>
-  <data name="Message_EffectParameterLiveFailed" xml:space="preserve"><value>效果器拒绝了本次实时更新，仍使用此前的运行值。已保存的设置可能与运行值不同；请重新启用效果组以应用，或恢复此前可用的参数值。</value></data>
+  <data name="Message_EffectParameterLiveFailed" xml:space="preserve"><value>本次更新未应用，效果器仍使用此前的运行值。请尝试较低或此前可用的参数值；若仍失败，请提供 logs\magpie.log。</value></data>
   <data name="Message_ScreenshotDirectoryFailed" xml:space="preserve"><value>无法创建截图目录。请根据详情检查路径和权限，或在主页的“截图保存目录”中选择可写入的目录后重试。</value></data>
   <data name="Message_ScreenshotWriteFailed" xml:space="preserve"><value>无法写入截图文件。请检查磁盘空间、文件是否只读或被占用，也可更换截图保存目录后重试。</value></data>
   <data name="Message_ScreenshotEncodeFailed" xml:space="preserve"><value>当前画面暂未能编码为截图。请重新启用效果组后再次点击工具栏“截图”；若仍失败，请复制详情并附上日志。</value></data>
@@ -1521,4 +1521,40 @@
   <data name="AppSettings_RecoveryRecordFailed" xml:space="preserve"><value>已找到这份配置的恢复记录，但记录暂不可用。请打开下方目录，从保留的原件或其他备份中选择可用配置，替换 config.json 后重新启动 Magpie。</value></data>
   <data name="AppSettings_RecoveryWriteFailed" xml:space="preserve"><value>暂未能完成配置恢复。请检查配置目录的写入权限、文件占用及磁盘空间，再重新启动 Magpie；已保存的恢复结果会继续使用。相关位置：</value></data>
   <data name="Message_CaptureMethodUnavailable" xml:space="preserve"><value>当前系统会话无法使用所选捕获方式。请打开下方配置，改选另一种捕获方式后重试（可先尝试 Graphics Capture，若已选用则尝试 GDI）。仍失败时，请复制详情并附上日志。</value></data>
+  <data name="Overlay_EffectParameters_Applying" xml:space="preserve">
+    <value>正在应用参数…</value>
+  </data>
+  <data name="Overlay_EffectParameters_ApplyRolledBack" xml:space="preserve">
+    <value>已恢复原档位。请尝试较低档位；仍失败时提供日志。</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Label" xml:space="preserve">
+    <value>强度</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Option_0" xml:space="preserve">
+    <value>低</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Option_1" xml:space="preserve">
+    <value>中</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Option_2" xml:space="preserve">
+    <value>高</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Option_3" xml:space="preserve">
+    <value>极高</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Label" xml:space="preserve">
+    <value>强度</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_0" xml:space="preserve">
+    <value>低</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_1" xml:space="preserve">
+    <value>中</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_2" xml:space="preserve">
+    <value>高</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_3" xml:space="preserve">
+    <value>极高</value>
+  </data>
 </root>

@@ -1502,7 +1502,8 @@ void AppSettings::_SetDefaultScalingModes() noexcept {
 		vsrUltra.effects.resize(2);
 		vsrUltra.effects[0].name = L"FrameRate_Filter";
 		auto& vsrEffect = vsrUltra.effects[1];
-		vsrEffect.name = L"RTXVideo\\RTXVideo_VSR_Ultra";
+		vsrEffect.name = L"RTXVideo\\RTXVideo_VSR";
+		vsrEffect.parameters[L"strength"] = 1.0f;
 		vsrEffect.scalingType = ::Magpie::ScalingType::Fit;
 	}
 	// DLSS Frame Generation

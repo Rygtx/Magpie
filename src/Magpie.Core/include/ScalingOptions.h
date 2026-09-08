@@ -181,6 +181,8 @@ struct EffectParameterSessionState {
 		std::vector<EffectOption> desired;
 		FrameSyncSettings frameSync;
 		uint64_t revision = 0;
+		bool applying = false;
+		bool applyFailed = false;
 	};
 
 	explicit EffectParameterSessionState(const std::vector<EffectOption>& effects,
@@ -225,6 +227,18 @@ struct EffectParameterSessionState {
 		if (_snapshot.frameSync == value) return;
 		_snapshot.frameSync = value;
 		++_snapshot.revision;
+	}
+	void Applying(bool applying, bool failed = false) {
+		std::scoped_lock lock(_mutex);
+		_snapshot.applying = applying;
+		_snapshot.applyFailed = failed;
+		++_snapshot.revision;
+	}
+	void RevertDesired(uint32_t effect, const std::string& parameter, float expected, float previous) {
+		std::scoped_lock lock(_mutex);
+		if (effect >= _snapshot.desired.size()) return;
+		if (RestoreRejectedEffectParameter(_snapshot.desired[effect].parameters, parameter, expected, previous))
+			++_snapshot.revision;
 	}
 private:
 	mutable std::mutex _mutex;
@@ -450,6 +464,7 @@ struct ScalingOptions {
 	std::function<void(HWND hwndTarget, ScalingError error)> showError;
 	std::function<void(HWND hwndTarget, ScalingError error,
 		std::string_view context, uint32_t systemError)> reportErrorDetails;
+	std::function<void(uint32_t, const EffectOption&, const std::string&, float, float)> revertEffectParameter;
 	void (*save)(const ScalingOptions& options, HWND hwndScaling) noexcept = nullptr;
 	bool (*requestEffectParameters)(
 		const ScalingOptions& sessionOptions,

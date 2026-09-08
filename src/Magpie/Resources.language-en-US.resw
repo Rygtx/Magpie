@@ -1349,7 +1349,7 @@
   <data name="Message_FrameGenerationDisabled" xml:space="preserve"><value>Frame generation was disabled for this session after repeated failures. Original frames will continue. Try a lower multiplier or different optical flow settings, then restart the effect group.</value></data>
   <data name="Message_ConfigurationWriteFailed" xml:space="preserve"><value>Recent changes have not been saved to disk. Keep Magpie open and check the configuration path and cause in View details. Resolve the problem, then click Retry save. Exit after saving succeeds.</value></data>
   <data name="Message_EffectParameterConflict" xml:space="preserve"><value>The group or parameters changed elsewhere. This panel’s changes did not overwrite them. Disable and re-enable the group to load the latest settings before adjusting again.</value></data>
-  <data name="Message_EffectParameterLiveFailed" xml:space="preserve"><value>The effect rejected a live parameter update and kept its previous running values. Saved settings may differ; restart the effect group to apply them, or restore the last working values.</value></data>
+  <data name="Message_EffectParameterLiveFailed" xml:space="preserve"><value>The update could not be applied; the effect is still using its previous values. Try a lower or previously working value. If it still fails, share logs\magpie.log.</value></data>
   <data name="Message_ScreenshotDirectoryFailed" xml:space="preserve"><value>The screenshot folder could not be created. Check its path and permissions in details, or choose a writable folder under Home → Screenshot save directory and retry.</value></data>
   <data name="Message_ScreenshotWriteFailed" xml:space="preserve"><value>The screenshot file could not be written. Check free disk space and whether the file is read-only or in use; try another screenshot folder.</value></data>
   <data name="Message_ScreenshotEncodeFailed" xml:space="preserve"><value>The image could not be encoded as a screenshot. Re-enable the effect group and click Take Screenshot on the toolbar again. If it still fails, copy the details and include the logs.</value></data>
@@ -1521,4 +1521,40 @@
   <data name="AppSettings_RecoveryRecordFailed" xml:space="preserve"><value>A recovery record exists for this configuration but is unavailable. Open the folder below, choose a usable configuration from the preserved original or another backup, replace config.json, then restart Magpie.</value></data>
   <data name="AppSettings_RecoveryWriteFailed" xml:space="preserve"><value>Configuration recovery could not be completed. Check write permission, file locks and free disk space in the configuration folder, then restart Magpie. Any saved recovery result will be reused. Related location:</value></data>
   <data name="Message_CaptureMethodUnavailable" xml:space="preserve"><value>The selected capture method is unavailable in this system session. Open the profile below and try another capture method (start with Graphics Capture, or try GDI if it is already selected). If it still fails, copy the details and include the logs.</value></data>
+  <data name="Overlay_EffectParameters_Applying" xml:space="preserve">
+    <value>Applying parameters…</value>
+  </data>
+  <data name="Overlay_EffectParameters_ApplyRolledBack" xml:space="preserve">
+    <value>Previous quality restored. Try a lower level; if it still fails, share the log.</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Label" xml:space="preserve">
+    <value>Strength</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Option_0" xml:space="preserve">
+    <value>Low</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Option_1" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Option_2" xml:space="preserve">
+    <value>High</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Option_3" xml:space="preserve">
+    <value>Ultra</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Label" xml:space="preserve">
+    <value>Strength</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_0" xml:space="preserve">
+    <value>Low</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_1" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_2" xml:space="preserve">
+    <value>High</value>
+  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_3" xml:space="preserve">
+    <value>Ultra</value>
+  </data>
 </root>

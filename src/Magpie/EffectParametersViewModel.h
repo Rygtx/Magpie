@@ -288,7 +288,6 @@ private:
 	IVector<IInspectable> _groups{ nullptr };
 	std::vector<com_ptr<EffectParameterGroupViewModel>> _groupImpls;
 	std::vector<com_ptr<ScalingModeParameter>> _parameterImpls;
-	com_ptr<ScalingModeParameter> _rtxStrengthParameter;
 	::Magpie::Event<uint32_t, uint32_t>::EventRevoker _parameterChangedRevoker;
 	::Magpie::Event<>::EventRevoker _frontEdgeSyncChangedRevoker;
 	bool _synchronizing = false;

@@ -58,6 +58,14 @@ public:
 		return false;
 	}
 
+	// Backend-thread transaction, serialized with Draw/Resize/destruction.
+	// A model-backed implementation may load a candidate private model here;
+	// renderer-owned textures and the active model survive a failed load.
+	virtual bool ApplyParameters(const EffectOption& option,
+		std::span<const std::string> names) noexcept {
+		return ApplyLiveParameters(option, names);
+	}
+
 	virtual bool Resize(
 		DeviceResources& resources,
 		ID3D11Texture2D* input,

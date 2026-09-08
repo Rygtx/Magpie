@@ -9,6 +9,7 @@
 #include "FSR2Upscaler.h"
 #include "FSR3Upscaler.h"
 #include "RTXVideoDenoiser.h"
+#include "RTXVideoParameters.h"
 #include "XeSSZeroMVUpscaler.h"
 #include "XeSSUpscaler.h"
 #include "FrameGuidanceDiagnostics.h"
@@ -91,7 +92,12 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 	}
 
 	if (effectName == "DLSSNR\\DLSSNR_AI_Filter") {
-		const DLSSNRSettings settings = ParseDLSSNRSettings(option, hdrEnabled);
+		// Renderer has selected the semantic HDR route before allocating these
+		// endpoints. FP16 here confirms that decision, rather than classifying capture.
+		D3D11_TEXTURE2D_DESC endpoint{};
+		input->GetDesc(&endpoint);
+		const DLSSNRSettings settings = ParseDLSSNRSettings(option,
+			hdrEnabled && endpoint.Format == DXGI_FORMAT_R16G16B16A16_FLOAT);
 		auto backend = std::make_unique<DLSSNRFilter>();
 		Logger::DiagnosticCapture diagnostic;
 		if (!backend->Initialize(resources, ngxCore, input, output, settings)) {
@@ -236,22 +242,14 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 		return { true, std::move(backend) };
 	}
 
-	const bool isRtxVideo = effectName.starts_with("RTXVideo\\RTXVideo_Denoise_") ||
-		effectName.starts_with("RTXVideo\\RTXVideo_VSR_");
-	if (isRtxVideo) {
-		const bool isVsr = effectName.find("_VSR_") != std::string_view::npos;
-		uint32_t qualityLevel = 8;
-		if (isVsr) {
-			qualityLevel = effectName.ends_with("_Low") ? 1 :
-				effectName.ends_with("_Medium") ? 2 :
-				effectName.ends_with("_High") ? 3 : 4;
-		} else if (effectName.ends_with("_Medium")) {
-			qualityLevel = 9;
-		} else if (effectName.ends_with("_High")) {
-			qualityLevel = 10;
-		} else if (effectName.ends_with("_Ultra")) {
-			qualityLevel = 11;
-		}
+	const int rtxFamily = effectName == RTXVideoCanonicalId<char>(0) ? 0
+		: effectName == RTXVideoCanonicalId<char>(1) ? 1 : -1;
+	if (rtxFamily >= 0) {
+		const bool isVsr = rtxFamily == 1;
+		const auto strength = option.parameters.find("strength");
+		const int tier = strength == option.parameters.end() ? RTX_VIDEO_DEFAULT_STRENGTH
+			: NormalizeRTXVideoStrength(strength->second);
+		const uint32_t qualityLevel = RTXVideoQualityLevel(rtxFamily, tier);
 		auto backend = std::make_unique<RTXVideoDenoiser>();
 		Logger::DiagnosticCapture diagnostic;
 		if (!backend->Initialize(resources, input, output, qualityLevel,

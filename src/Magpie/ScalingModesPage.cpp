@@ -192,9 +192,7 @@ void ScalingModesPage::AddEffectButton_Click(IInspectable const& sender, RoutedE
 		const auto size = XamlRoot().Size();
 		_pickerRoot.Width(std::max(280.0, std::min(820.0, double(size.Width) - 72.0)));
 		_pickerRoot.Height(std::max(220.0, std::min(640.0, double(size.Height) - 80.0)));
-		_pickerRoot.ColumnDefinitions().GetAt(0).Width({ _pickerRoot.Width() < 560 ? 140.0 : 184.0, GridUnitType::Pixel });
-		_pickerCategory.clear();
-		_pickerSubcategory.clear();
+		_pickerRoot.ColumnDefinitions().GetAt(0).Width({ _pickerRoot.Width() < 560 ? 160.0 : 220.0, GridUnitType::Pixel });
 		_pickerSearch.Text(L"");
 		_RefreshEffectPicker();
 		_effectPicker.XamlRoot(XamlRoot());

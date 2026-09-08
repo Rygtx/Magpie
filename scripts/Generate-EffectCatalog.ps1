@@ -39,8 +39,9 @@ $effects = @($review.effects | ForEach-Object {
     # Keep the product explanation about visible results; source evidence remains in the review.
     if ($effect.family -eq 'RTXVideo') {
         $description = if ($effect.category -eq 'cleanup') { '适合压缩噪声或颗粒明显的视频。可选择四档强度；逐步比较纹理保留与处理成本。' } else { '适合视频与串流内容的放大。可选择四档强度；结合源清晰度和性能余量比较。' }
-        $variant = '强度：' + $effect.variantSelection.displayValue + '。四档为离散质量设置，实际画质与成本依赖显卡和驱动。'
+        $variant = ''
     }
+    if ($effect.id -eq 'DLSSNR\DLSSNR_AI_Filter') { $description += ' HDR 路径按输入颜色信息自动选择，亮度转换使用输入白点；画质与高光表现仍需在目标内容上比较。' }
     $lines = [Collections.Generic.List[string]]::new()
     $lines.Add($category.name + ' › ' + $effect.subcategory)
     $lines.Add($description)
@@ -56,7 +57,8 @@ $effects = @($review.effects | ForEach-Object {
     if ($effect.pipeline.constraints.Count) { $lines.Add('组合注意：' + ($effect.pipeline.constraints -join '；')) }
     if ($effect.requirements.Count) { $lines.Add('使用条件：' + ($effect.requirements -join '；')) }
     $lines.Add('性能成本：' + $effect.cost.qualitative + '；具体帧率需在目标画面实测。')
-    if ($effect.hdr.showWarning) { $lines.Add('HDR 注意：' + $effect.hdr.warning) }
+    if ($effect.id -eq 'DLSSNR\DLSSNR_AI_Filter') { $lines.Add('HDR 注意：自动使用输入颜色信息与白点适配；FP16 路径仍需对比高光、亮度与颜色变化。输入分辨率调整在此路径下不生效。') }
+    elseif ($effect.hdr.showWarning) { $lines.Add('HDR 注意：' + $effect.hdr.warning) }
     $purposes = [Collections.Generic.List[string]]::new()
     $purposes.Add($effect.category)
     # Explicit secondary uses only. Never infer DLSSNR denoising from its internal name.
@@ -70,6 +72,17 @@ $effects = @($review.effects | ForEach-Object {
         search = $search -join ' '
     }
 })
+# r1 publishes two parameterized effects. The original 161-file audit remains
+# historical evidence; old names are retained only as search/migration aliases.
+$rtxEntries = @($effects | Where-Object { $_.id -like 'RTXVideo\*' })
+$effects = @($effects | Where-Object { $_.id -notlike 'RTXVideo\*' })
+foreach ($family in @('Denoise', 'VSR')) {
+    $aliases = @($rtxEntries | Where-Object { $_.id -like "RTXVideo\RTXVideo_${family}_*" })
+    $entry = $aliases | Where-Object { $_.id -eq "RTXVideo\RTXVideo_${family}_Medium" } | Select-Object -First 1
+    $entry.id = "RTXVideo\RTXVideo_$family"
+    $entry.search = $entry.id + ' ' + (($aliases | ForEach-Object { $_.search }) -join ' ')
+    $effects += $entry
+}
 $result = [ordered]@{ schemaVersion = 1; language = 'zh-Hans'; categories = $categories; effects = $effects } | ConvertTo-Json -Depth 8
 $output = Join-Path $repoRoot 'src/Magpie/EffectCatalog/zh-Hans.json'
 if ($Check) {

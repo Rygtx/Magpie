@@ -1,4 +1,6 @@
 #include "pch.h"
+#include "DlssnrAutoHdr.h"
+#include "RTXVideoParameters.h"
 #include "FrameTrace.h"
 #include "FramePacingOptions.h"
 #include "FramePacingWait.h"
@@ -121,7 +123,8 @@ static bool IsFrameGenerationEffect(std::string_view name) noexcept {
 
 static HdrFormatRoutes GetHdrRoutesForEffect(
 	const EffectOption& effect,
-	bool hdrEnabled
+	bool hdrEnabled,
+	bool dlssnrAutoHdr = false
 ) noexcept {
 	// Route selection is a HDR-only contract. Keep this guard local so a
 	// caller cannot accidentally turn saved HDR parameters into a live route
@@ -146,18 +149,14 @@ static HdrFormatRoutes GetHdrRoutesForEffect(
 		return GetGroupAHdrRoutes(group, casFormatOption);
 	}
 	if (group == "DLSSNR") {
-		const auto path = effect.parameters.find("experimentalHdrPath");
-		const auto scale = effect.parameters.find("experimentalHdrScale");
-		return GetGroupBHdrRoutes(group,
-			path != effect.parameters.end() && path->second >= 0.5f,
-			scale != effect.parameters.end() ? scale->second : 1.0f);
+		return GetGroupBHdrRoutes(group, dlssnrAutoHdr, 1.0f);
 	}
 	if (group == "DLSS" || group == "FSR" || group == "FSR2" ||
 		group == "FSR3" || group == "FSR4" || group == "NIS") {
 		return GetGroupBHdrRoutes(group);
 	}
 	if (group == "RTXVideo") {
-		return effect.name.find("_VSR_") != std::string::npos
+		return RTXVideoFamily(std::string_view(effect.name)) == 1
 			? EffectProtocolC::RTXVideoVsr()
 			: EffectProtocolC::RTXVideoDenoiser();
 	}
@@ -1616,6 +1615,11 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 	_backendInitSystemError = 0;
 	const ScalingOptions& options = ScalingWindow::Get().Options();
 	const bool noFP16 = !_backendResources.IsFP16Supported() || options.IsFP16Disabled();
+	_dlssnrAutoHdr = UseDlssnrAutoHdr(options.IsHdrCompatibilityEnabled(), !noFP16,
+		_frameSource->GetHdrFrameMetadata());
+	Logger::Get().Info(fmt::format("DLSSNR automatic HDR: fp16={} normalizationScale=1 colorValid={} inferred={}",
+		_dlssnrAutoHdr, _frameSource->GetHdrFrameMetadata().IsValid(),
+		_frameSource->GetHdrFrameMetadata().color.isInferred));
 
 	const std::vector<EffectOption>& effects = _runtimeEffectOptions;
 	assert(!effects.empty());
@@ -1632,7 +1636,7 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 			DXGI_FORMAT routeOutput = DXGI_FORMAT_UNKNOWN;
 			if (options.IsHdrCompatibilityEnabled()) {
 				const HdrFormatRoutes routes = GetHdrRoutesForEffect(
-					effects[id], options.IsHdrCompatibilityEnabled());
+					effects[id], options.IsHdrCompatibilityEnabled(), _dlssnrAutoHdr);
 				if (const auto* route = HdrEffectBoundary::SelectRoute(true, routes)) {
 					routeInput = route->inputFormat;
 					routeOutput = route->outputFormat;
@@ -1686,7 +1690,7 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 			const EffectOption& effectOption = effects[i];
 			initialHdrBoundary = HdrEffectBoundary::Prepare(
 				true, initialHdrFrame,
-				GetHdrRoutesForEffect(effectOption, options.IsHdrCompatibilityEnabled()),
+				GetHdrRoutesForEffect(effectOption, options.IsHdrCompatibilityEnabled(), _dlssnrAutoHdr),
 				initialHdrFrame.metadata.color);
 			_effectDrawers[i].SetHdrBoundary(initialHdrBoundary);
 		}
@@ -1823,20 +1827,25 @@ void Renderer::_UpdateHdrEffectBoundaryContexts() noexcept {
 	for (size_t i = 0; i < _effectDrawers.size(); ++i) {
 		const EffectOption& effectOption = i < _runtimeEffectOptions.size()
 			? _runtimeEffectOptions[i] : bicubicOption;
-		const HdrFormatRoutes routes = GetHdrRoutesForEffect(effectOption, options.IsHdrCompatibilityEnabled());
+		const HdrFormatRoutes routes = GetHdrRoutesForEffect(effectOption, options.IsHdrCompatibilityEnabled(), _dlssnrAutoHdr);
 		HdrEffectBoundaryContext context = HdrEffectBoundary::Prepare(
 			true, inputFrame, routes, inputFrame.metadata.color);
 		if (effectOption.name == "DLSSNR\\DLSSNR_AI_Filter") {
 			D3D11_TEXTURE2D_DESC sourceDesc{};
 			inputFrame.texture->GetDesc(&sourceDesc);
-			Logger::Get().Info(fmt::format(
+			const auto diagnostic = fmt::format(
 				"DLSSNR HDR boundary: enabled={} route={} profile={} requiresBounded={} "
-				"normalizationScale={} sourceFormat={} source={}x{}",
+				"normalizationScale={} sourceFormat={} source={}x{} sdrWhiteNits={} inferred={}",
 				options.IsHdrCompatibilityEnabled(),
 				context.SelectedRoute() ? context.SelectedRoute()->Id() : "(none)",
 				ToString(context.plan.profile), context.plan.requiresBoundedMapping,
 				context.plan.normalizationScale, static_cast<uint32_t>(sourceDesc.Format),
-				sourceDesc.Width, sourceDesc.Height));
+				sourceDesc.Width, sourceDesc.Height, inputFrame.metadata.color.sdrWhiteNits,
+				inputFrame.metadata.color.isInferred);
+			if (_dlssnrHdrDiagnostic != diagnostic) {
+				_dlssnrHdrDiagnostic = diagnostic;
+				Logger::Get().Info(diagnostic);
+			}
 		}
 		_effectDrawers[i].SetHdrBoundary(context);
 		if (i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) {
@@ -1862,11 +1871,7 @@ void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 		for (const EffectParameterDesc& parameter : desc.params) {
 			EffectParameterRuntimeInfo info{ .name = parameter.name };
 			const bool isHdrOnlyParameter =
-				(((option.name == "CAS\\CAS" || option.name == "CAS\\CAS_Scaling") &&
-					parameter.name == "hdrFormat") ||
-				 (option.name == "DLSSNR\\DLSSNR_AI_Filter" &&
-					(parameter.name == "experimentalHdrPath" ||
-					 parameter.name == "experimentalHdrScale")));
+				(option.name == "CAS\\CAS" || option.name == "CAS\\CAS_Scaling") && parameter.name == "hdrFormat";
 			if (!hdrEnabled && isHdrOnlyParameter) {
 				info.applyMode = EffectParameterApplyMode::Unavailable;
 				info.restartReason = EffectParameterRestartReason::None;
@@ -2022,8 +2027,11 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 			_UpdateFrameRateLimits();
 			succeeded = true;
 		} else if (valid && _nativeEffectBackends[effectIdx]) {
-			succeeded = _nativeEffectBackends[effectIdx]->ApplyLiveParameters(
+			ScalingWindow::Get().Options().parameterSession->Applying(true);
+			succeeded = _nativeEffectBackends[effectIdx]->ApplyParameters(
 				candidate, changedNames);
+			ScalingWindow::Get().Options().parameterSession->Applying(false,
+				!succeeded && RTXVideoFamily(std::string_view(candidate.name)) >= 0);
 			if (succeeded) {
 				_runtimeEffectOptions[effectIdx] = std::move(candidate);
 			}
@@ -2041,6 +2049,18 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 				"Live effect parameter update rejected: effect#{} ({})",
 				effectIdx, _runtimeEffectOptions[effectIdx].name));
 			const auto& options = ScalingWindow::Get().Options();
+			if (RTXVideoFamily(std::string_view(_runtimeEffectOptions[effectIdx].name)) >= 0) {
+				for (const auto& update : effectUpdates) {
+					if (effectIdx >= _effectDescs.size() || update.parameterIdx >= _effectDescs[effectIdx].params.size()) continue;
+					const auto& parameter = _effectDescs[effectIdx].params[update.parameterIdx];
+					const auto& previousOption = _runtimeEffectOptions[effectIdx];
+					const auto old = previousOption.parameters.find(parameter.name);
+					const float previous = old == previousOption.parameters.end() ? float(RTX_VIDEO_DEFAULT_STRENGTH) : old->second;
+					options.parameterSession->RevertDesired(effectIdx, parameter.name, update.value, previous);
+					if (options.revertEffectParameter) options.revertEffectParameter(
+						effectIdx, previousOption, parameter.name, update.value, previous);
+				}
+			}
 			if (options.reportErrorDetails) {
 				std::string context = _runtimeEffectOptions[effectIdx].name;
 				for (const auto& name : changedNames) context += " / " + name;

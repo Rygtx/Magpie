@@ -91,6 +91,25 @@ foreach ($record in $records) {
         throw "Deployed file verification failed: $($record.path)"
     }
 }
+# Retire only the eight exact built-in tier aliases after the new package has
+# been verified. Keep the actual installed bytes, including local edits.
+$retiredRoot = [IO.Path]::GetFullPath((Join-Path $container ('retired-effects/' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fffffff'))))
+$allowedRuntime = [IO.Path]::GetFullPath($destination) + [IO.Path]::DirectorySeparatorChar
+$allowedRetired = [IO.Path]::GetFullPath((Join-Path $container 'retired-effects')) + [IO.Path]::DirectorySeparatorChar
+foreach ($family in @('Denoise', 'VSR')) {
+    foreach ($tier in @('Low', 'Medium', 'High', 'Ultra')) {
+        $old = [IO.Path]::GetFullPath((Join-Path $destination "effects/RTXVideo/RTXVideo_${family}_${tier}.hlsl"))
+        $backup = [IO.Path]::GetFullPath((Join-Path $retiredRoot "RTXVideo_${family}_${tier}.hlsl"))
+        if (!$old.StartsWith($allowedRuntime, [StringComparison]::OrdinalIgnoreCase) -or
+            !$backup.StartsWith($allowedRetired, [StringComparison]::OrdinalIgnoreCase)) { throw 'Unexpected retired effect path.' }
+        if (Test-Path -LiteralPath $old) {
+            New-Item -ItemType Directory -Path $retiredRoot -Force | Out-Null
+            Copy-Item -LiteralPath $old -Destination $backup
+            if ((Get-FileHash -LiteralPath $old).Hash -ne (Get-FileHash -LiteralPath $backup).Hash) { throw 'Retired effect backup verification failed.' }
+            Remove-Item -LiteralPath $old
+        }
+    }
+}
 # No directory-wide deletion or mirroring: retain local config, logs and diagnostics.
 [ordered]@{
     schemaVersion = 1; version = $version; commit = $commit; sourceDirty = $false

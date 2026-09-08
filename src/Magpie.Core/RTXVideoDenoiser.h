@@ -8,8 +8,8 @@ class DeviceResources;
 
 enum class RtxVideoEffectKind : uint8_t { Vsr, Denoise };
 
-// NVIDIA VideoSuperRes modes 8-11 perform same-resolution denoising. The
-// native backend uses D3D11/CUDA interop, so no frame is copied through CPU.
+// NVIDIA VideoSuperRes modes 8-11 perform same-resolution denoising.
+// HDR uses the explicit CPU-U8 bridge; SDR uses D3D11/CUDA interop.
 class RTXVideoDenoiser final : public NativeEffectBackend {
 public:
 	RTXVideoDenoiser();
@@ -32,6 +32,9 @@ public:
 	) noexcept override;
 
 	bool Draw(const NativeEffectDrawContext& context) noexcept override;
+	EffectParameterApplyMode GetParameterApplyMode(std::string_view name) const noexcept override;
+	bool ApplyParameters(const EffectOption& option,
+		std::span<const std::string> names) noexcept override;
 	ScalingError InitializationError() const noexcept { return _initializationError; }
 
 private:

@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "RTXVideoParameters.h"
 
 namespace Magpie {
 
@@ -47,33 +48,6 @@ inline bool MatchesEffectCategory(const EffectPickerEntry& entry,
 	if (category == L"first_try") return entry.firstTry;
 	if (category != entry.category && std::ranges::find(entry.purposes, category) == entry.purposes.end()) return false;
 	return subcategory.empty() || (entry.category == category && entry.subcategory == subcategory);
-}
-
-// These are exact aliases, never prefix rewrites of custom effects.
-inline constexpr std::wstring_view RTX_VIDEO_IDS[2][4] = {
-	{ L"RTXVideo\\RTXVideo_Denoise_Low", L"RTXVideo\\RTXVideo_Denoise_Medium",
-	  L"RTXVideo\\RTXVideo_Denoise_High", L"RTXVideo\\RTXVideo_Denoise_Ultra" },
-	{ L"RTXVideo\\RTXVideo_VSR_Low", L"RTXVideo\\RTXVideo_VSR_Medium",
-	  L"RTXVideo\\RTXVideo_VSR_High", L"RTXVideo\\RTXVideo_VSR_Ultra" }
-};
-
-inline int RTXVideoFamily(std::wstring_view id) {
-	for (int family = 0; family < 2; ++family) {
-		for (auto candidate : RTX_VIDEO_IDS[family]) if (id == candidate) return family;
-	}
-	return -1;
-}
-
-inline int RTXVideoStrength(std::wstring_view id) {
-	const int family = RTXVideoFamily(id);
-	if (family < 0) return -1;
-	for (int i = 0; i < 4; ++i) if (RTX_VIDEO_IDS[family][i] == id) return i;
-	return -1;
-}
-
-inline std::wstring_view RTXVideoId(std::wstring_view currentId, int strength) {
-	const int family = RTXVideoFamily(currentId);
-	return family >= 0 && strength >= 0 && strength < 4 ? RTX_VIDEO_IDS[family][strength] : std::wstring_view{};
 }
 
 }

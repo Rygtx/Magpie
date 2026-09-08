@@ -28,8 +28,7 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) 
 			static_cast<NvidiaOpticalFlowQuality>(motionQualityValue) :
 			NvidiaOpticalFlowQuality::Balanced;
 
-	const float hdrScale = hdrEnabled ? getParameter("experimentalHdrScale", 1.0f) : 1.0f;
-	const bool hdrPath = hdrEnabled && getParameter("experimentalHdrPath", 0.0f) >= 0.5f;
+	// The caller supplies the resolved automatic boundary, never a saved UI choice.
 	return DLSSNRSettings{
 		.enableInputResolutionScaling =
 			getParameter("enableInputResolutionScaling", 0.0f) >= 0.5f,
@@ -54,13 +53,7 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) 
 		.useAutoMask = getParameter("useAutoMask", 0.0f) >= 0.5f,
 		.uiCorrection = getParameter("uiCorrection", 0.0f) >= 0.5f,
 		.motionVectorQuality = motionQuality,
-		.experimentalHdr = DlssnrExperimentProtocol{
-			.enabled = hdrPath && std::isfinite(hdrScale) &&
-				(hdrScale == 1.0f || hdrScale == 2.0f || hdrScale == 4.5f),
-			.scale = (std::isfinite(hdrScale) &&
-				(hdrScale == 1.0f || hdrScale == 2.0f || hdrScale == 4.5f)) ?
-				hdrScale : 1.0f
-		}
+		.experimentalHdr = DlssnrExperimentProtocol{ .enabled = hdrEnabled, .scale = 1.0f }
 	};
 }
 
@@ -1763,6 +1756,11 @@ DLSSNRFilter::GetFrameGuidanceRequirements() const noexcept {
 EffectParameterApplyMode DLSSNRFilter::GetParameterApplyMode(
 	std::string_view parameterName
 ) const noexcept {
+	if (_settings.experimentalHdr.enabled &&
+		(parameterName == "enableInputResolutionScaling" || parameterName == "inputResolutionPercent" ||
+		 parameterName == "residualMultiplier" || parameterName == "residualSaturation" ||
+		 parameterName == "residualLightness" || parameterName == "shadowStructureMultiplier" ||
+		 parameterName == "reflectionGlowMultiplier")) return EffectParameterApplyMode::Unavailable;
 	if (parameterName == "style" || parameterName == "intensity" ||
 		parameterName == "localToneStrength" ||
 		parameterName == "localStructureStrength" ||

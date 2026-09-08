@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "RTXVideoDenoiser.h"
+#include "RTXVideoParameters.h"
 #include "DeviceResources.h"
 #include "Logger.h"
 #include "ScalingWindow.h"
@@ -315,6 +316,36 @@ bool RTXVideoDenoiser::Resize(
 	return Initialize(deviceResources, input, output, _qualityLevel, _kind);
 }
 
+bool RTXVideoDenoiser::ApplyParameters(const EffectOption& option,
+	std::span<const std::string> names) noexcept {
+	if (!_impl || std::ranges::any_of(names, [](const auto& name) { return name != "strength"; })) return false;
+	const auto value = option.parameters.find("strength");
+	if (value == option.parameters.end() || value->second != float(NormalizeRTXVideoStrength(value->second))) return false;
+	const uint32_t quality = RTXVideoQualityLevel(_kind == RtxVideoEffectKind::Vsr ? 1 : 0,
+		NormalizeRTXVideoStrength(value->second));
+	if (quality == _qualityLevel) return true;
+	// This executes on the existing backend thread, between frames. The UI /
+	// presentation thread remains available while NvVFX_Load prepares the model.
+	// Both handles use the same synchronized endpoints; never Run them together.
+	if (!VFXSucceeded(_impl->synchronize(_impl->stream), "RTX Video synchronize before tier change")) return false;
+	NvVFX_Handle candidate = nullptr;
+	auto cleanup = wil::scope_exit([&] { if (candidate) NvVFX_DestroyEffect(candidate); });
+	Logger::Get().Info(fmt::format("RTX Video tier applying: {} -> {}", _qualityLevel, quality));
+	if (!VFXSucceeded(NvVFX_CreateEffect("VideoSuperRes", &candidate), "RTX Video create candidate") ||
+		!VFXSucceeded(NvVFX_SetImage(candidate, NVVFX_INPUT_IMAGE, &_impl->inputGPU), "RTX Video candidate input") ||
+		!VFXSucceeded(NvVFX_SetImage(candidate, NVVFX_OUTPUT_IMAGE, &_impl->outputGPU), "RTX Video candidate output") ||
+		!VFXSucceeded(NvVFX_SetCudaStream(candidate, NVVFX_CUDA_STREAM, _impl->stream), "RTX Video candidate stream") ||
+		!VFXSucceeded(NvVFX_SetU32(candidate, "QualityLevel", quality), "RTX Video candidate quality") ||
+		!VFXSucceeded(NvVFX_Load(candidate), "RTX Video load candidate")) {
+		Logger::Get().Warn(fmt::format("RTX Video tier rejected; retained quality={}", _qualityLevel));
+		return false;
+	}
+	std::swap(_impl->effect, candidate);
+	_qualityLevel = quality;
+	Logger::Get().Info(fmt::format("RTX Video tier applied: quality={}", quality));
+	return true;
+}
+
 bool RTXVideoDenoiser::Draw(const NativeEffectDrawContext& drawContext) noexcept {
 	ID3D11Texture2D* input = drawContext.input;
 	ID3D11Texture2D* output = drawContext.output;
@@ -468,6 +499,16 @@ bool RTXVideoDenoiser::Draw(const NativeEffectDrawContext&) noexcept {
 	return false;
 }
 
+bool RTXVideoDenoiser::ApplyParameters(const EffectOption&, std::span<const std::string>) noexcept {
+	return false;
+}
+
 }
 
 #endif
+
+namespace Magpie {
+EffectParameterApplyMode RTXVideoDenoiser::GetParameterApplyMode(std::string_view name) const noexcept {
+	return name == "strength" ? EffectParameterApplyMode::Live : EffectParameterApplyMode::Unavailable;
+}
+}
