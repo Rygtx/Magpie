@@ -406,6 +406,9 @@ void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 	assert(!options.screenshotsDir.empty());
 	assert(options.showToast && options.showError && options.save);
 
+	// Apply the temporary HDR suspension before capture, window and GPU setup,
+	// including direct callers and automatic/explicit session restarts.
+	options.IsHdrCompatibilityEnabled(false);
 	options.Log();
 	// 缩放结束后失效
 	// Automatic and explicit parameter restarts pass our own options back in.

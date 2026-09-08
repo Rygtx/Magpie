@@ -345,6 +345,17 @@ bool AppSettings::Initialize() noexcept {
 		}
 		if (plan.defaultModes) _SetDefaultScalingModes();
 		_LoadSettings(static_cast<const rapidjson::Document&>(plan.document).GetObj());
+		// Retire the hidden HDR toggle in every loaded profile, including the
+		// default and older versioned configurations. Preserve all other flags.
+		bool hdrSettingsChanged = false;
+		const auto disableHdr = [&](Profile& profile) {
+			if (!profile.IsHdrCompatibilityEnabled()) return;
+			profile.IsHdrCompatibilityEnabled(false);
+			hdrSettingsChanged = true;
+		};
+		disableHdr(_defaultProfile);
+		for (Profile& profile : _profiles) disableHdr(profile);
+		if (hdrSettingsChanged) logger.Info("HDR compatibility temporarily disabled in saved profiles");
 		const bool shortcutsChanged = _SetDefaultShortcuts();
 		// Existing versioned migrations also preserve the input before their first write.
 		if (_isConfigMigrationNeeded && !recovered) {
@@ -371,7 +382,7 @@ bool AppSettings::Initialize() noexcept {
 			for (const auto& field : plan.fields) _recoveryDetails += "\n" + field;
 			logger.Warn(fmt::format("Configuration recovery completed: kind={} reused={} repairedFields={} original={}",
 				static_cast<int>(plan.kind), reused, plan.fields.size(), StrHelper::UTF16ToUTF8(files.original.native())));
-		} else if (shortcutsChanged || !Win32Helper::FileExists(_configPath.c_str())) {
+		} else if (hdrSettingsChanged || shortcutsChanged || !Win32Helper::FileExists(_configPath.c_str())) {
 			SaveAsync();
 		}
 		return true;
