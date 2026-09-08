@@ -82,7 +82,7 @@ inline EffectPickerLayout MakeEffectPickerLayout() {
 	layout.root.ColumnDefinitions().Append(right);
 	RowDefinition upper, lower;
 	upper.Height({1, GridUnitType::Star});
-	lower.Height({160, GridUnitType::Pixel});
+	lower.Height({200, GridUnitType::Pixel});
 	layout.root.RowDefinitions().Append(upper);
 	layout.root.RowDefinitions().Append(lower);
 	layout.categories.Padding({6, 8, 6, 8});

@@ -110,8 +110,8 @@ int main(int argc, char**) {
 			layout.root.Arrange({ 0, 0, size.Width, size.Height });
 			assert(layout.details.ActualWidth() == size.Width);
 			assert(layout.list.ActualWidth() > 0 && layout.categories.ActualWidth() < size.Width);
-			assert(layout.details.ActualHeight() == 160);
-			assert(layout.list.ActualHeight() == size.Height - 160);
+			assert(layout.details.ActualHeight() == 200);
+			assert(layout.list.ActualHeight() == size.Height - 200);
 		}
 		StackPanel detailContent;
 		detailContent.Spacing(6);
@@ -149,10 +149,10 @@ int main(int argc, char**) {
 			const bool overflow = Magpie::EffectPickerDetailsOverflow(measuredContent, detailArea.ActualHeight());
 			hint.Visibility(overflow ? Visibility::Visible : Visibility::Collapsed);
 			arrange();
-			assert(layout.details.ActualHeight() == 160);
-			assert(layout.categories.ActualHeight() == height - 160);
-			assert(layout.list.ActualHeight() == height - 160);
-			assert(detailArea.ActualHeight() == 135); // 160 minus border and padding
+			assert(layout.details.ActualHeight() == 200);
+			assert(layout.categories.ActualHeight() == height - 200);
+			assert(layout.list.ActualHeight() == height - 200);
+			assert(detailArea.ActualHeight() == 175); // 200 minus border and padding
 			if (overflow) {
 				const auto position = hint.TransformToVisual(detailArea).TransformPoint({0, 0});
 				assert(position.Y >= detailScroll.ActualHeight());
@@ -196,6 +196,6 @@ int main(int argc, char**) {
 		assert(Magpie::EffectPickerDetailsWheelOffset(0, 200, -30) == 12);
 		std::cout << "Fixed details: 155 catalog entries at two widths, bottom-right overflow hint, short-content reset, Ctrl wheel routing and scroll boundaries passed.\n";
 		manager.Close();
-		std::cout << "Real XAML: old ItemsSource throws E_INVALIDARG; fixed choices accept four values; production layout passes at four sizes, with 800-DIP height and fixed 160-DIP details.\n";
+		std::cout << "Real XAML: old ItemsSource throws E_INVALIDARG; fixed choices accept four values; production layout passes at four sizes, with 800-DIP height and fixed 200-DIP details.\n";
 	}
 }
