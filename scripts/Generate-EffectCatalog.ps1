@@ -3,6 +3,14 @@ param([switch]$Check)
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $review = Get-Content -LiteralPath (Join-Path $repoRoot 'docs/experimental/reviews/20260908-effect-content-catalog.json') -Raw | ConvertFrom-Json
+$familyReview = Get-Content -LiteralPath (Join-Path $repoRoot 'docs/experimental/reviews/20260908-effect-family-review.json') -Raw | ConvertFrom-Json
+$familyMap = @{}
+foreach ($family in $familyReview.families) {
+    foreach ($sourceFamily in $family.sourceFamilies) {
+        if ($familyMap.ContainsKey($sourceFamily)) { throw "Duplicate family assignment: $sourceFamily" }
+        $familyMap[$sourceFamily] = $family
+    }
+}
 $subDescriptions = @{
     '通用' = '用于照片、视频或游戏等常见画面，按性能余量选择。'
     '动画线条' = '重建动画、视觉小说中的轮廓和色块，留意纹理与线条变化。'
@@ -65,11 +73,16 @@ $effects = @($review.effects | ForEach-Object {
     if ($effect.id -eq 'ACNet' -or $effect.id -match 'Upscale_Denoise|_DN$') { if (!$purposes.Contains('cleanup')) { $purposes.Add('cleanup') } }
     if ($effect.id -match 'Anime4K_3D_AA_' -and !$purposes.Contains('antialiasing')) { $purposes.Add('antialiasing') }
     $search = @($effect.id, $effect.displayName, $effect.family, $effect.tags, $effect.purpose, $description, $category.name, $effect.subcategory) | ForEach-Object { $_ }
+    $family = $familyMap[$effect.family]
+    $subfamily = if ($family) { $family.subfamilies | Where-Object sourceFamily -eq $effect.family } else { $null }
+    if ($family) { $search += $family.name }
     [ordered]@{
         id = $effect.id; name = $effect.displayName; category = $effect.category; subcategory = $effect.subcategory
         purposes = @($purposes); summary = $effect.purpose; details = $lines -join "`n`n"
         level = $effect.recommendation.level; recommendation = $levels[$effect.recommendation.level]
         search = $search -join ' '
+        family = if ($family) { [ordered]@{ id = $family.id; name = $family.name; summary = $family.summary } } else { $null }
+        subfamily = if ($subfamily) { [ordered]@{ id = $subfamily.id; name = $subfamily.name; summary = $subfamily.summary } } else { $null }
     }
 })
 # r1 publishes two parameterized effects. The original 161-file audit remains

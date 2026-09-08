@@ -3,6 +3,7 @@
 #include <winrt/Windows.UI.Xaml.Controls.h>
 #include <winrt/Windows.UI.Xaml.Controls.Primitives.h>
 #include <winrt/Windows.UI.Xaml.Hosting.h>
+#include <winrt/Windows.UI.Xaml.Media.h>
 #include <cassert>
 #include <iostream>
 
@@ -39,6 +40,55 @@ int main(int argc, char**) {
 			assert(unbox_value<hstring>(combo.SelectedItem()) == fixed.GetAt(tier));
 		}
 		using namespace Windows::UI::Xaml::Controls;
+		using namespace Windows::UI::Xaml;
+		Flyout flyout;
+		assert(flyout.ShouldConstrainToRootBounds());
+		flyout.ShouldConstrainToRootBounds(false);
+		assert(!flyout.ShouldConstrainToRootBounds());
+		for (int hidden : {0, 1, 10, 100}) {
+			for (int placement : {0, 1, 2}) {
+				StackPanel panel;
+				Grid first, last;
+				first.Height(50); last.Height(50);
+				Magpie::SetEffectPickerRowMargin(first); Magpie::SetEffectPickerRowMargin(last);
+				if (placement != 0) panel.Children().Append(first);
+				if (placement == 2) panel.Children().Append(last);
+				for (int i = 0; i < hidden; ++i) {
+					Grid row;
+					row.Height(50); Magpie::SetEffectPickerRowMargin(row, 13);
+					row.Visibility(Visibility::Collapsed);
+					panel.Children().Append(row);
+				}
+				if (placement == 0) panel.Children().Append(first);
+				if (placement != 2) panel.Children().Append(last);
+				auto measure = [&] {
+					panel.Measure({300, 10000}); panel.Arrange({0, 0, 300, panel.DesiredSize().Height});
+				};
+				measure();
+				assert(panel.DesiredSize().Height == 104);
+				assert(last.TransformToVisual(panel).TransformPoint({0, 0}).Y == 52);
+				last.Visibility(Visibility::Collapsed); measure();
+				assert(panel.DesiredSize().Height == 52);
+				first.Visibility(Visibility::Collapsed); measure();
+				assert(panel.DesiredSize().Height == 0);
+			}
+		}
+		Button toggle;
+		const auto icon = Magpie::MakeEffectPickerToggleIcon(toggle);
+		for (bool expanded : {false, true, false}) {
+			icon.Expanded(expanded); icon.root.Measure({100, 100}); icon.root.Arrange({0, 0, 12, 12});
+			assert(icon.root.DesiredSize().Width == 12 && icon.root.DesiredSize().Height == 12);
+			assert(icon.vertical.Visibility() == (expanded ? Visibility::Collapsed : Visibility::Visible));
+		}
+		for (double dpi : {96.0, 144.0, 192.0, 288.0}) {
+			for (Size work : {Size{1920, 1040}, Size{1280, 680}, Size{800, 560}}) {
+				const auto size = Magpie::EffectPickerSize(work.Width, work.Height, dpi / 96);
+				assert(size.Width <= 820 && size.Height <= 640);
+				assert((size.Width + 64) * dpi / 96 <= work.Width);
+				assert((size.Height + 64) * dpi / 96 <= work.Height);
+			}
+		}
+		std::cout << "Windowless XAML: hidden 0/1/10/100 rows at head/middle/tail, all-hidden/single result, +/- geometry and monitor sizing passed.\n";
 		const auto layout = Magpie::MakeEffectPickerLayout();
 		assert(Grid::GetColumn(layout.list) == 1);
 		assert(Grid::GetRow(layout.details) == 1 && Grid::GetColumnSpan(layout.details) == 2);

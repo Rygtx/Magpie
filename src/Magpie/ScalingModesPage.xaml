@@ -7,6 +7,40 @@
       xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
       mc:Ignorable="d">
 	<Page.Resources>
+		<Style x:Key="EffectPickerPresenterStyle" TargetType="FlyoutPresenter"
+		       BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
+			<Setter Property="MaxWidth" Value="1000" />
+			<Setter Property="MaxHeight" Value="900" />
+			<Setter Property="Padding" Value="4" />
+		</Style>
+		<Style x:Key="EffectPickerButtonStyle" TargetType="Button"
+		       BasedOn="{StaticResource DefaultButtonStyle}">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Padding" Value="10,8" />
+			<Setter Property="MinWidth" Value="0" />
+			<Setter Property="MinHeight" Value="0" />
+			<Setter Property="HorizontalAlignment" Value="Stretch" />
+			<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		</Style>
+		<Style x:Key="EffectPickerPaneStyle" TargetType="Border">
+			<Setter Property="Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+			<Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+			<Setter Property="CornerRadius" Value="4" />
+		</Style>
+		<Style x:Key="EffectPickerCategoryStyle" TargetType="Border">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+			<Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
+		</Style>
+		<Style x:Key="EffectPickerSelectedCategoryStyle" TargetType="Border"
+		       BasedOn="{StaticResource EffectPickerCategoryStyle}">
+			<Setter Property="Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+		</Style>
+		<DataTemplate x:Key="EffectPickerSelectionMark">
+			<Border Width="3" Height="16" HorizontalAlignment="Left" VerticalAlignment="Center"
+			        Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="1.5" />
+		</DataTemplate>
 		<DataTemplate x:Key="EffectParametersFlyout"
 		              x:DataType="local:EffectParametersViewModel">
 			<ScrollViewer Width="{x:Bind ContentWidth, Mode=OneWay}"

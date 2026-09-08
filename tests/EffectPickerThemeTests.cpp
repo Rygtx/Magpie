@@ -1,0 +1,85 @@
+#include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Foundation.Collections.h>
+#include <winrt/Windows.UI.Xaml.h>
+#include <winrt/Windows.UI.Xaml.Controls.h>
+#include <winrt/Windows.UI.Xaml.Hosting.h>
+#include <winrt/Windows.UI.Xaml.Markup.h>
+#include <winrt/Windows.UI.Xaml.Media.h>
+#include <winrt/Microsoft.UI.Xaml.Controls.h>
+#include <winrt/Microsoft.UI.Xaml.XamlTypeInfo.h>
+#include <fstream>
+#include <iostream>
+#include <cassert>
+#include <vector>
+
+using namespace winrt;
+using namespace Windows::UI::Xaml;
+using namespace Windows::UI::Xaml::Controls;
+
+struct ThemeTestApp : ApplicationT<ThemeTestApp, Markup::IXamlMetadataProvider> {
+	Microsoft::UI::Xaml::XamlTypeInfo::XamlControlsXamlMetaDataProvider provider{nullptr};
+	void InitializeResources() {
+		provider = Microsoft::UI::Xaml::XamlTypeInfo::XamlControlsXamlMetaDataProvider();
+		Microsoft::UI::Xaml::Controls::XamlControlsResources resources;
+		resources.ControlsResourcesVersion(Microsoft::UI::Xaml::Controls::ControlsResourcesVersion::Version2);
+		Resources().MergedDictionaries().Append(resources);
+	}
+	auto& Provider() {
+		if (!provider) provider = Microsoft::UI::Xaml::XamlTypeInfo::XamlControlsXamlMetaDataProvider();
+		return provider;
+	}
+	Markup::IXamlType GetXamlType(Interop::TypeName const& type) { return Provider().GetXamlType(type); }
+	Markup::IXamlType GetXamlType(hstring const& name) { return Provider().GetXamlType(name); }
+	com_array<Markup::XmlnsDefinition> GetXmlnsDefinitions() { return Provider().GetXmlnsDefinitions(); }
+};
+
+int main() {
+	try {
+		init_apartment(apartment_type::single_threaded);
+		const auto app = make_self<ThemeTestApp>();
+		std::cerr << "Initialize XAML\n";
+		const auto manager = Hosting::WindowsXamlManager::InitializeForCurrentThread();
+		std::cerr << "Initialize WinUI resources\n";
+		app->InitializeResources();
+		std::ifstream input("EffectPickerStyles.xaml", std::ios::binary);
+		const std::string bytes{std::istreambuf_iterator<char>(input), {}};
+		assert(!bytes.empty());
+		std::cerr << "Load production styles\n";
+		const auto styles = Markup::XamlReader::Load(to_hstring(bytes)).as<ResourceDictionary>();
+		app->Resources().MergedDictionaries().Append(styles);
+		Grid root;
+		Button button;
+		button.Style(styles.Lookup(box_value(L"EffectPickerButtonStyle")).as<Style>());
+		button.Content(box_value(L"CuNNy"));
+		root.Children().Append(button);
+		Border pane, selected;
+		pane.Style(styles.Lookup(box_value(L"EffectPickerPaneStyle")).as<Style>());
+		selected.Style(styles.Lookup(box_value(L"EffectPickerSelectedCategoryStyle")).as<Style>());
+		root.Children().Append(pane); root.Children().Append(selected);
+		const auto mark = styles.Lookup(box_value(L"EffectPickerSelectionMark")).as<DataTemplate>().LoadContent().as<Border>();
+		root.Children().Append(mark);
+		FlyoutPresenter presenter;
+		presenter.Style(styles.Lookup(box_value(L"EffectPickerPresenterStyle")).as<Style>());
+		assert(presenter.Style().BasedOn());
+		presenter.Content(root);
+		std::vector<Windows::UI::Color> textColors;
+		for (ElementTheme theme : {ElementTheme::Dark, ElementTheme::Light, ElementTheme::Dark}) {
+			std::cerr << "Measure theme " << int(theme) << "\n";
+			presenter.RequestedTheme(theme);
+			presenter.Measure({828, 648}); presenter.Arrange({0, 0, 828, 648});
+			assert(presenter.Background() && pane.Background() && selected.Background() && mark.Background());
+			assert(presenter.BorderBrush() && button.Foreground());
+			assert(presenter.CornerRadius().TopLeft > 0);
+			assert(button.CornerRadius().TopLeft > 0);
+			assert(pane.Background().as<Media::SolidColorBrush>().Color().A < 255);
+			textColors.push_back(button.Foreground().as<Media::SolidColorBrush>().Color());
+		}
+		assert(textColors[0] != textColors[1] && textColors[0] == textColors[2]);
+		std::cout << "Flyout material: " << to_string(get_class_name(presenter.Background())) << "\n";
+		manager.Close();
+		std::cout << "Production picker resources load with WinUI 2 Version2: themed brushes, rounded controls, translucent panes and inherited flyout template passed. No window shown.\n";
+	} catch (hresult_error const& error) {
+		std::cerr << "Theme resource error: " << to_string(error.message()) << " (" << std::hex << error.code().value << ")\n";
+		return 1;
+	}
+}

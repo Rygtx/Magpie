@@ -4,7 +4,9 @@
 #include "ScalingModesViewModel.h"
 #include "EffectParameterResetGesture.h"
 #include "EffectPickerModel.h"
+#include "EffectPickerLayout.h"
 #include <unordered_set>
+#include <array>
 
 namespace winrt::Magpie::implementation {
 
@@ -97,33 +99,50 @@ private:
 	};
 
 	void _BuildEffectPicker();
-	void _RefreshEffectPicker();
-	void _ShowEffectPickerDetails(size_t index);
-	void _AddPickedEffect(size_t index);
+	void _RefreshEffectPicker(std::wstring anchor = {});
+	void _ShowEffectPickerDetails(std::wstring_view key);
+	void _AddPickedEffect(std::wstring_view id);
+	void _ToggleEffectFamily(std::wstring_view key);
+	void _EffectPickerRowKeyDown(std::wstring_view key, Input::KeyRoutedEventArgs const& args);
+	void _JumpEffectPickerLetter(int letter);
+	void _UpdateEffectPickerIndex();
+	void _SizeEffectPicker(Button const& anchor);
+	Button _EffectPickerButton(UIElement const& content);
 	void _ChooseEffectCategory(std::wstring category, std::wstring subcategory, std::wstring description);
 	void _SetEffectCategoryExpanded(size_t index, bool expanded);
 	void _UpdateEffectPickerColors();
 	struct PickerRow {
-		::Magpie::EffectPickerEntry entry;
-		Grid container{ nullptr };
+		::Magpie::EffectPickerVisibleRow entry;
 		Button button{ nullptr };
 	};
 	struct PickerCategoryRow {
 		std::wstring category, subcategory, name, description;
 		Border container{ nullptr };
 		Button button{ nullptr }, toggle{ nullptr };
-		TextBlock arrow{ nullptr };
+		::Magpie::EffectPickerToggleIcon icon;
+		FrameworkElement selectionMark{ nullptr };
 		int parent = -1;
 		bool expanded = false;
 	};
 	std::vector<PickerCategoryRow> _pickerCategories;
 	Border _pickerCategoryPane{ nullptr }, _pickerListPane{ nullptr }, _pickerDetailPane{ nullptr };
 	std::vector<PickerRow> _pickerRows;
+	std::vector<::Magpie::EffectPickerEntry> _pickerEntries;
+	std::unordered_set<std::wstring> _pickerExpandedFamilies, _pickerSearchCollapsedFamilies;
+	std::wstring _pickerLastQuery;
+	StackPanel _pickerResults{ nullptr };
+	Grid _pickerIndexPane{ nullptr }, _pickerIndexRail{ nullptr };
+	Button _pickerIndexButton{ nullptr };
+	Flyout _pickerIndexFlyout{ nullptr };
+	std::vector<Button> _pickerRailLetters, _pickerGridLetters;
+	std::array<std::wstring, 27> _pickerLetterTargets;
+	int _pickerPendingLetter = -1;
+	bool _pickerIndexOpen = false;
 	Flyout _effectPicker{ nullptr };
 	Grid _pickerRoot{ nullptr };
 	TextBox _pickerSearch{ nullptr };
 	TextBlock _pickerCount{ nullptr }, _pickerDetails{ nullptr }, _pickerDetailTitle{ nullptr };
-	ScrollViewer _pickerListScroll{ nullptr }, _pickerDetailScroll{ nullptr };
+	ScrollViewer _pickerListScroll{ nullptr }, _pickerDetailScroll{ nullptr }, _pickerCategoryScroll{ nullptr };
 	winrt::Magpie::ScalingModeItem _pickerMode{ nullptr };
 	std::wstring _pickerCategory, _pickerSubcategory;
 	bool _pickerChangingCategory = false;

@@ -1,5 +1,7 @@
 # Magpie 实验分支文档索引
 
+当前本地工作为 `0.6.7` 分支的 `067 local`，持续覆盖同一运行目录。入口：[r1 fix1 执行清单](todos/20260908-v0.6.7-r1-fix1-TODO.md)、[效果器选择器与参数测试](testing/EFFECT-PICKER.md)、[本地构建约定](GIT-WORKFLOW.md)。下面的 0.6.6 与更早发布条目保留历史。
+
 当前待发布版本：[0.6.6 Release Note](../RELEASE_NOTES_v0.6.6-experimental.md)。本版改进参数实时编辑、Front Edge Sync 滑条和重新启用后的浮窗恢复。此前 [0.6.5](../RELEASE_NOTES_v0.6.5-experimental.md) 的 r1–r10 记录保留历史，其中 DLSSNR 自动重启分类由 0.6.6 的实时更新替代。
 
 - [0.6.6 参数交互与本地验证](reviews/20260906-v0.6.6-parameter-interaction.md)

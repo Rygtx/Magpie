@@ -9,6 +9,10 @@ if (@(Compare-Object $ids @($catalog.effects.id)).Count -or @($catalog.effects.i
 foreach ($entry in $catalog.effects) {
     foreach ($field in @('name','summary','details','category','search')) { if (!$entry.$field) { throw "Missing $field for $($entry.id)" } }
     if ($entry.category -notin $catalog.categories.id) { throw 'Unknown category' }
+    foreach ($family in @($entry.family, $entry.subfamily)) {
+        if ($family -and (!$family.id -or !$family.name -or !$family.summary)) { throw "Incomplete family: $($entry.id)" }
+    }
+    if ($entry.subfamily -and !$entry.family) { throw 'Subfamily without a parent' }
 }
 $dlssnr = $catalog.effects | Where-Object id -eq 'DLSSNR\DLSSNR_AI_Filter'
 if ($dlssnr.category -ne 'style' -or $dlssnr.purposes -contains 'cleanup' -or $dlssnr.summary -match '降噪') { throw 'DLSSNR purpose regression' }
@@ -22,4 +26,8 @@ foreach ($entry in $rtx) {
     foreach ($tier in @('Low','Medium','High','Ultra')) { if (!$entry.search.Contains($entry.id + '_' + $tier)) { throw 'Missing legacy search alias' } }
 }
 if (@($catalog.effects | Where-Object { $_.id -like 'XeSSFG\*' -and $_.name -like '*ZeroMV*' }).Count) { throw 'XeSS display alias regression' }
+$cunny = @($catalog.effects | Where-Object { $_.family.id -eq 'cunny' })
+if ($cunny.Count -ne 29 -or @($cunny.subfamily.id | Sort-Object -Unique).Count -ne 2) { throw 'CuNNy generation grouping regression' }
+if (@($catalog.effects | Where-Object { $_.family.id -eq 'nnedi3' }).Count -ne 10) { throw 'NNEDI3 family regression' }
+if (@($catalog.effects | Where-Object { $_.id -match '^(CRT|Sharpen|Diagnostics|RTXVideo)\\' -and $_.family }).Count) { throw 'Mixed algorithms were merged into a family' }
 "Catalog validated: $($ids.Count) source effects, 155 built-in picker entries; eight RTX names retained as aliases."

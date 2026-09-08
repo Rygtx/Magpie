@@ -63,6 +63,13 @@ EffectCatalog::EffectCatalog() {
 		entry.recommendation = text(value, "recommendation");
 		entry.firstTry = text(value, "level") == L"first_try";
 		entry.searchText = NormalizeEffectSearch(text(value, "search"));
+		auto readFamily = [&](const char* key) {
+			const auto family = value.FindMember(key);
+			if (family == value.MemberEnd() || !family->value.IsObject()) return EffectPickerFamily{};
+			return EffectPickerFamily{text(family->value, "id"), text(family->value, "name"), text(family->value, "summary")};
+		};
+		entry.family = readFamily("family");
+		entry.subfamily = readFamily("subfamily");
 		const auto purposes = value.FindMember("purposes");
 		if (purposes != value.MemberEnd() && purposes->value.IsArray()) {
 			for (const auto& purpose : purposes->value.GetArray()) {
