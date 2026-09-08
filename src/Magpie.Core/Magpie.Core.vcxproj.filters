@@ -132,6 +132,9 @@
     <ClInclude Include="FrameGuidancePerformance.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="NativeBackendTiming.h">
+      <Filter>Render</Filter>
+    </ClInclude>
     <ClInclude Include="ZeroFrameGuidanceProvider.h">
       <Filter>Render</Filter>
     </ClInclude>

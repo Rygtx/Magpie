@@ -5,6 +5,7 @@
 #include "FrameGuidanceD3D12Interop.h"
 #include "Logger.h"
 #include "NgxD3D12Core.h"
+#include "NativeBackendTiming.h"
 
 #ifdef MP_ENABLE_DLSS_FRAME_GENERATION
 #include <d3d12.h>
@@ -31,10 +32,12 @@ struct DLSSFrameGenerator::Impl {
 	winrt::com_ptr<ID3D12Resource> zeroDepth12;
 	std::array<winrt::com_ptr<ID3D12Resource>, 4> interpolationDisable12;
 	std::array<winrt::com_ptr<ID3D12Resource>, 4> interpolationDisableReadback12;
+	std::array<const uint8_t*, 4> interpolationDisableMapped{};
 	std::unique_ptr<FrameGuidanceD3D12Interop> guidanceInterop;
 	winrt::com_ptr<ID3D12DescriptorHeap> descriptorHeap12;
 	winrt::com_ptr<ID3D11Fence> fence11;
 	winrt::com_ptr<ID3D12Fence> fence12;
+	wil::unique_event_nothrow fenceEvent;
 	NVSDK_NGX_Handle* feature = nullptr;
 	NVSDK_NGX_Parameter* parameters = nullptr;
 	uint64_t fenceValue = 0;
@@ -147,18 +150,22 @@ static NVSDK_NGX_Result EvaluateDlssgSafely(
 }
 
 static bool WaitForFence(DLSSFrameGenerator::Impl& impl, uint64_t value) noexcept {
-	if (!value || impl.fence12->GetCompletedValue() >= value) {
+	const uint64_t completed = impl.fence12->GetCompletedValue();
+	if (completed == UINT64_MAX) return false;
+	if (!value || completed >= value) {
 		return true;
 	}
 
-	wil::unique_event_nothrow event;
-	if (FAILED(event.create())) {
+	if (!impl.fenceEvent || !ResetEvent(impl.fenceEvent.get()) ||
+		FAILED(impl.fence12->SetEventOnCompletion(
+		value, impl.fenceEvent.get()))) {
 		return false;
 	}
-	if (FAILED(impl.fence12->SetEventOnCompletion(value, event.get()))) {
-		return false;
-	}
-	return WaitForSingleObject(event.get(), 3000) == WAIT_OBJECT_0;
+	// A prior timed-out registration can also signal the reusable event. Only
+	// the fence value proves this submission completed; a stale wake is failure.
+	if (WaitForSingleObject(impl.fenceEvent.get(), 3000) != WAIT_OBJECT_0) return false;
+	const uint64_t finalValue = impl.fence12->GetCompletedValue();
+	return finalValue != UINT64_MAX && finalValue >= value;
 }
 
 static bool WaitForQueue(DLSSFrameGenerator::Impl& impl) noexcept {
@@ -172,6 +179,13 @@ static bool WaitForQueue(DLSSFrameGenerator::Impl& impl) noexcept {
 DLSSFrameGenerator::Impl::~Impl() {
 	if (queue12 && fence12) {
 		WaitForQueue(*this);
+	}
+	for (size_t i = 0; i < interpolationDisableMapped.size(); ++i) {
+		if (interpolationDisableMapped[i]) {
+			const D3D12_RANGE writtenRange{};
+			interpolationDisableReadback12[i]->Unmap(0, &writtenRange);
+			interpolationDisableMapped[i] = nullptr;
+		}
 	}
 	if (feature) {
 		DWORD sehCode = 0;
@@ -325,6 +339,14 @@ static bool CreateInterpolationDisableResources(
 			"Create DLSSFG interpolation-disable readback failed", hr);
 		return false;
 	}
+	void* mapped = nullptr;
+	const D3D12_RANGE readRange{ 0, 1 };
+	hr = impl.interpolationDisableReadback12[frameIndex]->Map(0, &readRange, &mapped);
+	if (FAILED(hr) || !mapped) {
+		Logger::Get().ComError("Map DLSSFG interpolation-disable readback failed", hr);
+		return false;
+	}
+	impl.interpolationDisableMapped[frameIndex] = static_cast<const uint8_t*>(mapped);
 	return true;
 }
 
@@ -332,17 +354,13 @@ static std::optional<bool> ReadInterpolationDisabled(
 	DLSSFrameGenerator::Impl& impl,
 	uint32_t frameIndex
 ) noexcept {
-	D3D12_RANGE readRange{ 0, 1 };
-	void* mapped = nullptr;
-	const HRESULT hr = impl.interpolationDisableReadback12[frameIndex]->Map(
-		0, &readRange, &mapped);
-	if (FAILED(hr) || !mapped) {
+	const uint8_t* mapped = impl.interpolationDisableMapped[frameIndex];
+	if (!mapped) {
 		++impl.diagnosticInterpolationReadbackFailure[frameIndex];
 		return std::nullopt;
 	}
-	const bool disabled = *static_cast<const uint8_t*>(mapped) != 0;
-	D3D12_RANGE writtenRange{};
-	impl.interpolationDisableReadback12[frameIndex]->Unmap(0, &writtenRange);
+	// Draw has already waited for the GPU copy before reading this mapping.
+	const bool disabled = *mapped != 0;
 	if (disabled) {
 		++impl.diagnosticInterpolationDisabled[frameIndex];
 	} else {
@@ -377,6 +395,10 @@ bool DLSSFrameGenerator::Initialize(
 	impl->context11 = resources.GetD3DDC();
 	impl->coreOwner = &ngxCore;
 	impl->settings = _requestedSettings;
+	if (FAILED(impl->fenceEvent.create())) {
+		Logger::Get().Error("Create reusable DLSSFG fence event failed");
+		return false;
+	}
 
 	D3D11_TEXTURE2D_DESC inputDesc{};
 	input->GetDesc(&inputDesc);
@@ -848,38 +870,40 @@ bool DLSSFrameGenerator::Draw(
 	impl.resetHistory = false;
 	impl.lastGuidanceBinding = guidanceBinding;
 	if (guidanceReset) impl.lastGuidanceResetFrameId = frameId;
-	if (++impl.diagnosticRealFrames >= 120) {
-		Logger::Get().Info(fmt::format(
-			"DLSSFG 120-real-frame diagnostics: multiplier={}x "
-			"evaluate[index1={}/{} index2={}/{} index3={}/{}] "
-			"generatedPublish={}/{} "
-			"interpolation[index1={}/{}/{} index2={}/{}/{} index3={}/{}/{}]",
-			impl.multiplier,
-			impl.diagnosticEvaluateSuccess[1],
-			impl.diagnosticEvaluateFailure[1],
-			impl.diagnosticEvaluateSuccess[2],
-			impl.diagnosticEvaluateFailure[2],
-			impl.diagnosticEvaluateSuccess[3],
-			impl.diagnosticEvaluateFailure[3],
-			impl.diagnosticGeneratedPublishSuccess,
-			impl.diagnosticGeneratedPublishFailure,
-			impl.diagnosticInterpolationEnabled[1],
-			impl.diagnosticInterpolationDisabled[1],
-			impl.diagnosticInterpolationReadbackFailure[1],
-			impl.diagnosticInterpolationEnabled[2],
-			impl.diagnosticInterpolationDisabled[2],
-			impl.diagnosticInterpolationReadbackFailure[2],
-			impl.diagnosticInterpolationEnabled[3],
-			impl.diagnosticInterpolationDisabled[3],
-			impl.diagnosticInterpolationReadbackFailure[3]));
-		impl.diagnosticRealFrames = 0;
-		impl.diagnosticEvaluateSuccess.fill(0);
-		impl.diagnosticEvaluateFailure.fill(0);
-		impl.diagnosticInterpolationEnabled.fill(0);
-		impl.diagnosticInterpolationDisabled.fill(0);
-		impl.diagnosticInterpolationReadbackFailure.fill(0);
-		impl.diagnosticGeneratedPublishSuccess = 0;
-		impl.diagnosticGeneratedPublishFailure = 0;
+	if constexpr (NativeBackendTiming::Enabled) {
+		if (++impl.diagnosticRealFrames >= 120) {
+			Logger::Get().Info(fmt::format(
+				"DLSSFG 120-real-frame diagnostics: multiplier={}x "
+				"evaluate[index1={}/{} index2={}/{} index3={}/{}] "
+				"generatedPublish={}/{} "
+				"interpolation[index1={}/{}/{} index2={}/{}/{} index3={}/{}/{}]",
+				impl.multiplier,
+				impl.diagnosticEvaluateSuccess[1],
+				impl.diagnosticEvaluateFailure[1],
+				impl.diagnosticEvaluateSuccess[2],
+				impl.diagnosticEvaluateFailure[2],
+				impl.diagnosticEvaluateSuccess[3],
+				impl.diagnosticEvaluateFailure[3],
+				impl.diagnosticGeneratedPublishSuccess,
+				impl.diagnosticGeneratedPublishFailure,
+				impl.diagnosticInterpolationEnabled[1],
+				impl.diagnosticInterpolationDisabled[1],
+				impl.diagnosticInterpolationReadbackFailure[1],
+				impl.diagnosticInterpolationEnabled[2],
+				impl.diagnosticInterpolationDisabled[2],
+				impl.diagnosticInterpolationReadbackFailure[2],
+				impl.diagnosticInterpolationEnabled[3],
+				impl.diagnosticInterpolationDisabled[3],
+				impl.diagnosticInterpolationReadbackFailure[3]));
+			impl.diagnosticRealFrames = 0;
+			impl.diagnosticEvaluateSuccess.fill(0);
+			impl.diagnosticEvaluateFailure.fill(0);
+			impl.diagnosticInterpolationEnabled.fill(0);
+			impl.diagnosticInterpolationDisabled.fill(0);
+			impl.diagnosticInterpolationReadbackFailure.fill(0);
+			impl.diagnosticGeneratedPublishSuccess = 0;
+			impl.diagnosticGeneratedPublishFailure = 0;
+		}
 	}
 	return true;
 }

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "FrameTrace.h"
 #include "NvidiaOpticalFlowProvider.h"
+#include "NativeBackendTiming.h"
 #include "DeviceResources.h"
 #include "DirectXHelper.h"
 #include "Logger.h"
@@ -616,10 +617,12 @@ struct NvidiaOpticalFlowProvider::Impl {
 		if (status != NV_OF_SUCCESS || !CreateTextures() || !CreatePostProcess()) {
 			return false;
 		}
-		gpuTimingAvailable = CreateGpuTimingQueries();
-		if (!gpuTimingAvailable) {
-			Logger::Get().Warn(
-				"Frame Guidance NVOF GPU timing unavailable; continuing without telemetry");
+		gpuTimingAvailable = NativeBackendTiming::Enabled && CreateGpuTimingQueries();
+		if constexpr (NativeBackendTiming::Enabled) {
+			if (!gpuTimingAvailable) {
+				Logger::Get().Warn(
+					"Frame Guidance NVOF GPU timing unavailable; continuing without telemetry");
+			}
 		}
 
 		resetReason = FrameGuidanceResetReason::Initialize;
@@ -811,7 +814,7 @@ bool NvidiaOpticalFlowProvider::BeginFrame(
 			.bwdOutputCostBuffer = impl.bidirectional && impl.costEnabled ?
 				impl.registered[5] : nullptr
 		};
-		const auto begin = std::chrono::steady_clock::now();
+		const auto begin = NativeBackendTiming::Now();
 		Impl::GpuQuerySlot* gpuTiming = impl.BeginGpuTiming();
 		const bool succeeded = impl.api.nvOFExecute(
 			impl.session, &inputParams, &outputParams) == NV_OF_SUCCESS &&
@@ -825,12 +828,13 @@ bool NvidiaOpticalFlowProvider::BeginFrame(
 			return false;
 		}
 		impl.previousSlot = currentSlot;
-		const auto elapsed = std::chrono::duration<double, std::milli>(
-			std::chrono::steady_clock::now() - begin).count();
-		if (frame.frameId <= 2) {
-			Logger::Get().Info(fmt::format(
-				"Frame Guidance NVOF submit+dense frameId={} CPU={:.3f} ms",
-				frame.frameId, elapsed));
+		const auto elapsed = NativeBackendTiming::ElapsedMilliseconds(begin);
+		if constexpr (NativeBackendTiming::Enabled) {
+			if (frame.frameId <= 2) {
+				Logger::Get().Info(fmt::format(
+					"Frame Guidance NVOF submit+dense frameId={} CPU={:.3f} ms",
+					frame.frameId, elapsed));
+			}
 		}
 	}
 

@@ -36,6 +36,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(EnableFrameTrace)' == 'true'">MP_ENABLE_FRAME_TRACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(EnableNativeBackendTiming)' == 'true'">MP_ENABLE_NATIVE_BACKEND_TIMING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <FxCompile>
       <ShaderModel>5.0</ShaderModel>
@@ -115,6 +116,7 @@
     <ClInclude Include="include\FramePacingOptions.h" />
     <ClInclude Include="FrameGuidanceTypes.h" />
     <ClInclude Include="FrameGuidancePerformance.h" />
+    <ClInclude Include="NativeBackendTiming.h" />
     <ClInclude Include="ZeroFrameGuidanceProvider.h" />
     <ClInclude Include="NvidiaOpticalFlowProvider.h" />
     <ClInclude Include="AmdOpticalFlowProvider.h" />

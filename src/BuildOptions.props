@@ -14,6 +14,8 @@
     <DebugInfoOnOverlay>false</DebugInfoOnOverlay>
     <!-- Bounded CPU frame tracing for local diagnostic builds; keeps Release optimization. -->
     <EnableFrameTrace>false</EnableFrameTrace>
+    <!-- Detailed NR/NVOF GPU timing and FG diagnostic summaries; validation only. -->
+    <EnableNativeBackendTiming>false</EnableNativeBackendTiming>
     <!-- 使用 composition swapchain 呈现 -->
     <UseCompSwapchain>false</UseCompSwapchain>
     <!-- Deprecated compatibility input; use EnableDLSSSR in new overrides. -->
