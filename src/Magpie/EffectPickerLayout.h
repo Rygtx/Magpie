@@ -4,7 +4,6 @@
 #include <winrt/Windows.UI.Xaml.Data.h>
 #include <algorithm>
 #include <cmath>
-#include <limits>
 
 namespace Magpie {
 
@@ -21,25 +20,20 @@ inline void SetEffectPickerRowMargin(winrt::Windows::UI::Xaml::FrameworkElement 
 	row.Margin({indent, 0, 0, 2});
 }
 
-inline double EffectPickerDetailsHeight(double totalHeight, double contentHeight) {
-	const double initial = std::max(0.0, totalHeight * 0.18);
-	// Keep the search box and several rows usable. Very long descriptions can
-	// still scroll once the available screen space has been used.
-	const double browsing = std::min(180.0, totalHeight * 0.45);
-	return std::clamp(std::ceil(contentHeight), initial, std::max(initial, totalHeight - browsing));
+inline bool EffectPickerDetailsOverflow(double contentHeight, double availableHeight) {
+	// Compare against the full detail area, before reserving space for the hint.
+	// Otherwise the hint itself can keep a short description scrollable.
+	return availableHeight > 0 && contentHeight > availableHeight + 0.5;
 }
 
-inline double MeasureEffectPickerDetailsHeight(
-	winrt::Windows::UI::Xaml::Controls::Grid const& root,
-	winrt::Windows::UI::Xaml::Controls::Border const& pane,
-	winrt::Windows::UI::Xaml::FrameworkElement const& content) {
-	const auto padding = pane.Padding(), border = pane.BorderThickness();
-	// Reserve scrollbar/rounding space; include every wrapped line and paragraph.
-	const double width = std::max(1.0, root.ActualWidth() - padding.Left - padding.Right
-		- border.Left - border.Right - 16.0);
-	content.Measure({float(width), std::numeric_limits<float>::infinity()});
-	return EffectPickerDetailsHeight(root.ActualHeight(), content.DesiredSize().Height
-		+ padding.Top + padding.Bottom + border.Top + border.Bottom + 2.0);
+inline bool IsEffectPickerDetailsWheel(bool control, bool horizontal, int delta) {
+	return control && !horizontal && delta != 0;
+}
+
+inline double EffectPickerDetailsWheelOffset(double offset, double scrollableHeight, int delta) {
+	// Preserve fractional notches from high-resolution wheels; never scroll the
+	// browsing columns when the description has reached either boundary.
+	return std::clamp(offset - delta * (48.0 / 120.0), 0.0, std::max(0.0, scrollableHeight));
 }
 
 struct EffectPickerToggleIcon {
@@ -87,10 +81,8 @@ inline EffectPickerLayout MakeEffectPickerLayout() {
 	layout.root.ColumnDefinitions().Append(left);
 	layout.root.ColumnDefinitions().Append(right);
 	RowDefinition upper, lower;
-	// Preferred height: 640 -> 800; details: 192 -> 144. The remaining space
-	// goes to browsing. Both regions shrink with the monitor work-area limit.
-	upper.Height({82, GridUnitType::Star});
-	lower.Height({18, GridUnitType::Star});
+	upper.Height({1, GridUnitType::Star});
+	lower.Height({160, GridUnitType::Pixel});
 	layout.root.RowDefinitions().Append(upper);
 	layout.root.RowDefinitions().Append(lower);
 	layout.categories.Padding({6, 8, 6, 8});

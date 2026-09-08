@@ -9,6 +9,7 @@
 #include "XamlHelper.h"
 #include <shellscalingapi.h>
 #include <winrt/Windows.UI.Xaml.Automation.h>
+#include <winrt/Windows.UI.Input.h>
 using namespace ::Magpie;
 using namespace winrt;
 using namespace Windows::UI::Xaml::Controls::Primitives;
@@ -33,6 +34,7 @@ ScrollViewer PickerScroll(UIElement const &content) {
 	scroll.HorizontalScrollMode(ScrollMode::Disabled);
 	scroll.HorizontalScrollBarVisibility(ScrollBarVisibility::Disabled);
 	scroll.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
+	scroll.ZoomMode(ZoomMode::Disabled);
 	scroll.IsTabStop(false);
 	return scroll;
 }
@@ -68,7 +70,6 @@ void ScalingModesPage::_SizeEffectPicker(Button const& anchor) {
 	const auto size = EffectPickerSize(info.rcWork.right - info.rcWork.left,
 		info.rcWork.bottom - info.rcWork.top, scale);
 	_pickerRoot.Width(size.Width); _pickerRoot.Height(size.Height);
-	_pickerRoot.RowDefinitions().GetAt(1).Height({18, GridUnitType::Star});
 	_pickerRoot.ColumnDefinitions().GetAt(0).Width({std::min(size.Width * 0.4,
 		size.Width < 560 ? 160.0 : 220.0), GridUnitType::Pixel});
 }
@@ -111,7 +112,28 @@ void ScalingModesPage::_BuildEffectPicker() {
 	_pickerDetailContent.Children().Append(_pickerDetailTitle);
 	_pickerDetailContent.Children().Append(_pickerDetails);
 	_pickerDetailScroll = PickerScroll(_pickerDetailContent);
-	_pickerDetailPane.Child(_pickerDetailScroll);
+	_pickerDetailArea = Grid();
+	Row(_pickerDetailArea, 1, GridUnitType::Star);
+	Row(_pickerDetailArea, 1, GridUnitType::Auto);
+	_pickerDetailArea.Children().Append(_pickerDetailScroll);
+	_pickerDetailHint = PickerText(L"Ctrl + 滚轮：滚动说明", 10, true);
+	_pickerDetailHint.HorizontalAlignment(HorizontalAlignment::Right);
+	_pickerDetailHint.Margin({0, 4, 0, 0});
+	_pickerDetailHint.Opacity(0.7);
+	_pickerDetailHint.IsHitTestVisible(false);
+	_pickerDetailHint.Visibility(Visibility::Collapsed);
+	Grid::SetRow(_pickerDetailHint, 1);
+	_pickerDetailArea.Children().Append(_pickerDetailHint);
+	_pickerDetailPane.Child(_pickerDetailArea);
+	for (const FrameworkElement element : {FrameworkElement(_pickerDetailArea), FrameworkElement(_pickerDetailContent)}) {
+		element.SizeChanged([weak](auto const&, auto const&) {
+			if (auto page = weak.get()) page->_QueueEffectPickerDetailsHint();
+		});
+	}
+	// Receive the wheel even when a nested ScrollViewer has handled its normal
+	// input. Ctrl is reserved for details; all picker ScrollViewers disable zoom.
+	_pickerRoot.AddHandler(UIElement::PointerWheelChangedEvent(),
+		box_value(PointerEventHandler{get_weak(), &ScalingModesPage::_EffectPickerPointerWheelChanged}), true);
 	StackPanel categories;
 	// Spacing belongs to visible row containers, including collapsed categories.
 	auto addCategory = [&](std::wstring name, std::wstring category, std::wstring subcategory,
@@ -166,7 +188,7 @@ void ScalingModesPage::_BuildEffectPicker() {
 		auto show = [weak, index](auto const &, auto const &) {
 			if (auto page = weak.get()) {
 				const auto &item = page->_pickerCategories[index];
-				page->_SetEffectPickerDetails(item.name, item.description, item.button);
+				page->_SetEffectPickerDetails(item.name, item.description);
 			}
 		};
 		// Physical pointer movement avoids reselecting a row moved under a stationary cursor.
@@ -337,9 +359,6 @@ void ScalingModesPage::_BuildEffectPicker() {
 	_pickerCategoryPane.Style(Resources().Lookup(box_value(L"EffectPickerCategoryPaneStyle")).as<Windows::UI::Xaml::Style>());
 	_pickerListPane.Style(Resources().Lookup(box_value(L"EffectPickerPaneStyle")).as<Windows::UI::Xaml::Style>());
 	_pickerDetailPane.Style(Resources().Lookup(box_value(L"EffectPickerDetailPaneStyle")).as<Windows::UI::Xaml::Style>());
-	_pickerRoot.SizeChanged([weak](auto const&, auto const&) {
-		if (auto page = weak.get()) page->_QueueEffectPickerDetailsLayout();
-	});
 	_UpdateEffectPickerColors();
 	_effectPicker = Flyout();
 	_effectPicker.ShouldConstrainToRootBounds(false);
@@ -348,14 +367,13 @@ void ScalingModesPage::_BuildEffectPicker() {
 	_effectPicker.Opened([weak](auto const &, auto const &) {
 		if (auto page = weak.get()) {
 			page->_pickerSearch.Focus(FocusState::Programmatic);
-			page->_QueueEffectPickerDetailsLayout();
+			page->_QueueEffectPickerDetailsHint();
 		}
 	});
 	_effectPicker.Closed([weak](auto const &, auto const &) {
 		if (auto page = weak.get()) {
 			page->_pickerMode = nullptr;
 			page->_pickerPendingLetter = -1;
-			page->_pickerDetailSource = nullptr;
 			page->_pickerIndexFlyout.Hide();
 		}
 	});
@@ -403,7 +421,7 @@ void ScalingModesPage::_ChooseEffectCategory(std::wstring category, std::wstring
 	_pickerSearch.Text(L"");
 	_pickerChangingCategory = false;
 	_RefreshEffectPicker();
-	_SetEffectPickerDetails(_pickerDetailTitle.Text(), description, _pickerDetailSource);
+	_SetEffectPickerDetails(_pickerDetailTitle.Text(), description);
 }
 void ScalingModesPage::_RefreshEffectPicker(std::wstring anchor) {
 	double anchorTop = 0;
@@ -499,7 +517,7 @@ void ScalingModesPage::_RefreshEffectPicker(std::wstring anchor) {
 		for (const auto& item : _pickerCategories) {
 			if (item.category != _pickerCategory || item.subcategory != _pickerSubcategory) continue;
 			scope = item.parent >= 0 ? _pickerCategories[item.parent].name + L" › " + item.name : item.name;
-			_SetEffectPickerDetails(item.name, item.description, item.button);
+			_SetEffectPickerDetails(item.name, item.description);
 			break;
 		}
 	} else if (!searching) {
@@ -543,50 +561,48 @@ void ScalingModesPage::_ShowEffectPickerDetails(std::wstring_view key) {
 			if (!problem.empty()) text = std::wstring(problem) + L"\n\n" + text;
 		}
 	}
-	_SetEffectPickerDetails(row.name, text, it->button);
+	_SetEffectPickerDetails(row.name, text);
 }
 
-void ScalingModesPage::_SetEffectPickerDetails(std::wstring_view title, std::wstring_view text,
-	FrameworkElement const& source) {
-	_pickerDetailSource = source;
+void ScalingModesPage::_SetEffectPickerDetails(std::wstring_view title, std::wstring_view text) {
 	if (std::wstring_view(_pickerDetailTitle.Text()) == title && std::wstring_view(_pickerDetails.Text()) == text) return;
 	_pickerDetailTitle.Text(title);
 	_pickerDetails.Text(text);
 	_pickerDetailScroll.ChangeView(nullptr, 0.0, nullptr, true);
-	_QueueEffectPickerDetailsLayout();
+	_QueueEffectPickerDetailsHint();
 }
 
-void ScalingModesPage::_QueueEffectPickerDetailsLayout() {
-	if (_pickerDetailsLayoutQueued || !_pickerMode) return;
-	_pickerDetailsLayoutQueued = true;
+void ScalingModesPage::_QueueEffectPickerDetailsHint() {
+	if (_pickerDetailsHintQueued || !_pickerMode) return;
+	_pickerDetailsHintQueued = true;
 	if (!DispatcherQueue::GetForCurrentThread().TryEnqueue(DispatcherQueuePriority::Low, [weak = get_weak()] {
 		if (auto page = weak.get()) {
-			page->_pickerDetailsLayoutQueued = false;
+			page->_pickerDetailsHintQueued = false;
 			if (page->_pickerMode && page->_pickerRoot && page->_pickerRoot.IsLoaded())
-				page->_UpdateEffectPickerDetailsLayout();
+				page->_UpdateEffectPickerDetailsHint();
 		}
-	})) _pickerDetailsLayoutQueued = false;
+	})) _pickerDetailsHintQueued = false;
 }
 
-void ScalingModesPage::_UpdateEffectPickerDetailsLayout() {
-	if (_pickerRoot.ActualWidth() <= 0 || _pickerRoot.ActualHeight() <= 0) return;
-	const double height = MeasureEffectPickerDetailsHeight(_pickerRoot, _pickerDetailPane, _pickerDetailContent);
-	const auto row = _pickerRoot.RowDefinitions().GetAt(1);
-	if (row.Height().GridUnitType == GridUnitType::Pixel && std::abs(row.Height().Value - height) < 0.5) return;
-	row.Height({height, GridUnitType::Pixel});
-	_pickerRoot.UpdateLayout();
-	// Keep the item that supplied the description visible after the viewport
-	// shrinks, without moving focus away from the search box or a clicked row.
-	if (!_pickerDetailSource) return;
-	for (const auto& scroll : {_pickerListScroll, _pickerCategoryScroll}) {
-		const auto content = scroll.Content().try_as<UIElement>();
-		if (!content || !XamlHelper::ContainsControl(content, _pickerDetailSource)) continue;
-		const double top = _pickerDetailSource.TransformToVisual(content).TransformPoint({0, 0}).Y;
-		const double bottom = top + _pickerDetailSource.ActualHeight();
-		const double offset = std::max(0.0, std::max(bottom - scroll.ViewportHeight(), std::min(top, scroll.VerticalOffset())));
-		scroll.ChangeView(nullptr, offset, nullptr, true);
-		break;
-	}
+void ScalingModesPage::_UpdateEffectPickerDetailsHint() {
+	const bool overflow = EffectPickerDetailsOverflow(
+		std::max(_pickerDetailScroll.ExtentHeight(), _pickerDetailContent.ActualHeight()),
+		_pickerDetailArea.ActualHeight());
+	_pickerDetailHint.Visibility(overflow ? Visibility::Visible : Visibility::Collapsed);
+}
+
+void ScalingModesPage::_EffectPickerPointerWheelChanged(IInspectable const&, PointerRoutedEventArgs const& args) {
+	if (!_pickerMode) return;
+	const auto properties = args.GetCurrentPoint(_pickerRoot).Properties();
+	if (!IsEffectPickerDetailsWheel(
+		(args.KeyModifiers() & Windows::System::VirtualKeyModifiers::Control) != Windows::System::VirtualKeyModifiers::None,
+		properties.IsHorizontalMouseWheel(), properties.MouseWheelDelta())) return;
+	// Consume Ctrl+wheel at both ends and for short descriptions too, so it
+	// never falls through to the page or changes the current browsing position.
+	args.Handled(true);
+	_pickerDetailScroll.ChangeView(nullptr, EffectPickerDetailsWheelOffset(
+		_pickerDetailScroll.VerticalOffset(), _pickerDetailScroll.ScrollableHeight(), properties.MouseWheelDelta()),
+		nullptr, true);
 }
 
 void ScalingModesPage::_ToggleEffectFamily(std::wstring_view key) {

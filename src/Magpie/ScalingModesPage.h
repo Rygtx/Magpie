@@ -101,9 +101,10 @@ private:
 	void _BuildEffectPicker();
 	void _RefreshEffectPicker(std::wstring anchor = {});
 	void _ShowEffectPickerDetails(std::wstring_view key);
-	void _SetEffectPickerDetails(std::wstring_view title, std::wstring_view text, FrameworkElement const& source = nullptr);
-	void _QueueEffectPickerDetailsLayout();
-	void _UpdateEffectPickerDetailsLayout();
+	void _SetEffectPickerDetails(std::wstring_view title, std::wstring_view text);
+	void _QueueEffectPickerDetailsHint();
+	void _UpdateEffectPickerDetailsHint();
+	void _EffectPickerPointerWheelChanged(IInspectable const& sender, Input::PointerRoutedEventArgs const& args);
 	void _AddPickedEffect(std::wstring_view id);
 	void _ToggleEffectFamily(std::wstring_view key);
 	void _EffectPickerRowKeyDown(std::wstring_view key, Input::KeyRoutedEventArgs const& args);
@@ -135,8 +136,9 @@ private:
 	std::wstring _pickerLastQuery;
 	StackPanel _pickerResults{ nullptr };
 	StackPanel _pickerDetailContent{ nullptr };
-	FrameworkElement _pickerDetailSource{ nullptr };
-	bool _pickerDetailsLayoutQueued = false;
+	Grid _pickerDetailArea{ nullptr };
+	TextBlock _pickerDetailHint{ nullptr };
+	bool _pickerDetailsHintQueued = false;
 	Grid _pickerIndexPane{ nullptr }, _pickerIndexRail{ nullptr };
 	Button _pickerIndexButton{ nullptr };
 	Flyout _pickerIndexFlyout{ nullptr };

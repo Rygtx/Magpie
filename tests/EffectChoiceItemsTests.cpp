@@ -8,6 +8,7 @@
 #include <fstream>
 #include <cassert>
 #include <iostream>
+#include <limits>
 
 int main(int argc, char**) {
 	using namespace winrt;
@@ -109,10 +110,8 @@ int main(int argc, char**) {
 			layout.root.Arrange({ 0, 0, size.Width, size.Height });
 			assert(layout.details.ActualWidth() == size.Width);
 			assert(layout.list.ActualWidth() > 0 && layout.categories.ActualWidth() < size.Width);
-			if (size.Height == 800) {
-				assert(layout.details.ActualHeight() == 144);
-				assert(layout.list.ActualHeight() == 656);
-			}
+			assert(layout.details.ActualHeight() == 160);
+			assert(layout.list.ActualHeight() == size.Height - 160);
 		}
 		StackPanel detailContent;
 		detailContent.Spacing(6);
@@ -124,61 +123,79 @@ int main(int argc, char**) {
 		detailScroll.HorizontalScrollMode(ScrollMode::Disabled);
 		detailScroll.HorizontalScrollBarVisibility(ScrollBarVisibility::Disabled);
 		detailScroll.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
+		detailScroll.ZoomMode(ZoomMode::Disabled);
 		detailScroll.Content(detailContent);
-		layout.details.Child(detailScroll);
-		double lastMeasuredContent = 0;
+		Grid detailArea;
+		RowDefinition contentRow, hintRow;
+		contentRow.Height({1, GridUnitType::Star}); hintRow.Height({1, GridUnitType::Auto});
+		detailArea.RowDefinitions().Append(contentRow); detailArea.RowDefinitions().Append(hintRow);
+		detailArea.Children().Append(detailScroll);
+		TextBlock hint;
+		hint.Text(L"Ctrl + 滚轮：滚动说明"); hint.FontSize(10); hint.Margin({0, 4, 0, 0});
+		hint.HorizontalAlignment(HorizontalAlignment::Right);
+		Grid::SetRow(hint, 1); detailArea.Children().Append(hint);
+		layout.details.Child(detailArea);
 		auto measureDetails = [&](hstring const& title, hstring const& text, float width, float height) {
 			detailTitle.Text(title); detailBody.Text(text);
-			// Opening at a new monitor size resets the pixel row in production.
-			if (layout.root.Width() != width || layout.root.Height() != height)
-				layout.root.RowDefinitions().GetAt(1).Height({18, GridUnitType::Star});
 			layout.root.Width(width); layout.root.Height(height);
 			auto arrange = [&] {
 				layout.root.Measure({width, height}); layout.root.Arrange({0, 0, width, height});
 			};
 			arrange();
-			const auto required = Magpie::MeasureEffectPickerDetailsHeight(layout.root, layout.details, detailContent);
+			// This fixture has no loaded ScrollContentPresenter. Measure the native
+			// wrapped text explicitly; runtime uses the presenter's actual extent.
+			detailContent.Measure({float(detailArea.ActualWidth()), std::numeric_limits<float>::infinity()});
 			const double measuredContent = detailContent.DesiredSize().Height;
-			lastMeasuredContent = measuredContent;
-			layout.root.RowDefinitions().GetAt(1).Height({required, GridUnitType::Pixel});
+			const bool overflow = Magpie::EffectPickerDetailsOverflow(measuredContent, detailArea.ActualHeight());
+			hint.Visibility(overflow ? Visibility::Visible : Visibility::Collapsed);
 			arrange();
-			if (layout.categories.ActualHeight() < std::min(180.0, height * 0.45) - 1)
-				std::cerr << "Adaptive allocation: root=" << layout.root.ActualHeight() << " requested=" << height
-					<< " upper=" << layout.categories.ActualHeight() << " details=" << layout.details.ActualHeight()
-					<< " computed=" << required << "\n";
-			assert(layout.categories.ActualHeight() >= std::min(180.0, height * 0.45) - 1);
-			assert(layout.details.ActualHeight() >= height * 0.18 - 1);
-			assert(layout.details.ActualHeight() + layout.categories.ActualHeight() <= height + 1);
-			// The native text is measured even without a loaded ScrollContentPresenter.
-			// Compare its full wrapped extent with the actual allocated viewport.
-			if (required < height - std::min(180.0, height * 0.45) - 1)
-				assert(measuredContent + 25 <= layout.details.ActualHeight() + 1);
-			return required;
+			assert(layout.details.ActualHeight() == 160);
+			assert(layout.categories.ActualHeight() == height - 160);
+			assert(layout.list.ActualHeight() == height - 160);
+			assert(detailArea.ActualHeight() == 135); // 160 minus border and padding
+			if (overflow) {
+				const auto position = hint.TransformToVisual(detailArea).TransformPoint({0, 0});
+				assert(position.Y >= detailScroll.ActualHeight());
+				assert(position.Y + hint.ActualHeight() <= detailArea.ActualHeight() + 1);
+				assert(std::abs(position.X + hint.ActualWidth() - detailArea.ActualWidth()) < 1);
+			} else assert(detailScroll.ActualHeight() == detailArea.ActualHeight());
+			return overflow;
 		};
 		std::ifstream input("src/Magpie/EffectCatalog/zh-Hans.json", std::ios::binary);
 		const std::string bytes{std::istreambuf_iterator<char>(input), {}};
 		const auto entries = Windows::Data::Json::JsonObject::Parse(to_hstring(bytes)).GetNamedArray(L"effects");
 		assert(entries.Size() == 155);
-		size_t expanded = 0;
+		size_t overflowing = 0;
 		for (const auto value : entries) {
 			const auto entry = value.GetObject();
 			for (const auto width : {820.0f, 480.0f}) {
-				const double used = measureDetails(entry.GetNamedString(L"name"), entry.GetNamedString(L"details"), width, 800);
-				if (used > 144) ++expanded;
+				if (measureDetails(entry.GetNamedString(L"name"), entry.GetNamedString(L"details"), width, 800)) ++overflowing;
 			}
 		}
-		assert(expanded > 0);
-		assert(measureDetails(L"入门", L"从一个效果器开始比较画面。", 820, 800) == 144);
+		assert(overflowing > 0);
+		assert(!measureDetails(L"入门", L"从一个效果器开始比较画面。", 820, 800));
 		std::wstring veryLong;
 		for (int i = 0; i < 200; ++i) veryLong += L"极长说明仍可滚动阅读。\n";
-		assert(measureDetails(L"长说明", hstring(veryLong), 820, 800) == 620);
-		assert(lastMeasuredContent > layout.details.ActualHeight());
-		measureDetails(L"长说明", hstring(veryLong), 280, 220);
-		assert(lastMeasuredContent > layout.details.ActualHeight());
+		assert(measureDetails(L"长说明", hstring(veryLong), 820, 800));
+		assert(measureDetails(L"长说明", hstring(veryLong), 280, 220));
 		assert(detailScroll.VerticalScrollBarVisibility() == ScrollBarVisibility::Auto);
-		assert(measureDetails(L"入门", L"短说明", 820, 800) == 144);
-		std::cout << "Adaptive details: all 155 catalog entries at two widths, long-to-short reset, and small-screen scroll fallback passed.\n";
+		assert(detailScroll.ZoomMode() == ZoomMode::Disabled);
+		assert(!measureDetails(L"入门", L"短说明", 820, 800));
+		assert(!Magpie::EffectPickerDetailsOverflow(135, 135));
+		assert(Magpie::EffectPickerDetailsOverflow(136, 135));
+		assert(!Magpie::EffectPickerDetailsOverflow(10, 0));
+		assert(Magpie::IsEffectPickerDetailsWheel(true, false, -120));
+		assert(!Magpie::IsEffectPickerDetailsWheel(false, false, -120));
+		assert(!Magpie::IsEffectPickerDetailsWheel(true, true, -120));
+		assert(!Magpie::IsEffectPickerDetailsWheel(true, false, 0));
+		assert(Magpie::EffectPickerDetailsWheelOffset(0, 200, -120) == 48);
+		assert(Magpie::EffectPickerDetailsWheelOffset(48, 200, 120) == 0);
+		assert(Magpie::EffectPickerDetailsWheelOffset(190, 200, -120) == 200);
+		assert(Magpie::EffectPickerDetailsWheelOffset(0, 200, 120) == 0);
+		assert(Magpie::EffectPickerDetailsWheelOffset(0, 0, -120) == 0);
+		assert(Magpie::EffectPickerDetailsWheelOffset(0, 200, -30) == 12);
+		std::cout << "Fixed details: 155 catalog entries at two widths, bottom-right overflow hint, short-content reset, Ctrl wheel routing and scroll boundaries passed.\n";
 		manager.Close();
-		std::cout << "Real XAML: old ItemsSource throws E_INVALIDARG; fixed choices accept four values; production layout passes at four sizes, with 800-DIP height and 144-DIP details.\n";
+		std::cout << "Real XAML: old ItemsSource throws E_INVALIDARG; fixed choices accept four values; production layout passes at four sizes, with 800-DIP height and fixed 160-DIP details.\n";
 	}
 }
