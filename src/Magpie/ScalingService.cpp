@@ -51,7 +51,7 @@ void ScalingService::Initialize() {
 	_frameSyncChangedRevoker = AppSettings::Get().FrontEdgeSyncChanged(auto_revoke, [this] {
 		const auto& settings = AppSettings::Get();
 		if (_scalingRuntime) _scalingRuntime->UpdateFrameSyncSettings(
-			{ settings.IsFrontEdgeSyncEnabled(), settings.FrontEdgeSyncFrameRate() });
+			{ settings.IsFrontEdgeSyncEnabled(), settings.FrontEdgeSyncFrameRate(), settings.GetFrameSyncMode() });
 	});
 
 	// 立即检查前台窗口
@@ -501,6 +501,7 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	// saved true value so no session silently enables tearing.
 	options.isVRREnabled = false;
 	options.frontEdgeSyncFrameRate = settings.FrontEdgeSyncFrameRate();
+	options.frameSyncMode = settings.GetFrameSyncMode();
 
 	if (options.maxFrameRate) {
 		// 最小帧数不能大于最大帧数
@@ -699,7 +700,7 @@ void ScalingService::_HandleEffectParametersRequest(
 	}
 
 	auto& settings = AppSettings::Get();
-	FrameSyncSettings mergedFrameSync{ settings.IsFrontEdgeSyncEnabled(), settings.FrontEdgeSyncFrameRate() };
+	FrameSyncSettings mergedFrameSync{ settings.IsFrontEdgeSyncEnabled(), settings.FrontEdgeSyncFrameRate(), settings.GetFrameSyncMode() };
 	if (!MergeFrameSyncSettings(mergedFrameSync, request.previousFrameSync, request.frameSync)) {
 		fail(EffectParametersSaveError::Conflict);
 		return;
@@ -744,6 +745,7 @@ void ScalingService::_HandleEffectParametersRequest(
 	mode.effects = std::move(merged);
 	settings.IsFrontEdgeSyncEnabled(mergedFrameSync.enabled);
 	settings.FrontEdgeSyncFrameRate(mergedFrameSync.frameRate);
+	settings.SetFrameSyncMode(mergedFrameSync.mode);
 	if (sessionOptions.parameterSession) sessionOptions.parameterSession->DesiredFrameSync(mergedFrameSync);
 	for (uint32_t i = 0; i < mode.effects.size(); ++i) {
 		ScalingModesService::Get().EffectParametersChanged.Invoke(sessionOptions.scalingModeIdx, i);

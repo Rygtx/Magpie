@@ -149,6 +149,14 @@
 						<ToggleSwitch x:Uid="ToggleSwitch" IsOn="{x:Bind ViewModel.IsFrontEdgeSyncEnabled, Mode=TwoWay}" />
 					</local:SettingsExpander.Content>
 					<local:SettingsExpander.Items>
+						<local:SettingsCard x:Uid="Home_FrameSync_Mode" IsWrapEnabled="True">
+							<ComboBox Width="225" IsEnabled="{x:Bind ViewModel.IsFrontEdgeSyncEnabled, Mode=OneWay}"
+							          SelectedIndex="{x:Bind ViewModel.FrameSyncModeIndex, Mode=TwoWay}">
+								<ComboBoxItem x:Uid="FrameSync_Mode_FrontEdge" />
+								<ComboBoxItem x:Uid="FrameSync_Mode_Async" />
+								<ComboBoxItem x:Uid="FrameSync_Mode_Reflex" />
+							</ComboBox>
+						</local:SettingsCard>
 						<local:SettingsCard x:Uid="Home_FrameSync_Target" IsWrapEnabled="True">
 							<muxc:NumberBox x:Uid="Home_FrameSync_Target_Input" Width="160"
 							                IsEnabled="{x:Bind ViewModel.IsFrontEdgeSyncEnabled, Mode=OneWay}"

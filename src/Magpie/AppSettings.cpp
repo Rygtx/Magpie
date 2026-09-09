@@ -802,6 +802,8 @@ std::string AppSettings::_Serialize(const _AppSettingsData& data) {
 	writer.Bool(data._isVRREnabled);
 	writer.Key("frontEdgeSyncFrameRate");
 	writer.Double(data._frontEdgeSyncFrameRate);
+	writer.Key("frameSyncMode");
+	writer.Uint(static_cast<uint32_t>(data._frameSyncMode));
 	writer.Key("minFrameRate");
 	writer.Double(data._minFrameRate);
 	writer.Key("disableFP16");
@@ -1045,6 +1047,10 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 	JsonHelper::ReadBool(root, "vrr", _isVRREnabled);
 	JsonHelper::ReadFloat(root, "frontEdgeSyncFrameRate", _frontEdgeSyncFrameRate);
 	_frontEdgeSyncFrameRate = SanitizePresentationFrameRate(_frontEdgeSyncFrameRate);
+	uint32_t frameSyncMode = 0;
+	JsonHelper::ReadUInt(root, "frameSyncMode", frameSyncMode);
+	_frameSyncMode = IsValidFrameSyncMode(static_cast<FrameSyncMode>(frameSyncMode))
+		? static_cast<FrameSyncMode>(frameSyncMode) : FrameSyncMode::FrontEdge;
 	JsonHelper::ReadBool(root, "disableFP16", _isFP16Disabled);
 
 	[[maybe_unused]] bool result = ScalingModesService::Get().Import(root, true);

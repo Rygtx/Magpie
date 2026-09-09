@@ -174,10 +174,16 @@ bool DeviceResources::_TryCreateD3DDevice(const winrt::com_ptr<IDXGIAdapter1>& a
 	// WGC 和 D3D11_CREATE_DEVICE_SINGLETHREADED 不兼容
 	// Reflex sleeps at capture start on the backend while tagging the frontend
 	// presentation device. D3D11 device methods must be safe across these threads.
-	const bool reflexPresentationDevice = isForeground && std::ranges::any_of(
+	const auto& scalingOptions = ScalingWindow::Get().Options();
+	const bool ordinaryReflex = scalingOptions.isFrontEdgeSyncEnabled &&
+		scalingOptions.frameSyncMode == FrameSyncMode::Reflex && !scalingOptions.IsBenchmarkMode() &&
+		!std::ranges::any_of(scalingOptions.effects, [](const EffectOption& effect) {
+			return ClassifyFrameGenerationEffect(effect.name) != FrameGenerationEffectKind::None;
+		});
+	const bool reflexPresentationDevice = isForeground && (ordinaryReflex || std::ranges::any_of(
 		ScalingWindow::Get().Options().effects, [](const EffectOption& effect) {
 			return effect.name == "DLSSFG\\DLSS_FrameGeneration";
-		});
+		}));
 	const bool rtxHdrDevice = !isForeground && std::ranges::any_of(
 		ScalingWindow::Get().Options().effects, [](const EffectOption& effect) {
 			return ClassifyHdrComponent(effect.name) == HdrComponentKind::RtxVideoHdr;

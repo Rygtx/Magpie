@@ -35,6 +35,20 @@ int wmain(int argc, wchar_t** argv) {
 	// Missing optional SDKs and legitimate unfinished groups do not trigger recovery.
 	assert(std::string_view(untouched.document["scalingModes"][0]["effects"][0]["name"].GetString()) == "user-installed-effect");
 	assert(PrepareTest(Current(R"("scalingModes":[],"profiles":[{"scalingMode":-1}])")).kind == Kind::None);
+	for (const char* target : { "0", "1", "14.5", "80", "360.5", "1000" }) {
+		for (int syncMode = 0; syncMode <= 2; ++syncMode) {
+			auto plan = PrepareTest(Current(std::string(R"("scalingModes":[],"frontEdgeSync":true,"frontEdgeSyncFrameRate":)") +
+				target + ",\"frameSyncMode\":" + std::to_string(syncMode)));
+			assert(plan.kind == Kind::None && plan.document["frameSyncMode"].GetInt() == syncMode);
+			assert(plan.document.HasMember("frontEdgeSyncFrameRate"));
+		}
+	}
+	for (const char* value : { "-1", "3", "1.5", "\"Reflex\"", "null" }) {
+		auto plan = PrepareTest(Current(std::string(R"("scalingModes":[],"frontEdgeSync":false,"frontEdgeSyncFrameRate":0,"frameSyncMode":)") + value));
+		assert(plan.kind == Kind::Repaired && !plan.document.HasMember("frameSyncMode"));
+		assert(!plan.document["frontEdgeSync"].GetBool() && plan.document["frontEdgeSyncFrameRate"].GetDouble() == 0);
+		assert(PrepareTest(Serialize(plan.document)).kind == Kind::None);
+	}
 	// Repair only damaged fields, while preserving profile-to-group indices.
 	auto repaired = PrepareTest(Current(R"("scalingModes":[42,{"name":"keep","effects":[{"name":"Lanczos","scalingType":99,"scale":{"x":-2,"y":1},"parameters":{"ok":0.5,"overflow":1e50,"bad":"text"}}]}],"profiles":[{"scalingMode":1,"customCursorScaling":1e50},{"scalingMode":1}],"minFrameRate":-5)") );
 	assert(repaired.kind == Kind::Repaired && !repaired.defaultModes);

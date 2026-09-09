@@ -1168,7 +1168,7 @@ void OverlayDrawer::_InitEffectParameterValues() noexcept {
 	_draftEffectParameterValues = _startupEffectParameterValues;
 	_submittedEffectParameterValues = _startupEffectParameterValues;
 	_submittedEffectOptions = options.effects;
-	_startupFrameSync = { options.isFrontEdgeSyncEnabled, options.frontEdgeSyncFrameRate };
+	_startupFrameSync = { options.isFrontEdgeSyncEnabled, options.frontEdgeSyncFrameRate, options.frameSyncMode };
 	_draftFrameSync = _submittedFrameSync = _startupFrameSync;
 	_effectParametersInitialized = true;
 }
@@ -1183,6 +1183,9 @@ void OverlayDrawer::_SyncEffectParameterValues() noexcept {
 	}
 	if (frameSync.frameRate != _submittedFrameSync.frameRate) {
 		_draftFrameSync.frameRate = _submittedFrameSync.frameRate = frameSync.frameRate;
+	}
+	if (frameSync.mode != _submittedFrameSync.mode) {
+		_draftFrameSync.mode = _submittedFrameSync.mode = frameSync.mode;
 	}
 	const auto& descriptions = ScalingWindow::Get().Renderer().ActiveEffectDescs();
 	for (size_t i = 0; i < _draftEffectParameterValues.size(); ++i) {
@@ -1285,7 +1288,8 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	auto frameSyncChangeCount = [&]() noexcept -> uint32_t {
 		const auto& options = ScalingWindow::Get().Options();
 		return uint32_t(_draftFrameSync.enabled != options.isFrontEdgeSyncEnabled) +
-			uint32_t(_draftFrameSync.frameRate != options.frontEdgeSyncFrameRate);
+			uint32_t(_draftFrameSync.frameRate != options.frontEdgeSyncFrameRate) +
+			uint32_t(_draftFrameSync.mode != options.frameSyncMode);
 	};
 	uint32_t restartChangeCount = frameSyncChangeCount();
 	for (size_t effectIdx = 0; effectIdx < configuredEffectCount; ++effectIdx) {
@@ -1389,11 +1393,28 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	bool requestRestart = false;
 	ImGui::PushID("frameSync");
 	ImGui::SeparatorText(_GetResourceString(L"Overlay_FrameSync_Title").c_str());
-	if (ImGui::Checkbox("Front Edge Sync", &_draftFrameSync.enabled)) {
+	if (ImGui::Checkbox(_GetResourceString(L"Overlay_FrameSync_Enable").c_str(), &_draftFrameSync.enabled)) {
 		parameterEdited = needRedraw = true;
 	}
 	ImGui::SameLine();
 	ImGui::TextDisabled("%s", _GetResourceString(L"Overlay_EffectParameters_RestartRequired").c_str());
+	static constexpr const wchar_t* modeKeys[]{ L"FrameSync_Mode_FrontEdge/Content",
+		L"FrameSync_Mode_Async/Content", L"FrameSync_Mode_Reflex/Content" };
+	const auto selectedMode = static_cast<uint32_t>(_draftFrameSync.mode);
+	ImGui::BeginDisabled(!_draftFrameSync.enabled);
+	ImGui::TextUnformatted(_GetResourceString(L"Home_FrameSync_Mode/Header").c_str());
+	ImGui::SetNextItemWidth(-1.0f);
+	if (ImGui::BeginCombo("##frameSyncMode", _GetResourceString(modeKeys[selectedMode]).c_str())) {
+		for (uint32_t i = 0; i < std::size(modeKeys); ++i) {
+			if (ImGui::Selectable(_GetResourceString(modeKeys[i]).c_str(), i == selectedMode)) {
+				_draftFrameSync.mode = static_cast<FrameSyncMode>(i);
+				parameterEdited = needRedraw = true;
+			}
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::EndDisabled();
+	ImGui::TextWrapped("%s", _GetResourceString(ScalingWindow::Get().Renderer().FrameSyncStatusResource()).c_str());
 	ImGui::TextUnformatted(_GetResourceString(L"Overlay_FrameSync_Target").c_str());
 	ImGui::SameLine();
 	ImGui::TextDisabled("%s", _GetResourceString(L"Overlay_EffectParameters_RestartRequired").c_str());
@@ -1436,6 +1457,10 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		ImGui::PushID(itemId++);
 		ImGui::SeparatorText(
 			std::string(GetEffectDisplayName(description)).c_str());
+		if (ClassifyFrameGenerationEffect(description.name) == FrameGenerationEffectKind::DLSS) {
+			ImGui::TextWrapped("%s", _GetResourceString(ScalingWindow::Get().Renderer().IsReflexActive()
+				? L"Overlay_FrameSync_DlssLowLatencyOn" : L"Overlay_FrameSync_DlssLowLatencyUnavailable").c_str());
+		}
 
 		std::string_view currentGroup;
 		// 仅在 _DEBUG 下读取（参数元数据一致性告警），release 下以 maybe_unused 抑制 ClangCL -Werror

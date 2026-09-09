@@ -10,7 +10,7 @@
 namespace Magpie::ConfigRecovery {
 
 // Increment when the recovery policy changes, independently of release versions.
-inline constexpr uint32_t POLICY_VERSION = 1;
+inline constexpr uint32_t POLICY_VERSION = 2;
 enum class Kind { None, Backup, Partial, Defaults, Repaired };
 struct Plan {
 	rapidjson::Document document;
@@ -85,7 +85,10 @@ inline Plan Prepare(std::string_view source, std::string_view backup,
 		if (!doc.HasMember(key) || !doc[key].IsUint() || doc[key].GetUint() < version) note(std::string("/") + key);
 	}
 	number(doc, "minFrameRate", "", 0, 1000);
-	number(doc, "frontEdgeSyncFrameRate", "", 15, 360);
+	check(doc, "frontEdgeSyncFrameRate", "", [](const auto& v) {
+		return FloatInRange(v, 0, 1000) && (v.GetDouble() == 0 || v.GetDouble() >= 1);
+	});
+	enumeration(doc, "frameSyncMode", "", 3);
 	enumeration(doc, "theme", "", 3);
 	enumeration(doc, "duplicateFrameDetectionMode", "", 3);
 	if (doc.HasMember("windowPos")) {

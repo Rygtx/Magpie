@@ -12,12 +12,19 @@ namespace Magpie {
 
 enum class ReflexMarker { SimulationStart, SimulationEnd, RenderStart, RenderEnd };
 
+struct ReflexSettings {
+	bool lowLatency = true;
+	bool boost = false;
+	uint32_t minimumIntervalUs = 0;
+	bool operator==(const ReflexSettings&) const = default;
+};
+
 // Injectable driver boundary: tests exercise the production frame lifecycle
 // without loading a display driver or running NGX.
 class ReflexDriver {
 public:
 	virtual ~ReflexDriver() = default;
-	virtual int Configure(bool enabled) noexcept = 0;
+	virtual int Configure(ReflexSettings settings) noexcept = 0;
 	virtual int Sleep() noexcept = 0;
 	virtual int Marker(ReflexMarker marker, uint64_t frameId) noexcept = 0;
 	virtual int RegisterGenerationQueue(ID3D12CommandQueue* queue) noexcept = 0;
@@ -37,26 +44,37 @@ std::unique_ptr<ReflexDriver> CreateNvReflexDriver(ID3D11Device* presentDevice) 
 class ReflexController {
 public:
 	~ReflexController() { Stop(); }
-	void Initialize(std::unique_ptr<ReflexDriver> driver) noexcept {
+	void Initialize(std::unique_ptr<ReflexDriver> driver, ReflexSettings settings = {}) noexcept {
 		_driver = std::move(driver);
+		_settings = settings;
 		if (_driver) SetPresentationAvailable(true);
 	}
 	void SetPresentationAvailable(bool available) noexcept {
 		if (!_driver || _stopped.load() || _available.load() == available) return;
 		std::scoped_lock lock(_configurationMutex);
 		if (!_driver || _stopped.load() || _available.load() == available) return;
-		const int status = _driver->Configure(available);
+		const int status = _driver->Configure(available ? _settings : ReflexSettings{ .lowLatency = false });
 		if (status) {
 			_StopLocked("SetSleepMode / GetSleepStatus", status);
 			return;
 		}
 		_available.store(available);
 	}
+	void SetFrameRateLimit(uint32_t intervalUs) noexcept {
+		std::scoped_lock lock(_configurationMutex);
+		if (!_driver || _stopped.load() || _settings.minimumIntervalUs == intervalUs) return;
+		_settings.minimumIntervalUs = intervalUs;
+		if (_available.load()) {
+			const int status = _driver->Configure(_settings);
+			if (status) _StopLocked("update Reflex frame limit", status);
+		}
+	}
 	void Stop() noexcept {
 		std::scoped_lock lock(_configurationMutex);
 		_StopLocked(nullptr, 0);
 	}
 	bool Available() const noexcept { return _available.load() && !_stopped.load(); }
+	bool CanResume() const noexcept { return _driver && !_stopped.load(); }
 
 	// Backend only. A Waiting/duplicate capture keeps this candidate open;
 	// polling, staged FG input and generated frames must not call Sleep again.
@@ -119,10 +137,11 @@ private:
 		if (!_driver || _stopped.exchange(true)) return;
 		_available.store(false);
 		if (operation) _driver->ReportFailure(operation, status);
-		const int resetStatus = _driver->Configure(false);
+		const int resetStatus = _driver->Configure(ReflexSettings{ .lowLatency = false });
 		if (resetStatus) _driver->ReportFailure("restore SleepMode Off", resetStatus);
 	}
 	std::unique_ptr<ReflexDriver> _driver;
+	ReflexSettings _settings;
 	std::mutex _configurationMutex;
 	std::atomic<bool> _available = false;
 	std::atomic<bool> _stopped = false;

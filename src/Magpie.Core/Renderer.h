@@ -94,6 +94,12 @@ public:
 	void ClearOverlayStates() noexcept;
 	bool IsEffectParameterInputActive() const noexcept { return _overlayDrawer.IsEffectParameterInputActive(); }
 	bool IsEffectParametersVisible() const noexcept { return _overlayDrawer.IsEffectParametersVisible(); }
+	FrameSyncBackend ActiveFrameSyncBackend() const noexcept {
+		return _frameSyncBackend == FrameSyncBackend::Reflex && !_reflex.Available()
+			? FrameSyncBackend::Async : _frameSyncBackend;
+	}
+	const wchar_t* FrameSyncStatusResource() const noexcept;
+	bool IsReflexActive() const noexcept { return _reflex.Available(); }
 
 	const std::vector<const EffectDesc*>& ActiveEffectDescs() const noexcept {
 		return _activeEffectDescs;
@@ -128,18 +134,23 @@ public:
 private:
 	bool _frameTraceStarted = false;
 	// Set before starting the backend; immutable for this session.
-	bool _frontEdgeSyncEnabled = false;
-	bool _frontEdgeUsesSharedSlot = false;
-	bool _frontEdgeLimiterFailed = false;
+	bool _frameSyncEnabled = false;
+	FrameSyncBackend _frameSyncBackend = FrameSyncBackend::None;
+	// Backend thread only: detects driver availability transitions and installs
+	// the corresponding limiter before another capture can be accepted.
+	FrameSyncBackend _appliedFrameSyncBackend = FrameSyncBackend::None;
+	bool _reflexFallbackNotified = false;
+	bool _frameSyncUsesSharedSlot = false;
+	bool _frameSyncLimiterFailed = false;
 	uint32_t _configuredFrameGenerationMultiplier = 1;
 	std::atomic<double> _presentationRefreshRate = 60.0;
 	std::atomic<double> _existingBaseFrameRateLimit = 0.0;
-	double _FrontEdgeFrameRate() const noexcept;
+	double _FrameSyncFrameRate() const noexcept;
 	FrontEdgeSyncClock _frontEdgeClock;
 	std::optional<std::chrono::steady_clock::time_point> _frontendPacingDeadline;
 	wil::unique_handle _frontendPacingTimer;
-	std::atomic<uint64_t> _frontEdgeAcknowledgedKey = 0;
-	wil::unique_handle _frontEdgeConsumedEvent;
+	std::atomic<uint64_t> _frameSyncAcknowledgedKey = 0;
+	wil::unique_handle _frameSyncConsumedEvent;
 	// Backend-owned staged input retains NR/SR and guidance until FG is due.
 	FrontEdgeSyncClock _fgInputClock;
 	wil::unique_handle _fgInputTimer;
@@ -259,7 +270,7 @@ private:
 
 	// 只能由前台线程访问
 	DeviceResources _frontendResources;
-	ReflexController _dlssReflex;
+	ReflexController _reflex;
 	std::unique_ptr<PresenterBase> _presenter;
 	
 	CursorDrawer _cursorDrawer;

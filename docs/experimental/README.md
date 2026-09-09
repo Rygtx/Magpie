@@ -1,5 +1,7 @@
 # Magpie 实验分支文档索引
 
+帧同步当前状态：保留 Front Edge 默认，新增 Async 与普通效果的 Reflex 驱动限帧；DLSS FG 保持独立低延迟与现有输出调度，XeSS FG 继续由 XeLL 接管。见 [使用指南](../FRAME_SYNC_GUIDE.md) 与 [实施记录](reviews/20260909-v0.6.7-frame-sync-modes.md)。
+
 HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关保持关闭；效果器选择器新增「HDR 组件」分类，仅显式转换链按节点启用 HDR 捕获／输出。见 [HDR 组件实施记录](reviews/20260908-v0.6.7-hdr-conversion-effects-plan.md)。
 
 当前本地工作为 `0.6.7` 分支的 `067 local`，持续覆盖同一运行目录。当前入口：[067 r2 TODO](todos/20260908-v0.6.7-r2-TODO.md)、[DLSS FG 原生 Reflex 接入](reviews/20260908-v0.6.7-r2-native-reflex.md)、[首批源码减负与 XeSS FG 对照](reviews/20260908-v0.6.7-r2-source-cost-and-xess-comparison.md)、[原始 DLSS 管线调查](reviews/20260908-v0.6.7-r2-dlss-pipeline-review.md)。NR 复制、FG 事件/映射和默认详细计时减负已完成；后续增加默认 On 的原生 Reflex 低延迟接入。自动检查与真实 GPU 验收分开，用户负责实际操作和性能测试。此前入口：[r1 fix1 执行清单](todos/20260908-v0.6.7-r1-fix1-TODO.md)、[效果器选择器与参数测试](testing/EFFECT-PICKER.md)、[本地构建约定](GIT-WORKFLOW.md)。下面的 0.6.6 与更早发布条目保留历史。

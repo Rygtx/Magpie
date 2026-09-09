@@ -1460,15 +1460,15 @@
   <data name="Motion_Nvidia_5" xml:space="preserve"><value>Highest Quality</value></data>
   <data name="Home_FrameSync.Header" xml:space="preserve"><value>Frame synchronization</value></data>
   <data name="Home_FrameSync.Description" xml:space="preserve"><value>Saved automatically. Changes take effect when you enable the effect group again.</value></data>
-  <data name="Home_FrameSync_FrontEdgeSync.Header" xml:space="preserve"><value>Front Edge Sync</value></data>
-  <data name="Home_FrameSync_FrontEdgeSync.Description" xml:space="preserve"><value>Stabilize frame submissions; with FG, pace real-frame input before generation. May add latency.</value></data>
-  <data name="Home_FrameSync_Target.Header" xml:space="preserve"><value>Target frame rate (FPS)</value></data>
+  <data name="Home_FrameSync_FrontEdgeSync.Header" xml:space="preserve"><value>Enable frame synchronization</value></data>
+  <data name="Home_FrameSync_FrontEdgeSync.Description" xml:space="preserve"><value>Choose how Magpie paces frames. Changes apply when scaling restarts.</value></data>
+  <data name="Home_FrameSync_Target.Header" xml:space="preserve"><value>Target base frame rate (FPS)</value></data>
   <data name="Home_FrameSync_Target.Description" xml:space="preserve"><value>0 is automatic: use the display refresh rate, divided by the FG multiplier for base FPS. Match the source frame limit.</value></data>
   <data name="Home_FrameSync_Target_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Target frame rate</value></data>
   <data name="Home_FrameSync_VRR.Header" xml:space="preserve"><value>VRR (variable refresh rate)</value></data>
   <data name="Home_FrameSync_VRR.Description" xml:space="preserve"><value>Allow compatible FreeSync / G-SYNC presentation. Enable VRR on both the display and driver; tearing may occur when VRR is inactive.</value></data>
   <data name="EffectParam_FrameRate_Filter_frameRateMode_Label" xml:space="preserve"><value>Frame Rate Mode</value></data>
-  <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_0" xml:space="preserve"><value>Based on Front Edge Sync</value></data>
+  <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_0" xml:space="preserve"><value>Follow frame synchronization</value></data>
   <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_1" xml:space="preserve"><value>Custom</value></data>
   <data name="Overlay_EffectParameters_AutoRestart" xml:space="preserve"><value>Auto restart</value></data>
   <data name="Overlay_EffectParameters_Reason_AutoRestart" xml:space="preserve"><value>After editing, the effect group stops and restarts after 500 ms to rebuild DLSSNR history.</value></data>
@@ -1476,10 +1476,10 @@
     <value>Frame sync</value>
   </data>
   <data name="Overlay_FrameSync_Target" xml:space="preserve">
-    <value>Target frame rate (FPS)</value>
+    <value>Target base frame rate (FPS)</value>
   </data>
   <data name="Overlay_FrameSync_Help" xml:space="preserve">
-    <value>Saved automatically; use Apply and restart to apply both settings. 0 is automatic. Apply a matching frame-rate cap to the source application.</value>
+    <value>Saved automatically; use Apply and restart to apply changes. 0 is automatic. Set the source application frame cap separately.</value>
   </data>
   <data name="Message_NgxRestartRequired" xml:space="preserve">
     <value>NVIDIA effects encountered an error. Fully exit Magpie from the system tray and start it again before enabling DLSSNR or DLSS Frame Generation.</value>
@@ -1582,4 +1582,21 @@
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_saturation_Label" xml:space="preserve"><value>Saturation</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_middleGray_Label" xml:space="preserve"><value>Middle gray</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_peakNits_Label" xml:space="preserve"><value>Peak brightness (nits)</value></data>
+  <data name="FrameSync_Mode_FrontEdge.Content" xml:space="preserve"><value>Front Edge Sync</value></data>
+  <data name="FrameSync_Mode_Async.Content" xml:space="preserve"><value>Async — strict interval</value></data>
+  <data name="FrameSync_Mode_Reflex.Content" xml:space="preserve"><value>NVIDIA Reflex — experimental</value></data>
+  <data name="Home_FrameSync_Mode.Header" xml:space="preserve"><value>Pacing mode</value></data>
+  <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge stabilizes submissions; Async controls frame starts; Reflex uses driver pacing. XeSS FG uses XeLL.</value></data>
+  <data name="Overlay_FrameSync_Enable" xml:space="preserve"><value>Enable frame synchronization</value></data>
+  <data name="Overlay_FrameSync_ActiveOff" xml:space="preserve"><value>Current: frame synchronization off. Existing profile and effect limits still apply.</value></data>
+  <data name="Overlay_FrameSync_ActiveFrontEdge" xml:space="preserve"><value>Current: Front Edge Sync.</value></data>
+  <data name="Overlay_FrameSync_ActiveAsync" xml:space="preserve"><value>Current: Async. Processing starts at a strict minimum interval.</value></data>
+  <data name="Overlay_FrameSync_ActiveReflex" xml:space="preserve"><value>Current: Reflex driver pacing; low latency On, Boost Off.</value></data>
+  <data name="Overlay_FrameSync_ActiveXeLL" xml:space="preserve"><value>Current: XeLL controls XeSS FG pacing and low latency using the shared target.</value></data>
+  <data name="Overlay_FrameSync_ReflexFallback" xml:space="preserve"><value>Reflex is unavailable; Async keeps the same target. Use the same NVIDIA GPU for effects and display, allow DirectFlip, update the driver and restart scaling to retry.</value></data>
+  <data name="Overlay_FrameSync_DlssReflexDeferred" xml:space="preserve"><value>Current: DLSS FG uses Front Edge pacing. Reflex driver limiting for FG is pending validation; the low-latency setting is separate.</value></data>
+  <data name="Overlay_FrameSync_DlssLowLatencyOn" xml:space="preserve"><value>Reflex low latency: On; Boost: Off. FPS follows frame synchronization.</value></data>
+  <data name="Overlay_FrameSync_DlssLowLatencyUnavailable" xml:space="preserve"><value>Reflex low latency is unavailable. Use a supported NVIDIA DXGI path and restart scaling to retry. FG retains its current output pacing.</value></data>
+  <data name="Overlay_FrameSync_Unsupported" xml:space="preserve"><value>This presentation path does not support Front Edge Sync. Select Async and restart scaling to enable input pacing.</value></data>
+  <data name="Overlay_FrameSync_ReflexPaused" xml:space="preserve"><value>Temporarily using Async while the window changes. Reflex resumes automatically when DXGI presentation returns.</value></data>
 </root>

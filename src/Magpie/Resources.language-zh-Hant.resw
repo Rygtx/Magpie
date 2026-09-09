@@ -1427,15 +1427,15 @@
   <data name="Motion_Nvidia_5" xml:space="preserve"><value>最高品質</value></data>
   <data name="Home_FrameSync.Header" xml:space="preserve"><value>畫格同步</value></data>
   <data name="Home_FrameSync.Description" xml:space="preserve"><value>修改自動儲存，重新啟用效果組後生效。</value></data>
-  <data name="Home_FrameSync_FrontEdgeSync.Header" xml:space="preserve"><value>Front Edge Sync</value></data>
-  <data name="Home_FrameSync_FrontEdgeSync.Description" xml:space="preserve"><value>穩定畫格提交節奏；啟用 FG 時控制補幀前的真實畫格輸入。可能增加延遲。</value></data>
-  <data name="Home_FrameSync_Target.Header" xml:space="preserve"><value>目標畫格速率（FPS）</value></data>
+  <data name="Home_FrameSync_FrontEdgeSync.Header" xml:space="preserve"><value>啟用幀同步</value></data>
+  <data name="Home_FrameSync_FrontEdgeSync.Description" xml:space="preserve"><value>選擇 Magpie 的幀處理節奏，重新啟用縮放後生效。</value></data>
+  <data name="Home_FrameSync_Target.Header" xml:space="preserve"><value>目標基礎幀率（FPS）</value></data>
   <data name="Home_FrameSync_Target.Description" xml:space="preserve"><value>0 為自動：按顯示器更新率設定，FG 按倍率折算基礎畫格速率。目標需同步限制畫格速率。</value></data>
   <data name="Home_FrameSync_Target_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>目標畫格速率</value></data>
   <data name="Home_FrameSync_VRR.Header" xml:space="preserve"><value>VRR（可變更新頻率）</value></data>
   <data name="Home_FrameSync_VRR.Description" xml:space="preserve"><value>允許相容 FreeSync / G-SYNC 的呈現。需同時在顯示器和驅動程式中開啟 VRR；未生效時可能出現撕裂。</value></data>
   <data name="EffectParam_FrameRate_Filter_frameRateMode_Label" xml:space="preserve"><value>畫格速率模式</value></data>
-  <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_0" xml:space="preserve"><value>基於 Front Edge Sync</value></data>
+  <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_0" xml:space="preserve"><value>跟隨幀同步目標</value></data>
   <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_1" xml:space="preserve"><value>自訂</value></data>
   <data name="Overlay_EffectParameters_AutoRestart" xml:space="preserve"><value>自動重新啟用</value></data>
   <data name="Overlay_EffectParameters_Reason_AutoRestart" xml:space="preserve"><value>編輯結束後自動停用效果組，等待 500 毫秒再重新啟用，以重建 DLSSNR 歷史。</value></data>
@@ -1443,10 +1443,10 @@
     <value>影格同步</value>
   </data>
   <data name="Overlay_FrameSync_Target" xml:space="preserve">
-    <value>目標影格率（FPS）</value>
+    <value>目標基礎幀率（FPS）</value>
   </data>
   <data name="Overlay_FrameSync_Help" xml:space="preserve">
-    <value>修改自動儲存；點擊「套用並重新啟用」後生效。0 為自動；請同步限制目標程式影格率。</value>
+    <value>修改自動儲存，點擊套用並重新啟用後生效。0 為自動；來源應用程式的幀率上限需獨立設定。</value>
   </data>
   <data name="Message_NgxRestartRequired" xml:space="preserve">
     <value>NVIDIA 效果執行異常。請從系統匣完全結束 Magpie 並重新開啟，再啟用 DLSSNR 或 DLSS 補幀。</value>
@@ -1549,4 +1549,21 @@
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_saturation_Label" xml:space="preserve"><value>飽和度</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_middleGray_Label" xml:space="preserve"><value>中間灰</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_peakNits_Label" xml:space="preserve"><value>峰值亮度（尼特）</value></data>
+  <data name="FrameSync_Mode_FrontEdge.Content" xml:space="preserve"><value>Front Edge Sync</value></data>
+  <data name="FrameSync_Mode_Async.Content" xml:space="preserve"><value>Async（嚴格間隔）</value></data>
+  <data name="FrameSync_Mode_Reflex.Content" xml:space="preserve"><value>NVIDIA Reflex（實驗）</value></data>
+  <data name="Home_FrameSync_Mode.Header" xml:space="preserve"><value>同步模式</value></data>
+  <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge 穩定提交；Async 限制開始間隔；Reflex 由驅動程式限幀。XeSS FG 使用 XeLL。</value></data>
+  <data name="Overlay_FrameSync_Enable" xml:space="preserve"><value>啟用幀同步</value></data>
+  <data name="Overlay_FrameSync_ActiveOff" xml:space="preserve"><value>目前：幀同步關閉。設定與效果器的既有上限仍生效。</value></data>
+  <data name="Overlay_FrameSync_ActiveFrontEdge" xml:space="preserve"><value>目前：Front Edge Sync。</value></data>
+  <data name="Overlay_FrameSync_ActiveAsync" xml:space="preserve"><value>目前：Async，按嚴格最小間隔開始處理。</value></data>
+  <data name="Overlay_FrameSync_ActiveReflex" xml:space="preserve"><value>目前：Reflex 驅動程式限幀，低延遲開啟，Boost 關閉。</value></data>
+  <data name="Overlay_FrameSync_ActiveXeLL" xml:space="preserve"><value>目前：XeLL 接管 XeSS 補幀的限幀與低延遲，使用統一目標。</value></data>
+  <data name="Overlay_FrameSync_ReflexFallback" xml:space="preserve"><value>Reflex 暫時無法使用，已使用 Async 保持相同目標。請讓效果與顯示使用同一 NVIDIA 顯示卡，允許 DirectFlip，更新驅動程式後重新啟用縮放以重試。</value></data>
+  <data name="Overlay_FrameSync_DlssReflexDeferred" xml:space="preserve"><value>目前：DLSS FG 使用 Front Edge 節奏。FG 的 Reflex 驅動程式限幀待驗證，低延遲狀態獨立保留。</value></data>
+  <data name="Overlay_FrameSync_DlssLowLatencyOn" xml:space="preserve"><value>Reflex 低延遲：開啟；Boost：關閉。幀率跟隨幀同步設定。</value></data>
+  <data name="Overlay_FrameSync_DlssLowLatencyUnavailable" xml:space="preserve"><value>Reflex 低延遲暫時無法使用。請使用支援的 NVIDIA DXGI 呈現路徑並重新啟用縮放。FG 保留目前輸出節奏。</value></data>
+  <data name="Overlay_FrameSync_Unsupported" xml:space="preserve"><value>此呈現路徑不支援 Front Edge Sync。請選擇 Async 並重新啟用縮放，以啟用輸入限幀。</value></data>
+  <data name="Overlay_FrameSync_ReflexPaused" xml:space="preserve"><value>視窗調整期間暫用 Async；恢復 DXGI 呈現後自動恢復 Reflex。</value></data>
 </root>

@@ -103,7 +103,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 	}
 	if (!_options.parameterSession) {
 		_options.parameterSession = std::make_shared<EffectParameterSessionState>(
-			_options.effects, FrameSyncSettings{ _options.isFrontEdgeSyncEnabled, _options.frontEdgeSyncFrameRate });
+			_options.effects, FrameSyncSettings{ _options.isFrontEdgeSyncEnabled, _options.frontEdgeSyncFrameRate, _options.frameSyncMode });
 	}
 	Logger::Get().Info(fmt::format("缩放开始\n\t程序版本: {}\n\tOS 版本: {}\n\t管理员: {}",
 #ifdef MP_VERSION_STRING
@@ -419,6 +419,7 @@ void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 	// Retired profile flags cannot enable HDR. Explicit conversion components
 	// derive capture/output domains for this session and every parameter restart.
 	options.hdrComponents = BuildHdrComponentPlan(options.effects);
+	if (!IsValidFrameSyncMode(options.frameSyncMode)) options.frameSyncMode = FrameSyncMode::FrontEdge;
 	options.IsHdrCompatibilityEnabled(options.hdrComponents.enabled && options.hdrComponents.outputHdr);
 	options.Log();
 	// 缩放结束后失效
@@ -591,6 +592,7 @@ void ScalingWindow::RestartWithEffectParameters(
 	// The backend has joined: update the immutable pacing snapshot only now.
 	_options.isFrontEdgeSyncEnabled = frameSync.enabled;
 	_options.frontEdgeSyncFrameRate = frameSync.frameRate;
+	_options.frameSyncMode = frameSync.mode;
 	_options.parameterSession->Desired(_options.effects);
 	Start(hwndSource, std::move(_options));
 	if (Handle() && _renderer) _renderer->RestoreOverlayState(overlayState);

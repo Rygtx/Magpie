@@ -60,6 +60,7 @@ struct _AppSettingsData {
 	bool _isFrontEdgeSyncEnabled = true;
 	bool _isVRREnabled = false;
 	float _frontEdgeSyncFrameRate = 60.0f;
+	FrameSyncMode _frameSyncMode = FrameSyncMode::FrontEdge;
 
 	ToolbarState _fullscreenInitialToolbarState = ToolbarState::AutoHide;
 	ToolbarState _windowedInitialToolbarState = ToolbarState::AutoHide;
@@ -351,6 +352,13 @@ public:
 		SaveAsync();
 	}
 	float FrontEdgeSyncFrameRate() const noexcept { return _frontEdgeSyncFrameRate; }
+	FrameSyncMode GetFrameSyncMode() const noexcept { return _frameSyncMode; }
+	void SetFrameSyncMode(FrameSyncMode value) noexcept {
+		if (!IsValidFrameSyncMode(value) || _frameSyncMode == value) return;
+		_frameSyncMode = value;
+		FrontEdgeSyncChanged.Invoke();
+		SaveAsync();
+	}
 	void FrontEdgeSyncFrameRate(float value) noexcept {
 		value = SanitizePresentationFrameRate(value);
 		if (_frontEdgeSyncFrameRate == value) return;

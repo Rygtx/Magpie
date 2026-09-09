@@ -463,6 +463,7 @@ struct ScalingOptions {
 	bool isVRREnabled = false;
 	// 0 targets the display refresh rate, divided by FG multiplier for base FPS.
 	float frontEdgeSyncFrameRate = 60.0f;
+	FrameSyncMode frameSyncMode = FrameSyncMode::FrontEdge;
 	float cursorScaling = 1.0f;
 	CaptureMethod captureMethod = CaptureMethod::GraphicsCapture;
 	MultiMonitorUsage multiMonitorUsage = MultiMonitorUsage::Closest;

@@ -27,6 +27,7 @@ HomeViewModel::HomeViewModel() {
 	_frameSyncChangedRevoker = AppSettings::Get().FrontEdgeSyncChanged(auto_revoke, [this] {
 		RaisePropertyChanged(L"IsFrontEdgeSyncEnabled");
 		RaisePropertyChanged(L"FrontEdgeSyncFrameRate");
+		RaisePropertyChanged(L"FrameSyncModeIndex");
 	});
 	_issueChangedRevoker = ErrorService::Get().Changed(auto_revoke, [this] {
 		RaisePropertyChanged(L"ShowRecentIssue");
@@ -508,6 +509,15 @@ void HomeViewModel::IsVRREnabled(bool value) {
 	if (settings.IsVRREnabled() == value) return;
 	settings.IsVRREnabled(value);
 	RaisePropertyChanged(L"IsVRREnabled");
+}
+
+int32_t HomeViewModel::FrameSyncModeIndex() const noexcept {
+	return static_cast<int32_t>(AppSettings::Get().GetFrameSyncMode());
+}
+
+void HomeViewModel::FrameSyncModeIndex(int32_t value) {
+	if (value < 0 || value > static_cast<int32_t>(FrameSyncMode::Reflex)) return;
+	AppSettings::Get().SetFrameSyncMode(static_cast<FrameSyncMode>(value));
 }
 
 double HomeViewModel::FrontEdgeSyncFrameRate() const noexcept {

@@ -25,6 +25,7 @@ class FakeDriver final : public ReflexDriver {
 public:
 	std::mutex mutex;
 	std::vector<Event> events;
+	std::vector<ReflexSettings> settings;
 	std::string failure;
 	std::function<void()> sleepHook;
 	std::function<void()> presentHook;
@@ -33,7 +34,10 @@ public:
 		events.push_back({ name, frame, present });
 		return failure == name ? -1 : 0;
 	}
-	int Configure(bool enabled) noexcept override { return Record(enabled ? "on" : "off"); }
+	int Configure(ReflexSettings value) noexcept override {
+		{ std::scoped_lock lock(mutex); settings.push_back(value); }
+		return Record(value.lowLatency ? "on" : "off", value.minimumIntervalUs);
+	}
 	int Sleep() noexcept override {
 		if (sleepHook) sleepHook();
 		return Record("sleep");
@@ -190,12 +194,43 @@ static void TestSleepDoesNotBlockPresentOrStop() {
 		"concurrent shutdown must preserve Present and restore driver state");
 }
 
+static void TestOrdinaryFrameLimit() {
+	ReflexController reflex;
+	auto fake = std::make_unique<FakeDriver>();
+	auto* driver = fake.get();
+	reflex.Initialize(std::move(fake), { .minimumIntervalUs = 12500 });
+	Require(driver->settings.back() == ReflexSettings{ .minimumIntervalUs = 12500 }, "80 FPS and Boost Off must reach the driver");
+	for (int i = 0; i < 30; ++i) reflex.SetFrameRateLimit(12500);
+	Require(driver->settings.size() == 1, "unchanged target must not configure every frame");
+	const auto frame = reflex.BeginCapture(9);
+	const auto present = reflex.NextPresentId();
+	for (int i = 0; i < 20; ++i) reflex.BeginCapture(9);
+	reflex.EndCaptureRender();
+	reflex.CompleteCapture();
+	Present(reflex, frame, present, false);
+	Require(driver->Count("sleep") == 1 && driver->Count("real-end") == 1 && driver->Count("queue") == 0,
+		"ordinary rendering needs one sleep and no FG queue");
+	reflex.SetPresentationAvailable(false);
+	reflex.SetFrameRateLimit(10000);
+	Require(driver->settings.back() == ReflexSettings{ .lowLatency = false }, "pause must clear the cap and low latency");
+	reflex.SetPresentationAvailable(true);
+	Require(driver->settings.back() == ReflexSettings{ .minimumIntervalUs = 10000 }, "resume must restore the latest target");
+	reflex.SetFrameRateLimit(0);
+	Require(driver->settings.back().lowLatency && !driver->settings.back().boost && driver->settings.back().minimumIntervalUs == 0,
+		"clearing the frame limit must preserve low latency");
+	driver->failure = "on";
+	reflex.SetFrameRateLimit(16667);
+	Require(!reflex.Available() && driver->settings.back() == ReflexSettings{ .lowLatency = false },
+		"failed reconfiguration must clear all driver settings before Async fallback");
+}
+
 int main() {
 	try {
 		TestFrameLifecycle();
 		TestPauseAndFailure();
 		TestSleepDoesNotBlockPresentOrStop();
-		std::cout << "PASS: Reflex 2x/3x/4x IDs, capture retries, skipped interpolation, FIFO IDs, pause/resume, 13 driver failure points, concurrent Sleep/Present/Stop\n";
+		TestOrdinaryFrameLimit();
+		std::cout << "PASS: Reflex 2x/3x/4x IDs, capture retries, skipped interpolation, FIFO IDs, 13 driver failure points, concurrent Sleep/Present/Stop; ordinary frame limits, same-target deduplication and pause/resume\n";
 		return 0;
 	} catch (const std::exception& error) {
 		std::cerr << error.what() << '\n';

@@ -265,7 +265,7 @@ Renderer::Renderer() noexcept :
 
 void Renderer::BeginShutdown() noexcept {
 	_sessionLifetime->RequestStop();
-	_dlssReflex.Stop();
+	_reflex.Stop();
 	// The backend can be waiting for a synchronous DLSSFG presentation while
 	// the frontend thread is destroying this Renderer. Stop issuing new
 	// synchronous sends before waiting for the backend thread to exit.
@@ -337,7 +337,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	}
 
 	_hasFrameGeneration = frameGeneration.HasFrameGeneration();
-	_frontEdgeUsesSharedSlot = frameGeneration.first != FrameGenerationEffectKind::DLSS;
+	_frameSyncUsesSharedSlot = frameGeneration.first != FrameGenerationEffectKind::DLSS;
 	std::optional<XeSSFGVariant> xessVariant;
 	uint32_t xessFrameGenerationMultiplier = 2;
 	for (const EffectOption& effect : effects) {
@@ -433,30 +433,38 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	}
 	}
 
-	if (frameGeneration.first == FrameGenerationEffectKind::DLSS &&
+	const auto& pacingOptions = ScalingWindow::Get().Options();
+	const bool ordinaryReflex = !frameGeneration.HasFrameGeneration() &&
+		pacingOptions.isFrontEdgeSyncEnabled && pacingOptions.frameSyncMode == FrameSyncMode::Reflex &&
+		!pacingOptions.IsBenchmarkMode();
+	if ((frameGeneration.first == FrameGenerationEffectKind::DLSS || ordinaryReflex) &&
 		_presenter->UsesFrameLatencyWaitableObject()) {
-		_dlssReflex.Initialize(CreateNvReflexDriver(_frontendResources.GetD3DDevice()));
-		_presenter->SetReflexController(&_dlssReflex);
+		_reflex.Initialize(CreateNvReflexDriver(_frontendResources.GetD3DDevice()));
+		_presenter->SetReflexController(&_reflex);
 	} else if (frameGeneration.first == FrameGenerationEffectKind::DLSS) {
 		Logger::Get().Info("DLSSFG Reflex: DXGI presentation required; enable DirectFlip to use Reflex");
 	}
-	const auto& pacingOptions = ScalingWindow::Get().Options();
-	_frontEdgeSyncEnabled = pacingOptions.isFrontEdgeSyncEnabled && !pacingOptions.IsBenchmarkMode();
+	bool frontEdgeSupported = true;
 #ifdef MP_USE_COMPSWAPCHAIN
-	if (!_hasFrameGeneration) _frontEdgeSyncEnabled = false;
+	frontEdgeSupported = false;
 #else
-	if (!_hasFrameGeneration && pacingOptions.IsDirectFlipDisabled()) _frontEdgeSyncEnabled = false;
+	frontEdgeSupported = !pacingOptions.IsDirectFlipDisabled();
 #endif
-	if (_frontEdgeSyncEnabled) {
-		_frontEdgeConsumedEvent.reset(CreateEventW(nullptr, FALSE, FALSE, nullptr));
-		if (!_frontEdgeConsumedEvent) {
+	_frameSyncBackend = ResolveFrameSyncBackend(
+		{ pacingOptions.isFrontEdgeSyncEnabled, pacingOptions.frontEdgeSyncFrameRate, pacingOptions.frameSyncMode },
+		frameGeneration.first == FrameGenerationEffectKind::DLSS, _isXeSSFrameGenerationActive,
+		frontEdgeSupported, pacingOptions.IsBenchmarkMode());
+	_frameSyncEnabled = _frameSyncBackend != FrameSyncBackend::None;
+	if (_frameSyncEnabled) {
+		_frameSyncConsumedEvent.reset(CreateEventW(nullptr, FALSE, FALSE, nullptr));
+		if (!_frameSyncConsumedEvent) {
 			Logger::Get().Win32Error("Create frame pacing event failed");
 			return ScalingError::PresentationInitFailed;
 		}
 	}
-	Logger::Get().Info(fmt::format("Front Edge Sync: requested={} active={} targetBaseFPS={} mode={}",
-		pacingOptions.isFrontEdgeSyncEnabled, _frontEdgeSyncEnabled, pacingOptions.frontEdgeSyncFrameRate,
-		_isXeSSFrameGenerationActive ? "XeLL input" : (_hasFrameGeneration ? "DLSSFG input" : "Present boundary")));
+	Logger::Get().Info(fmt::format("Frame sync: enabled={} requestedMode={} backend={} targetBaseFPS={}",
+		pacingOptions.isFrontEdgeSyncEnabled, static_cast<int>(pacingOptions.frameSyncMode),
+		static_cast<int>(ActiveFrameSyncBackend()), pacingOptions.frontEdgeSyncFrameRate));
 	_backendThread = std::thread(&Renderer::_BackendThreadProc, this);
 
 	// 等待后端初始化完成
@@ -871,12 +879,12 @@ bool Renderer::_FrontendRender(
 ) noexcept {
 	if (_pendingFrontendFrame) return _SubmitFrontendFrame();
 	_frontendPacingDeadline.reset();
-	const bool paced = _frontEdgeSyncEnabled && !_hasFrameGeneration &&
+	const bool paced = ActiveFrameSyncBackend() == FrameSyncBackend::FrontEdge && !_hasFrameGeneration &&
 		!waitForGpu && _presenter->SupportsDeferredPresent() &&
 		!ScalingWindow::Get().IsResizingOrMoving();
 	if (paced) {
 		_frontEdgeClock.SetInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(
-			std::chrono::duration<double>(1.0 / _FrontEdgeFrameRate())));
+			std::chrono::duration<double>(1.0 / _FrameSyncFrameRate())));
 		const auto now = std::chrono::steady_clock::now();
 		const auto prepareAt = _frontEdgeClock.Due(now) - std::chrono::microseconds(1000);
 		if (now < prepareAt) {
@@ -887,10 +895,10 @@ bool Renderer::_FrontendRender(
 		_frontEdgeClock.Reset();
 	}
 	if (stableBaseOnly && !paced && !_CanRenderOverlay()) return false;
-	if (_frontEdgeSyncEnabled && _isXeSSFrameGenerationActive &&
-		!_presenter->SetBaseFrameRateLimit(_FrontEdgeFrameRate())) {
-		if (!_frontEdgeLimiterFailed) {
-			_frontEdgeLimiterFailed = true;
+	if (_frameSyncEnabled && _isXeSSFrameGenerationActive &&
+		!_presenter->SetBaseFrameRateLimit(_FrameSyncFrameRate())) {
+		if (!_frameSyncLimiterFailed) {
+			_frameSyncLimiterFailed = true;
 			ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime] {
 				auto& window = ScalingWindow::Get();
 				if (!session->IsCurrent(ScalingWindow::RunId()) || !window) return;
@@ -1014,10 +1022,10 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 		waitForGpu, paced, overlayActionRevision, contentKey] = frame;
 	const bool submitted = _presenter->EndFrame(waitForGpu);
 	_pendingFrontendFrame.reset();
-	if (submitted && _frontEdgeSyncEnabled && !_hasFrameGeneration &&
+	if (submitted && ActiveFrameSyncBackend() == FrameSyncBackend::FrontEdge && !_hasFrameGeneration &&
 		_presenter->SupportsDeferredPresent() && !ScalingWindow::Get().IsResizingOrMoving()) {
 		_frontEdgeClock.SetInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(
-			std::chrono::duration<double>(1.0 / _FrontEdgeFrameRate())));
+			std::chrono::duration<double>(1.0 / _FrameSyncFrameRate())));
 		_frontEdgeClock.Submitted(_presenter->LastSubmissionTime());
 	}
 	auto* d3dDC = _frontendResources.GetD3DDC();
@@ -1049,9 +1057,9 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 	} else if (!uiInIndependentLayer) {
 		_overlayDrawer.OnPresentFailed();
 	}
-	if (submitted && contentFrame && _frontEdgeSyncEnabled && _frontEdgeUsesSharedSlot) {
-		_frontEdgeAcknowledgedKey.store(contentKey, std::memory_order_release);
-		SetEvent(_frontEdgeConsumedEvent.get());
+	if (submitted && contentFrame && _frameSyncEnabled && _frameSyncUsesSharedSlot) {
+		_frameSyncAcknowledgedKey.store(contentKey, std::memory_order_release);
+		SetEvent(_frameSyncConsumedEvent.get());
 	}
 
 	if (submitted && uiInIndependentLayer &&
@@ -1124,8 +1132,8 @@ bool Renderer::Render(bool force, bool waitForGpu) noexcept {
 	const bool hasNewBackendFrame =
 		_lastAccessMutexKeys[sharedTextureSlot] !=
 		_sharedTextureMutexKeys[sharedTextureSlot].load(std::memory_order_relaxed) ||
-		(_frontEdgeSyncEnabled && _frontEdgeUsesSharedSlot &&
-			_frontEdgeAcknowledgedKey.load(std::memory_order_acquire) !=
+		(_frameSyncEnabled && _frameSyncUsesSharedSlot &&
+			_frameSyncAcknowledgedKey.load(std::memory_order_acquire) !=
 			_sharedTextureMutexKeys[sharedTextureSlot].load(std::memory_order_acquire));
 	FrameTrace::Mark(FrameTrace::Event::RenderDecision,
 		(force ? 1 : 0) | (hasNewBackendFrame ? 2 : 0) |
@@ -1197,8 +1205,8 @@ bool Renderer::HasPendingContent() const noexcept {
 	const uint32_t slot = std::min(_latestSharedTextureSlot.load(std::memory_order_acquire),
 		_sharedTextureSlotCount - 1);
 	return _frontendBaseNeedsPresent ||
-		(_frontEdgeSyncEnabled && _frontEdgeUsesSharedSlot &&
-			_frontEdgeAcknowledgedKey.load(std::memory_order_acquire) !=
+		(_frameSyncEnabled && _frameSyncUsesSharedSlot &&
+			_frameSyncAcknowledgedKey.load(std::memory_order_acquire) !=
 			_sharedTextureMutexKeys[slot].load(std::memory_order_acquire)) || _lastAccessMutexKeys[slot] !=
 		_sharedTextureMutexKeys[slot].load(std::memory_order_acquire);
 }
@@ -1231,7 +1239,21 @@ void Renderer::_UpdateOverlayRefreshRate() noexcept {
 }
 
 
-double Renderer::_FrontEdgeFrameRate() const noexcept {
+const wchar_t* Renderer::FrameSyncStatusResource() const noexcept {
+	switch (ActiveFrameSyncBackend()) {
+	case FrameSyncBackend::None: return ScalingWindow::Get().Options().isFrontEdgeSyncEnabled &&
+		!ScalingWindow::Get().Options().IsBenchmarkMode() ? L"Overlay_FrameSync_Unsupported" : L"Overlay_FrameSync_ActiveOff";
+	case FrameSyncBackend::Async: return _frameSyncBackend == FrameSyncBackend::Reflex
+		? (_reflex.CanResume() ? L"Overlay_FrameSync_ReflexPaused" : L"Overlay_FrameSync_ReflexFallback")
+		: L"Overlay_FrameSync_ActiveAsync";
+	case FrameSyncBackend::Reflex: return L"Overlay_FrameSync_ActiveReflex";
+	case FrameSyncBackend::XeLL: return L"Overlay_FrameSync_ActiveXeLL";
+	default: return ScalingWindow::Get().Options().frameSyncMode == FrameSyncMode::Reflex
+		? L"Overlay_FrameSync_DlssReflexDeferred" : L"Overlay_FrameSync_ActiveFrontEdge";
+	}
+}
+
+double Renderer::_FrameSyncFrameRate() const noexcept {
 	return ResolvePresentationFrameRate(ScalingWindow::Get().Options().frontEdgeSyncFrameRate,
 		_existingBaseFrameRateLimit.load(std::memory_order_acquire),
 		_presentationRefreshRate.load(std::memory_order_acquire), _configuredFrameGenerationMultiplier);
@@ -1388,9 +1410,9 @@ bool Renderer::OnResize() noexcept {
 
 	_backendThreadDispatcher.TryEnqueue([this]() {
 		_pendingFrameGenerationInput = nullptr;
-		_dlssReflex.CompleteCapture();
+		_reflex.CompleteCapture();
 		_fgInputClock.Reset();
-		_frontEdgeAcknowledgedKey.store(0, std::memory_order_release);
+		_frameSyncAcknowledgedKey.store(0, std::memory_order_release);
 		ID3D11Texture2D* outputTexture = _ResizeEffects();
 		if (!outputTexture) {
 			Logger::Get().Win32Error("_ResizeEffects 失败");
@@ -2383,7 +2405,7 @@ bool Renderer::_InitializeDLSSFrameGenerator(
 	_dlssFgRealPublishSuccess = 0;
 	_dlssFgRealPublishFailure = 0;
 	_dlssFrameGenerator = std::move(frameGenerator);
-	_dlssFrameGenerator->SetReflexController(&_dlssReflex);
+	_dlssFrameGenerator->SetReflexController(&_reflex);
 	return true;
 }
 
@@ -2415,15 +2437,15 @@ void Renderer::_HandleDLSSFrameGenerationFailure(ID3D11Texture2D* input) noexcep
 }
 
 void Renderer::_DisableDLSSFrameGenerationForSession() noexcept {
-	_dlssReflex.Stop();
+	_reflex.Stop();
 	if (_dlssFrameGenerator && !_dlssFrameGenerator->Drain()) {
 		Logger::Get().Warn("Drain DLSSFG queue before disabling failed");
 	}
 	_dlssFrameGenerator.reset();
 	_synchronousPresentInterval = {};
-	if (_frontEdgeSyncEnabled) {
+	if (_frameSyncEnabled) {
 		// A failed FG session no longer reaches the FG input gate.
-		_stepTimer.Initialize(0, static_cast<float>(_FrontEdgeFrameRate()));
+		_stepTimer.Initialize(0, static_cast<float>(_FrameSyncFrameRate()), true);
 	}
 	Logger::Get().Error(
 		"DLSS Frame Generation was disabled for this scaling session after repeated failures");
@@ -2670,7 +2692,7 @@ HANDLE Renderer::_CreateSharedTexture(ID3D11Texture2D* effectsOutput) noexcept {
 }
 
 void Renderer::_BackendThreadProc() noexcept {
-	const auto finishReflexCapture = wil::scope_exit([this] { _dlssReflex.CompleteCapture(); });
+	const auto finishReflexCapture = wil::scope_exit([this] { _reflex.CompleteCapture(); });
 	FrameTrace::BindBackend();
 #ifdef _DEBUG
 	SetThreadDescription(GetCurrentThread(), L"Magpie-缩放后端线程");
@@ -2728,18 +2750,19 @@ void Renderer::_BackendThreadProc() noexcept {
 			continue;
 		}
 		bool fpsUpdated = false;
+		if (ActiveFrameSyncBackend() != _appliedFrameSyncBackend) _UpdateFrameRateLimits();
 		bool waitedForContent = false;
 		FrameTrace::Scope traceWait(FrameTrace::Event::BackendWait);
 		if (_pendingFrameGenerationInput) {
 			_fgInputClock.SetInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(
-				std::chrono::duration<double>(1.0 / _FrontEdgeFrameRate())));
+				std::chrono::duration<double>(1.0 / _FrameSyncFrameRate())));
 			const auto now = std::chrono::steady_clock::now();
 			WaitForFramePacing(_fgInputClock.Due(now) - now, _fgInputTimer);
-		} else if (_frontEdgeSyncEnabled && _frontEdgeUsesSharedSlot &&
-			_frontEdgeAcknowledgedKey.load(std::memory_order_acquire) !=
+		} else if (_frameSyncEnabled && _frameSyncUsesSharedSlot &&
+			_frameSyncAcknowledgedKey.load(std::memory_order_acquire) !=
 			_sharedTextureMutexKeys[0].load(std::memory_order_acquire)) {
 			waitedForContent = true;
-			HANDLE consumed = _frontEdgeConsumedEvent.get();
+			HANDLE consumed = _frameSyncConsumedEvent.get();
 			MsgWaitForMultipleObjectsEx(1, &consumed, 50, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
 		} else {
 			stepTimerStatus = _stepTimer.WaitForNextFrame(
@@ -2773,8 +2796,8 @@ void Renderer::_BackendThreadProc() noexcept {
 			}
 			continue;
 		}
-		if (_frontEdgeSyncEnabled && _frontEdgeUsesSharedSlot &&
-			_frontEdgeAcknowledgedKey.load(std::memory_order_acquire) !=
+		if (_frameSyncEnabled && _frameSyncUsesSharedSlot &&
+			_frameSyncAcknowledgedKey.load(std::memory_order_acquire) !=
 			_sharedTextureMutexKeys[0].load(std::memory_order_acquire)) continue;
 		// Refresh StepTimer's frame-start timestamp before accepting new input.
 		if (waitedForContent) continue;
@@ -2789,8 +2812,14 @@ void Renderer::_BackendThreadProc() noexcept {
 
 		FrameTrace::SetFrame(_capturedFrameId + 1); // Candidate id until CaptureAccepted.
 		FrameTrace::Scope traceCapture(FrameTrace::Event::CaptureUpdate);
-		if (_dlssFrameGenerator) _dlssReflex.BeginCapture(_capturedFrameId + 1);
+		if (_dlssFrameGenerator || _frameSyncBackend == FrameSyncBackend::Reflex)
+			_reflex.BeginCapture(_capturedFrameId + 1);
+		if (ActiveFrameSyncBackend() != _appliedFrameSyncBackend) {
+			_UpdateFrameRateLimits();
+			continue;
+		}
 		if (_sessionLifetime->IsStopping()) continue;
+		_stepTimer.CaptureStarting();
 		const FrameSourceState frameSourceState = _frameSource->Update();
 		traceCapture.Data(static_cast<int64_t>(frameSourceState));
 		traceCapture.End();
@@ -2884,9 +2913,9 @@ void Renderer::_UpdateFrameRateLimits() noexcept {
 			custom == effect.parameters.end() ? 60.0f : custom->second,
 			options.frontEdgeSyncFrameRate, _presentationRefreshRate.load(std::memory_order_acquire),
 			_configuredFrameGenerationMultiplier);
-		// Active Front Edge Sync already owns this target. Do not feed a resolved
+		// Active frame synchronization already owns this target. Do not feed a resolved
 		// auto target back as an independent cap, which would stick on monitor changes.
-		if (!_frontEdgeSyncEnabled && (!maxFrameRate || targetFrameRate < *maxFrameRate)) {
+		if (!_frameSyncEnabled && (!maxFrameRate || targetFrameRate < *maxFrameRate)) {
 			maxFrameRate = targetFrameRate;
 		}
 		_frameRateFilterTarget = _frameRateFilterTarget == 0.0f
@@ -2894,7 +2923,7 @@ void Renderer::_UpdateFrameRateLimits() noexcept {
 		Logger::Get().Info(fmt::format(
 			"Frame Rate Filter enabled: {} FPS ({})", targetFrameRate,
 			UsesFrontEdgeSyncFrameRate(options.isFrontEdgeSyncEnabled, modeValue)
-				? "Front Edge Sync" : "Custom"));
+				? "Frame sync" : "Custom"));
 	}
 
 	if (options.maxFrameRate &&
@@ -2907,19 +2936,33 @@ void Renderer::_UpdateFrameRateLimits() noexcept {
 	_existingBaseFrameRateLimit.store(maxFrameRate.value_or(0.0f), std::memory_order_release);
 	const float minFrameRate = useFrameGeneration ? 0.0f :
 		(options.IsBenchmarkMode() ? std::numeric_limits<float>::max() :
-			std::min(options.minFrameRate, _frontEdgeSyncEnabled
-				? float(_FrontEdgeFrameRate()) : maxFrameRate.value_or(options.minFrameRate)));
-	if (_frontEdgeSyncEnabled) Logger::Get().Info(fmt::format(
-		"Front Edge Sync effective base target: {:.3f} FPS (existingLimit={:.3f})",
-		_FrontEdgeFrameRate(), maxFrameRate.value_or(0.0f)));
-	// The consumer boundary owns this limit; avoid an independent capture gate.
-	const bool consumerPacing = _frontEdgeSyncEnabled &&
-		(_frontEdgeUsesSharedSlot || _dlssFrameGenerator || _effectDrawers.empty());
-	const std::optional<float> fallbackLimit = _frontEdgeSyncEnabled ?
-		std::optional<float>(float(_FrontEdgeFrameRate())) : maxFrameRate;
-	_stepTimer.Initialize(minFrameRate, consumerPacing ? std::nullopt : fallbackLimit);
+			std::min(options.minFrameRate, _frameSyncEnabled
+				? float(_FrameSyncFrameRate()) : maxFrameRate.value_or(options.minFrameRate)));
+	if (_frameSyncEnabled) Logger::Get().Info(fmt::format(
+		"Frame sync effective base target: {:.3f} FPS (existingLimit={:.3f})",
+		_FrameSyncFrameRate(), maxFrameRate.value_or(0.0f)));
+	if (_frameSyncBackend == FrameSyncBackend::Reflex)
+		_reflex.SetFrameRateLimit(FrameSyncIntervalUs(_FrameSyncFrameRate()));
+	_appliedFrameSyncBackend = ActiveFrameSyncBackend();
+	if (_frameSyncBackend == FrameSyncBackend::Reflex &&
+		_appliedFrameSyncBackend == FrameSyncBackend::Async && !_reflex.CanResume() && !_reflexFallbackNotified) {
+		_reflexFallbackNotified = true;
+		ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime] {
+			auto& window = ScalingWindow::Get();
+			if (session->IsCurrent(ScalingWindow::RunId()) && window)
+				window.ShowToast(window.GetLocalizedString(L"Overlay_FrameSync_ReflexFallback"));
+		});
+	}
+	// Exactly one owner for the base FPS. Capacity/resource waits remain active.
+	const bool consumerPacing = (_appliedFrameSyncBackend == FrameSyncBackend::FrontEdge &&
+		(_frameSyncUsesSharedSlot || _dlssFrameGenerator || _effectDrawers.empty())) ||
+		_appliedFrameSyncBackend == FrameSyncBackend::XeLL || _appliedFrameSyncBackend == FrameSyncBackend::Reflex;
+	const std::optional<float> fallbackLimit = _frameSyncEnabled ?
+		std::optional<float>(float(_FrameSyncFrameRate())) : maxFrameRate;
+	_stepTimer.Initialize(minFrameRate, consumerPacing ? std::nullopt : fallbackLimit,
+		_appliedFrameSyncBackend == FrameSyncBackend::Async || _appliedFrameSyncBackend == FrameSyncBackend::Reflex);
 
-	_baseFrameRateLimit = _frontEdgeSyncEnabled ? _FrontEdgeFrameRate() : maxFrameRate.value_or(0.0f);
+	_baseFrameRateLimit = _frameSyncEnabled ? _FrameSyncFrameRate() : maxFrameRate.value_or(0.0f);
 	if (_dlssFrameGenerator) _synchronousPresentInterval =
 		_captureCadence.Interval(_dlssFrameGenerator->Multiplier(), _baseFrameRateLimit);
 }
@@ -2956,6 +2999,16 @@ HANDLE Renderer::_InitBackend() noexcept {
 	}
 
 	ID3D11Device5* d3dDevice = _backendResources.GetD3DDevice();
+	if (_frameSyncBackend == FrameSyncBackend::Reflex && _reflex.Available()) {
+		DXGI_ADAPTER_DESC1 backend{}, frontend{};
+		if (FAILED(_backendResources.GetGraphicsAdapter()->GetDesc1(&backend)) ||
+			FAILED(_frontendResources.GetGraphicsAdapter()->GetDesc1(&frontend)) ||
+			backend.AdapterLuid.HighPart != frontend.AdapterLuid.HighPart ||
+			backend.AdapterLuid.LowPart != frontend.AdapterLuid.LowPart) {
+			Logger::Get().Warn("Reflex frame limiting needs effects and presentation on the same NVIDIA adapter; using Async");
+			_reflex.Stop();
+		}
+	}
 	_backendDescriptorStore.Initialize(d3dDevice);
 
 	if (!_InitFrameSource()) {
@@ -3142,7 +3195,7 @@ void Renderer::_BackendRender(
 		_lastCapturedFrameTime = captureTime;
 		// A cancelled Reflex candidate may leave a gap. Keep NGX's
 		// BackbufferFrameID, guidance and Reflex on the same monotonic base ID.
-		_capturedFrameId = std::max(_capturedFrameId + 1, _dlssReflex.CaptureFrameId());
+		_capturedFrameId = std::max(_capturedFrameId + 1, _reflex.CaptureFrameId());
 		FrameTrace::SetFrame(_capturedFrameId);
 		FrameTrace::Mark(FrameTrace::Event::CaptureAccepted, _frameSource->CaptureTimestamp100ns(), sequence);
 		const FrameGuidanceRequirements guidanceRequirements =
@@ -3287,7 +3340,7 @@ void Renderer::_BackendRender(
 		return;
 	}
 
-	if (_frontEdgeSyncEnabled && _dlssFrameGenerator && isNewCaptureFrame &&
+	if (ActiveFrameSyncBackend() == FrameSyncBackend::FrontEdge && _dlssFrameGenerator && isNewCaptureFrame &&
 		_backendMayDeferFG && _synchronousFramePresentationEnabled.load(std::memory_order_acquire)) {
 		_pendingFrameGenerationInput.copy_from(effectsOutput);
 		d3dDC->Flush();
@@ -3355,9 +3408,9 @@ void Renderer::_CompleteBackendFrame(
 	auto* d3dDC = _backendResources.GetD3DDC();
 	// All normal capture/effect work has been submitted before asynchronous FG
 	// can publish its first generated image on the frontend thread.
-	_dlssReflex.EndCaptureRender();
-	const auto finishReflexCapture = wil::scope_exit([this] { _dlssReflex.CompleteCapture(); });
-	if (_frontEdgeSyncEnabled) _baseFrameRateLimit = _FrontEdgeFrameRate();
+	_reflex.EndCaptureRender();
+	const auto finishReflexCapture = wil::scope_exit([this] { _reflex.CompleteCapture(); });
+	if (_frameSyncEnabled) _baseFrameRateLimit = _FrameSyncFrameRate();
 	if (_dlssFrameGenerator) _synchronousPresentInterval =
 		_captureCadence.Interval(_dlssFrameGenerator->Multiplier(), _baseFrameRateLimit);
 	if (_dlssFrameGenerator && isNewCaptureFrame) {
@@ -3414,7 +3467,7 @@ void Renderer::_CompleteBackendFrame(
 	const bool synchronous = _dlssFrameGenerator &&
 		_synchronousFramePresentationEnabled.load(std::memory_order_acquire);
 	if (!_PublishBackendTexture(effectsOutput, synchronous, false, captureSequence,
-		_frameSource ? _frameSource->ResourceGeneration() : 0, _dlssReflex.NextPresentId())) {
+		_frameSource ? _frameSource->ResourceGeneration() : 0, _reflex.NextPresentId())) {
 		return;
 	}
 
@@ -3614,7 +3667,7 @@ bool Renderer::_PublishBackendTexture(
 			_sharedTextureTimestamps[sharedTextureSlot].store(
 				_frameSource->CaptureTimestamp100ns(), std::memory_order_release);
 			_sharedFrameMetadata[sharedTextureSlot] = publicationMetadata;
-			_sharedReflexIds[sharedTextureSlot] = { _dlssReflex.CaptureFrameId(), reflexPresentId };
+			_sharedReflexIds[sharedTextureSlot] = { _reflex.CaptureFrameId(), reflexPresentId };
 			hr = ReleasePresentationTextures(mutexes, key);
 			if (SUCCEEDED(hr)) _sharedTextureMutexKeys[sharedTextureSlot].store(key, std::memory_order_release);
 		}

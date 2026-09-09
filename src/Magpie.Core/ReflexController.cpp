@@ -53,21 +53,23 @@ public:
 		if (!_initialized) ReportFailure("NvAPI_Initialize", status);
 		return _initialized;
 	}
-	int Configure(bool enabled) noexcept override {
+	int Configure(ReflexSettings settings) noexcept override {
 		NV_SET_SLEEP_MODE_PARAMS options{};
 		options.version = NV_SET_SLEEP_MODE_PARAMS_VER;
-		options.bLowLatencyMode = enabled;
-		options.bUseMarkersToOptimize = enabled;
-		// Keep the existing capture/FG limiter. No second FPS cap, Boost or
-		// guessed Reflex Sync queue-time/vblank feedback is enabled here.
+		options.bLowLatencyMode = settings.lowLatency;
+		options.bLowLatencyBoost = settings.lowLatency && settings.boost;
+		options.minimumIntervalUs = settings.minimumIntervalUs;
+		// Marker-based CPU optimization needs separately validated Boost timing.
+		// Standard markers remain active without enabling this extra optimization.
 		const auto status = _setSleepMode(_device.get(), &options);
-		if (status != NVAPI_OK || !enabled) return status;
+		if (status != NVAPI_OK || !settings.lowLatency) return status;
 		NV_GET_SLEEP_STATUS_PARAMS state{};
 		state.version = NV_GET_SLEEP_STATUS_PARAMS_VER;
 		const auto queryStatus = _getSleepStatus(_device.get(), &state);
 		if (queryStatus != NVAPI_OK) return queryStatus;
 		if (!state.bLowLatencyMode) return NVAPI_NOT_SUPPORTED;
-		Logger::Get().Info("DLSSFG Reflex: native low latency On, Boost Off, no additional FPS cap; capture-to-present scope");
+		Logger::Get().Info(fmt::format("Reflex: native low latency On, Boost={}, minimumIntervalUs={}; capture-to-present scope",
+			settings.boost, settings.minimumIntervalUs));
 		return NVAPI_OK;
 	}
 	int Sleep() noexcept override { return _sleep(_device.get()); }
@@ -113,7 +115,7 @@ public:
 			? "Select the same NVIDIA adapter for effects and presentation, then restart scaling to retry Reflex."
 			: "Update the NVIDIA driver and restart scaling to retry Reflex.";
 		Logger::Get().Warn(fmt::format(
-			"DLSSFG Reflex unavailable: operation={} status={}; continuing existing presentation. "
+			"Reflex unavailable: operation={} status={}; continuing existing presentation. "
 			"{}", operation, status, nextStep));
 	}
 

@@ -41,6 +41,7 @@ namespace Magpie {
 		Boolean IsFrontEdgeSyncEnabled;
 		Boolean IsVRREnabled;
 		Double FrontEdgeSyncFrameRate;
+		Int32 FrameSyncModeIndex;
 		static IVector<IInspectable> MinFrameRateOptions { get; };
 		Int32 MinFrameRateIndex;
 
