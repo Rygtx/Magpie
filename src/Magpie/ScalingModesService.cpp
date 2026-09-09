@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "RTXVideoParameters.h"
+#include "DlssOpticalFlowParameters.h"
 #include "AppSettings.h"
 #include "EffectHelper.h"
 #include "EffectsService.h"
@@ -328,11 +329,9 @@ static V065NormalizationStats NormalizeV065ScalingModes(
 					effect.parameters.erase(L"useEstimatedDepth"));
 			}
 
-			const bool isDlssMotionConsumer =
-				(effect.name == L"DLSS\\DLSS_SR" && !effect.parameters.contains(L"opticalFlowMethod")) ||
-				effect.name == L"DLSSFG\\DLSS_FrameGeneration" ||
-				effect.name == L"DLSSNR\\DLSSNR_AI_Filter";
-			if (isDlssMotionConsumer) {
+			if (MigrateDlssOpticalFlowParameters(effect)) ++stats.migratedMotionVectorChoices;
+
+			if (effect.name == L"DLSS\\DLSS_SR" && !effect.parameters.contains(L"opticalFlowMethod")) {
 				auto quality = effect.parameters.find(L"motionVectorQuality");
 				if (quality == effect.parameters.end()) {
 					auto legacy = effect.parameters.find(L"useMotionVectors");

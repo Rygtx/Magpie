@@ -9,8 +9,8 @@ class ReflexController;
 
 struct DLSSFrameGenerationSettings {
 	uint32_t multiplier = 2;
-	NvidiaOpticalFlowQuality motionVectorQuality =
-		NvidiaOpticalFlowQuality::Balanced;
+	MotionVectorRequest motionRequest = MotionVectorRequest::Nvidia(
+		NvidiaOpticalFlowQuality::Balanced);
 };
 
 // Experimental DLSS Frame Generation adapter. It consumes final effect-chain

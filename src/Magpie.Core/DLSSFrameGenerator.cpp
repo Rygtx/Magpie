@@ -406,8 +406,8 @@ bool DLSSFrameGenerator::Initialize(
 	input->GetDesc(&inputDesc);
 	impl->width = inputDesc.Width;
 	impl->height = inputDesc.Height;
-	const bool guidanceRequested = impl->settings.motionVectorQuality !=
-		NvidiaOpticalFlowQuality::None;
+	const bool guidanceRequested = impl->settings.motionRequest.method !=
+		OpticalFlowMethod::None;
 	const bool compatibleGuidanceExtent = guidanceRequested &&
 		guidanceExtent.IsValid() &&
 		guidanceExtent.width <= impl->width &&
@@ -599,11 +599,12 @@ bool DLSSFrameGenerator::Initialize(
 
 	Logger::Get().Info(fmt::format(
 		"DLSS FG_Experimental initialized: backbuffer={}x{}, render={}x{}, "
-		"multiplier={}x, requestedMotion={}, depth=zero-contract, "
+		"multiplier={}x, opticalFlowMethod={} opticalFlowQuality={}, depth=zero-contract, "
 		"motionContract=current-to-previous/source-pixels scale=1,1",
 		impl->width, impl->height, impl->renderWidth, impl->renderHeight,
 		impl->multiplier,
-		static_cast<uint32_t>(impl->settings.motionVectorQuality)));
+		static_cast<uint32_t>(impl->settings.motionRequest.method),
+		static_cast<uint32_t>(impl->settings.motionRequest.quality)));
 	_impl = std::move(impl);
 	return true;
 }
@@ -620,8 +621,7 @@ bool DLSSFrameGenerator::Resize(
 FrameGuidanceRequirements
 DLSSFrameGenerator::GetFrameGuidanceRequirements() const noexcept {
 	FrameGuidanceRequirements result{ .zero = true };
-	result.Add(MotionVectorRequest::Nvidia(
-		_requestedSettings.motionVectorQuality));
+	result.Add(_requestedSettings.motionRequest);
 	return result;
 }
 
@@ -655,22 +655,22 @@ bool DLSSFrameGenerator::Draw(
 	};
 	const FrameGuidanceView selected = SelectFrameGuidanceChannels(
 		guidance, zeroGuidance, frameId, renderExtent,
-		impl.settings.motionVectorQuality != NvidiaOpticalFlowQuality::None);
+		impl.settings.motionRequest.method != OpticalFlowMethod::None);
 	bool sharedGuidanceBound = false;
 	bool realMotion = false;
-	if (impl.settings.motionVectorQuality != NvidiaOpticalFlowQuality::None &&
+	if (impl.settings.motionRequest.method != OpticalFlowMethod::None &&
 		selected.IsValidFor(frameId, renderExtent) &&
 		impl.guidanceInterop->Update(selected, frameId, renderExtent) &&
 		impl.guidanceInterop->WaitForProducer(impl.context11, selected)) {
 		sharedGuidanceBound = true;
-		realMotion = impl.settings.motionVectorQuality !=
-			NvidiaOpticalFlowQuality::None &&
+		realMotion = impl.settings.motionRequest.method !=
+			OpticalFlowMethod::None &&
 			!selected.motion.metadata.isZero;
 	}
 
 	const uint8_t guidanceBinding = uint8_t(realMotion) |
-		(uint8_t(impl.settings.motionVectorQuality !=
-			NvidiaOpticalFlowQuality::None) << 1) |
+		(uint8_t(impl.settings.motionRequest.method !=
+			OpticalFlowMethod::None) << 1) |
 		(uint8_t(sharedGuidanceBound) << 2);
 	const bool bindingChanged = impl.lastGuidanceBinding != UINT8_MAX &&
 		impl.lastGuidanceBinding != guidanceBinding;
@@ -678,12 +678,12 @@ bool DLSSFrameGenerator::Draw(
 		Logger::Get().Info(fmt::format(
 			"DLSS FG guidance frameId={}: requested motion={}, "
 			"produced motion={}, bound motion={} depth=zero, fallback={}",
-			frameId, impl.settings.motionVectorQuality !=
-				NvidiaOpticalFlowQuality::None,
+			frameId, impl.settings.motionRequest.method !=
+				OpticalFlowMethod::None,
 			guidance.motion.metadata.valid && !guidance.motion.metadata.isZero,
 			realMotion ? "real" : "zero",
 			!sharedGuidanceBound ? "interop-or-extent-zero" :
-			(impl.settings.motionVectorQuality != NvidiaOpticalFlowQuality::None && !realMotion ?
+			(impl.settings.motionRequest.method != OpticalFlowMethod::None && !realMotion ?
 				"provider-zero" : "none")));
 	}
 	const bool guidanceReset = bindingChanged ||

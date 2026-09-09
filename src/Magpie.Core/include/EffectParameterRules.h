@@ -11,6 +11,8 @@ inline bool IsSuperResolutionEffect(std::string_view effect) noexcept {
 
 inline bool HasOpticalFlowSelection(std::string_view effect) noexcept {
 	return IsSuperResolutionEffect(effect) ||
+		effect == "DLSSNR\\DLSSNR_AI_Filter" ||
+		effect == "DLSSFG\\DLSS_FrameGeneration" ||
 		effect == "XeSSFG\\XeSS_FrameGeneration_x2_ZeroMV" ||
 		effect == "XeSSFG\\XeSS_MultiFrameGeneration_ZeroMV";
 }
@@ -21,7 +23,9 @@ template<class GetValue>
 bool IsEffectParameterVisible(std::string_view effect, std::string_view parameter,
 	GetValue&& getValue) noexcept {
 	if (HasOpticalFlowSelection(effect)) {
-		const float method = getValue("opticalFlowMethod", effect == "DLSS\\DLSS_SR" ? 2.0f : 0.0f);
+		const bool nvidiaDefault = effect == "DLSS\\DLSS_SR" ||
+			effect == "DLSSNR\\DLSSNR_AI_Filter" || effect == "DLSSFG\\DLSS_FrameGeneration";
+		const float method = getValue("opticalFlowMethod", nvidiaDefault ? 2.0f : 0.0f);
 		if (parameter == "amdOpticalFlowMode") return method == 1.0f;
 		if (parameter == "nvidiaOpticalFlowQuality") return method == 2.0f;
 	}

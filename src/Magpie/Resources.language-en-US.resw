@@ -1214,12 +1214,6 @@
   <data name="EffectParam_CRT_GTU_v050_signalResolutionQ_Label" xml:space="preserve"><value>Signal Resolution Q</value></data>
   <data name="EffectParam_CRT_GTU_v050_signalResolution_Label" xml:space="preserve"><value>Signal Resolution Y</value></data>
   <data name="EffectParam_CRT_GTU_v050_tvVerticalResolution_Label" xml:space="preserve"><value>TV Vertical Resolution</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Label" xml:space="preserve"><value>OF Quality</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_0" xml:space="preserve"><value>None</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_1" xml:space="preserve"><value>Performance</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_2" xml:space="preserve"><value>Balanced (Recommended)</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_3" xml:space="preserve"><value>Quality</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_4" xml:space="preserve"><value>High Quality (High Cost)</value></data>
   <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_multiplier_Label" xml:space="preserve"><value>Frame Multiplier</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_Group_DLSSNR" xml:space="preserve"><value>DLSSNR</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_Group_Detail_Control" xml:space="preserve"><value>Detail Control</value></data>
@@ -1229,12 +1223,6 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity_Label" xml:space="preserve"><value>NR Intensity</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Label" xml:space="preserve"><value>Local Structure Strength</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Label" xml:space="preserve"><value>Local Tone Strength</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Label" xml:space="preserve"><value>OF Quality</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_0" xml:space="preserve"><value>None</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_1" xml:space="preserve"><value>Performance</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_2" xml:space="preserve"><value>Balanced (Recommended)</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_3" xml:space="preserve"><value>Quality</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_4" xml:space="preserve"><value>High Quality (High Cost)</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>Reflection / Glow Control</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>Residual Lightness Multiplier</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>Residual Multiplier</value></data>
@@ -1454,8 +1442,6 @@
   <data name="EffectParam_FSR3_FSR3_SR_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
   <data name="EffectParam_FSR4_FSR4_SR_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
   <data name="EffectParam_XeSS_XeSS_SR_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
   <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_x2_ZeroMV_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
   <data name="Motion_Nvidia_5" xml:space="preserve"><value>Highest Quality</value></data>
   <data name="Home_FrameSync.Header" xml:space="preserve"><value>Frame synchronization</value></data>
@@ -1599,4 +1585,30 @@
   <data name="Overlay_FrameSync_DlssLowLatencyUnavailable" xml:space="preserve"><value>Reflex low latency is unavailable. Use a supported NVIDIA DXGI path and restart scaling to retry. FG retains its current output pacing.</value></data>
   <data name="Overlay_FrameSync_Unsupported" xml:space="preserve"><value>This presentation path does not support Front Edge Sync. Select Async and restart scaling to enable input pacing.</value></data>
   <data name="Overlay_FrameSync_ReflexPaused" xml:space="preserve"><value>Temporarily using Async while the window changes. Reflex resumes automatically when DXGI presentation returns.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Label" xml:space="preserve"><value>OF Quality</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Option_0" xml:space="preserve"><value>Performance</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>Quality</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>OF Quality</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_1" xml:space="preserve"><value>Performance</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>Balanced (Recommended)</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>Quality</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>High Quality (High Cost)</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Label" xml:space="preserve"><value>Optical Flow Method</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Option_0" xml:space="preserve"><value>None</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMDOF</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVOF</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_amdOpticalFlowMode_Label" xml:space="preserve"><value>OF Quality</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_amdOpticalFlowMode_Option_0" xml:space="preserve"><value>Performance</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>Quality</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>OF Quality</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Option_1" xml:space="preserve"><value>Performance</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>Balanced (Recommended)</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>Quality</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>High Quality (High Cost)</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_opticalFlowMethod_Label" xml:space="preserve"><value>Optical Flow Method</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_opticalFlowMethod_Option_0" xml:space="preserve"><value>None</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMDOF</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVOF</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
 </root>

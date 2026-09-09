@@ -33,6 +33,7 @@
 #include "TextureHelper.h"
 #include "Win32Helper.h"
 #include "DLSSFrameGenerator.h"
+#include "OpticalFlowSettings.h"
 #include "DLSSSRUpscaler.h"
 #include "FSR2Upscaler.h"
 #include "FSR3Upscaler.h"
@@ -1810,9 +1811,7 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 				.multiplier = std::clamp(
 					(uint32_t)std::lround(getParameter("multiplier", 2.0f)),
 					2u, 4u),
-				.motionVectorQuality = static_cast<NvidiaOpticalFlowQuality>(
-					std::clamp(static_cast<int>(std::lround(
-						getParameter("motionVectorQuality", 2.0f))), 0, int(NVIDIA_OPTICAL_FLOW_MAX_QUALITY)))
+				.motionRequest = ParseDlssOpticalFlowRequest(effects[i])
 			};
 		}
 
@@ -1929,7 +1928,7 @@ void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 				info.applyMode = EffectParameterApplyMode::Live;
 				info.restartReason = EffectParameterRestartReason::None;
 			} else if (IsDLSSFrameGenerationEffect(option.name)) {
-				info.restartReason = parameter.name == "motionVectorQuality"
+				info.restartReason = IsOpticalFlowParameter(parameter.name)
 					? EffectParameterRestartReason::FrameGuidance
 					: EffectParameterRestartReason::FrameGeneration;
 			} else if (IsXeSSFrameGenerationEffect(option.name)) {

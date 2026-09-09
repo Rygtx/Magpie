@@ -9,6 +9,7 @@
 #include "FrameGuidanceD3D12Interop.h"
 #include "FrameGuidancePerformance.h"
 #include "NativeBackendTiming.h"
+#include "OpticalFlowSettings.h"
 
 namespace Magpie {
 
@@ -22,13 +23,6 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) 
 		float minimum, float maximum) noexcept {
 		return std::clamp(getParameter(name, defaultValue), minimum, maximum);
 	};
-	const int motionQualityValue = static_cast<int>(std::lround(
-		getParameter("motionVectorQuality", 2.0f)));
-	const NvidiaOpticalFlowQuality motionQuality =
-		motionQualityValue >= 0 && motionQualityValue <= NVIDIA_OPTICAL_FLOW_MAX_QUALITY ?
-			static_cast<NvidiaOpticalFlowQuality>(motionQualityValue) :
-			NvidiaOpticalFlowQuality::Balanced;
-
 	// The caller supplies the resolved automatic boundary, never a saved UI choice.
 	return DLSSNRSettings{
 		.enableInputResolutionScaling =
@@ -53,7 +47,7 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) 
 			"skinStructureStrength", -1.0f, -1.0f, 2.0f),
 		.useAutoMask = getParameter("useAutoMask", 0.0f) >= 0.5f,
 		.uiCorrection = getParameter("uiCorrection", 0.0f) >= 0.5f,
-		.motionVectorQuality = motionQuality,
+		.motionRequest = ParseDlssOpticalFlowRequest(option),
 		.experimentalHdr = DlssnrExperimentProtocol{ .enabled = hdrEnabled, .scale = 1.0f }
 	};
 }
@@ -1771,7 +1765,7 @@ FrameGuidanceRequirements
 DLSSNRFilter::GetFrameGuidanceRequirements() const noexcept {
 	if (!_impl || _impl->disabled) return {};
 	FrameGuidanceRequirements result{ .zero = true };
-	result.Add(MotionVectorRequest::Nvidia(_settings.motionVectorQuality));
+	result.Add(_settings.motionRequest);
 	return result;
 }
 
@@ -1805,7 +1799,7 @@ EffectParameterApplyMode DLSSNRFilter::GetParameterApplyMode(
 EffectParameterRestartReason DLSSNRFilter::GetParameterRestartReason(
 	std::string_view parameterName
 ) const noexcept {
-	if (parameterName == "motionVectorQuality") {
+	if (IsOpticalFlowParameter(parameterName)) {
 		return EffectParameterRestartReason::FrameGuidance;
 	}
 	return EffectParameterRestartReason::ResourceRecreation;
@@ -1825,7 +1819,7 @@ bool DLSSNRFilter::ApplyLiveParameters(
 	if (candidate.enableInputResolutionScaling !=
 			_settings.enableInputResolutionScaling ||
 		candidate.inputResolutionPercent != _settings.inputResolutionPercent ||
-		candidate.motionVectorQuality != _settings.motionVectorQuality) {
+		candidate.motionRequest != _settings.motionRequest) {
 		return false;
 	}
 
@@ -2147,7 +2141,7 @@ bool DLSSNRFilter::Initialize(
 		"residualSaturation={} residualLightness={} shadowStructureMultiplier={} "
 		"reflectionGlowMultiplier={} preset=fixed-0 "
 		"style={} intensity={} localTone={} localStructure={} skinStructure={} "
-		"motionVectorQuality={} autoMask={} uiCorrection={} depth=zero-contract disabled=false "
+		"opticalFlowMethod={} opticalFlowQuality={} autoMask={} uiCorrection={} depth=zero-contract disabled=false "
 		"experimentalHdrPath={} experimentalHdrScale={}",
 		ENABLE_CORE_FEATURE18_DIAGNOSTIC ? "core-diagnostic" : "signed-snippet",
 		impl->sourceWidth, impl->sourceHeight, static_cast<uint32_t>(inputDesc.Format),
@@ -2159,7 +2153,8 @@ bool DLSSNRFilter::Initialize(
 		_settings.style,
 		_settings.intensity, _settings.localToneStrength,
 		_settings.localStructureStrength, _settings.skinStructureStrength,
-		static_cast<uint32_t>(_settings.motionVectorQuality),
+		static_cast<uint32_t>(_settings.motionRequest.method),
+		static_cast<uint32_t>(_settings.motionRequest.quality),
 		_settings.useAutoMask, _settings.uiCorrection,
 		impl->experimentalHdrPath, impl->experimentalHdrScale));
 	_impl = std::move(impl);
@@ -2186,7 +2181,7 @@ static FrameGuidanceView SelectGuidance(
 	return SelectFrameGuidanceChannels(
 		context.frameGuidance, context.zeroFrameGuidance,
 		context.frameId, extent,
-		settings.motionVectorQuality != NvidiaOpticalFlowQuality::None);
+		settings.motionRequest.method != OpticalFlowMethod::None);
 }
 
 bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
@@ -2367,10 +2362,11 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 			(impl.evaluateCount <= 8 || impl.evaluateCount % 120 == 0))) {
 		LogDlssnrStatus(fmt::format(
 			"DLSSNR STATUS: Feature=18 frameId={} evaluateCount={} result={:#x} "
-			"success={} failures={} motionVectorQuality={} path={} disabled={}",
+			"success={} failures={} opticalFlowMethod={} opticalFlowQuality={} path={} disabled={}",
 			context.frameId, impl.evaluateCount, static_cast<uint32_t>(result),
 			impl.evaluateSuccessCount, impl.evaluateFailureCount,
-			static_cast<uint32_t>(_settings.motionVectorQuality),
+			static_cast<uint32_t>(_settings.motionRequest.method),
+			static_cast<uint32_t>(_settings.motionRequest.quality),
 			impl.useSignedSnippet ? "signed-snippet" : "core-diagnostic",
 			impl.disabled), !evaluateSucceeded);
 	}

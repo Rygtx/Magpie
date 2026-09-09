@@ -1214,12 +1214,6 @@
   <data name="EffectParam_CRT_GTU_v050_signalResolutionQ_Label" xml:space="preserve"><value>Q 信号分辨率</value></data>
   <data name="EffectParam_CRT_GTU_v050_signalResolution_Label" xml:space="preserve"><value>Y 信号分辨率</value></data>
   <data name="EffectParam_CRT_GTU_v050_tvVerticalResolution_Label" xml:space="preserve"><value>电视垂直分辨率</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Label" xml:space="preserve"><value>光流质量</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_0" xml:space="preserve"><value>无</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_1" xml:space="preserve"><value>性能</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_2" xml:space="preserve"><value>均衡（推荐）</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_3" xml:space="preserve"><value>质量</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_4" xml:space="preserve"><value>高质量（高开销）</value></data>
   <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_multiplier_Label" xml:space="preserve"><value>帧数倍率</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_Group_DLSSNR" xml:space="preserve"><value>DLSSNR</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_Group_Detail_Control" xml:space="preserve"><value>细节控制</value></data>
@@ -1229,12 +1223,6 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity_Label" xml:space="preserve"><value>NR 强度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Label" xml:space="preserve"><value>局部结构强度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Label" xml:space="preserve"><value>局部色调强度</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Label" xml:space="preserve"><value>光流质量</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_0" xml:space="preserve"><value>无</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_1" xml:space="preserve"><value>性能</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_2" xml:space="preserve"><value>均衡（推荐）</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_3" xml:space="preserve"><value>质量</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_4" xml:space="preserve"><value>高质量（高开销）</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>反射／辉光控制</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>残差明度倍率</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>残差倍率</value></data>
@@ -1454,8 +1442,6 @@
   <data name="EffectParam_FSR3_FSR3_SR_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高质量（极高开销）</value></data>
   <data name="EffectParam_FSR4_FSR4_SR_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高质量（极高开销）</value></data>
   <data name="EffectParam_XeSS_XeSS_SR_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高质量（极高开销）</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_motionVectorQuality_Option_5" xml:space="preserve"><value>最高质量（极高开销）</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_motionVectorQuality_Option_5" xml:space="preserve"><value>最高质量（极高开销）</value></data>
   <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_x2_ZeroMV_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高质量（极高开销）</value></data>
   <data name="Motion_Nvidia_5" xml:space="preserve"><value>最高质量</value></data>
   <data name="Home_FrameSync.Header" xml:space="preserve"><value>帧同步</value></data>
@@ -1599,4 +1585,30 @@
   <data name="Overlay_FrameSync_DlssLowLatencyUnavailable" xml:space="preserve"><value>Reflex 低延迟暂不可用。请使用支持的 NVIDIA DXGI 呈现路径并重新启用缩放。FG 保留当前输出节奏。</value></data>
   <data name="Overlay_FrameSync_Unsupported" xml:space="preserve"><value>此呈现路径不支持 Front Edge Sync。请选择 Async 并重新启用缩放，以启用输入限帧。</value></data>
   <data name="Overlay_FrameSync_ReflexPaused" xml:space="preserve"><value>窗口调整期间暂用 Async；恢复 DXGI 呈现后自动恢复 Reflex。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Label" xml:space="preserve"><value>光流质量</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Option_0" xml:space="preserve"><value>性能</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>质量</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>光流质量</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_1" xml:space="preserve"><value>性能</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>均衡（推荐）</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>质量</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>高质量（高开销）</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Label" xml:space="preserve"><value>光流方法</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Option_0" xml:space="preserve"><value>无</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMD 光流</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVIDIA 光流</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高质量（极高开销）</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_amdOpticalFlowMode_Label" xml:space="preserve"><value>光流质量</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_amdOpticalFlowMode_Option_0" xml:space="preserve"><value>性能</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>质量</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>光流质量</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Option_1" xml:space="preserve"><value>性能</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>均衡（推荐）</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>质量</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>高质量（高开销）</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_opticalFlowMethod_Label" xml:space="preserve"><value>光流方法</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_opticalFlowMethod_Option_0" xml:space="preserve"><value>无</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMD 光流</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVIDIA 光流</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高质量（极高开销）</value></data>
 </root>

@@ -66,3 +66,9 @@ FP16 路径的高光、颜色和实际 AI 观感仍需验证；该路径下现�
 根因：新增强度控件把 `single_threaded_vector<hstring>` 交给 XAML `ItemsSource`，该集合没有 XAML 需要的 `IInspectable` 集合接口。设置时抛出参数异常。在效果器行模板中，这一步排在 `HasParameters` 和 `Parameters` 绑定之前，会中断后续初始化；在选择器构建中，同一错误传播出点击事件并导致退出。
 
 修复：统一使用可供 XAML 绑定的集合，RTX 强度纳入现有参数组；打开选择器的局部异常会记录错误并提示重试，保留效果组。`tests/EffectChoiceItemsTests.cpp` 的 `--xaml` 测试在无可见窗口的独立进程中验证真实 `ComboBox`：旧集合抛 `E_INVALIDARG`，新集合正常选择四档并读取选中值。未操作用户界面，也未启动缩放或 GPU 效果器测试。
+
+## DLSS NR／FG 光流选择
+
+参数按钮和工具栏均提供「无／AMDOF／NVOF」；AMDOF 为性能／质量两档，NVOF 为原有五档。新添加效果默认 NVOF 均衡，旧效果保留原关闭状态或 NVIDIA 档位。提供者与质量修改需使用工具栏的应用并重新启用操作。
+
+同组多个消费者共用一次光流计算；设置不同时沿用 NVOF 优先、同提供者取最高请求质量的规则，并提示实际配置。要比较 AMD 与 NVIDIA，请把组内启用光流的效果设为相同提供者。重点测试 NR 单独、FG 单独、NR+FG、NR 缩小输入、快速运动及停止／恢复；AMD 性能档应正常启用光流。

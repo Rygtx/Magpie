@@ -22,8 +22,8 @@ struct DLSSNRSettings {
 	float skinStructureStrength = -1.0f;
 	bool useAutoMask = false;
 	bool uiCorrection = false;
-	NvidiaOpticalFlowQuality motionVectorQuality =
-		NvidiaOpticalFlowQuality::Balanced;
+	MotionVectorRequest motionRequest = MotionVectorRequest::Nvidia(
+		NvidiaOpticalFlowQuality::Balanced);
 	// Experimental FP16 path. SDR RGBA8 remains the default.
 	DlssnrExperimentProtocol experimentalHdr{};
 };
@@ -31,8 +31,8 @@ struct DLSSNRSettings {
 DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled = false) noexcept;
 
 // Experimental same-resolution DLSS neural filter. Magpie only owns the
-// composited colour frame, so valid zero-filled motion/depth textures are used
-// as explicit temporal guides.
+// composited colour frame. Motion uses shared optical flow when selected;
+// depth and unavailable motion use explicit zero guides.
 class DLSSNRFilter final : public NativeEffectBackend {
 public:
 	struct Impl;
