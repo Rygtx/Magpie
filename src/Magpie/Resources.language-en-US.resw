@@ -1459,11 +1459,11 @@
   <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_x2_ZeroMV_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
   <data name="Motion_Nvidia_5" xml:space="preserve"><value>Highest Quality</value></data>
   <data name="Home_FrameSync.Header" xml:space="preserve"><value>Frame synchronization</value></data>
-  <data name="Home_FrameSync.Description" xml:space="preserve"><value>Saved automatically. Changes take effect when you enable the effect group again.</value></data>
+  <data name="Home_FrameSync.Description" xml:space="preserve"><value>Saved automatically. Restart scaling to apply.</value></data>
   <data name="Home_FrameSync_FrontEdgeSync.Header" xml:space="preserve"><value>Enable frame synchronization</value></data>
-  <data name="Home_FrameSync_FrontEdgeSync.Description" xml:space="preserve"><value>Choose how Magpie paces frames. Changes apply when scaling restarts.</value></data>
+  <data name="Home_FrameSync_FrontEdgeSync.Description" xml:space="preserve"><value>Control Magpie's frame pacing.</value></data>
   <data name="Home_FrameSync_Target.Header" xml:space="preserve"><value>Target base frame rate (FPS)</value></data>
-  <data name="Home_FrameSync_Target.Description" xml:space="preserve"><value>0 is automatic: use the display refresh rate, divided by the FG multiplier for base FPS. Match the source frame limit.</value></data>
+  <data name="Home_FrameSync_Target.Description" xml:space="preserve"><value>0 is automatic, adjusted for FG. Match the source application's frame cap.</value></data>
   <data name="Home_FrameSync_Target_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Target frame rate</value></data>
   <data name="Home_FrameSync_VRR.Header" xml:space="preserve"><value>VRR (variable refresh rate)</value></data>
   <data name="Home_FrameSync_VRR.Description" xml:space="preserve"><value>Allow compatible FreeSync / G-SYNC presentation. Enable VRR on both the display and driver; tearing may occur when VRR is inactive.</value></data>
@@ -1583,10 +1583,10 @@
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_middleGray_Label" xml:space="preserve"><value>Middle gray</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_peakNits_Label" xml:space="preserve"><value>Peak brightness (nits)</value></data>
   <data name="FrameSync_Mode_FrontEdge.Content" xml:space="preserve"><value>Front Edge Sync</value></data>
-  <data name="FrameSync_Mode_Async.Content" xml:space="preserve"><value>Async — strict interval</value></data>
-  <data name="FrameSync_Mode_Reflex.Content" xml:space="preserve"><value>NVIDIA Reflex — experimental</value></data>
+  <data name="FrameSync_Mode_Async.Content" xml:space="preserve"><value>Async</value></data>
+  <data name="FrameSync_Mode_Reflex.Content" xml:space="preserve"><value>NVIDIA Reflex</value></data>
   <data name="Home_FrameSync_Mode.Header" xml:space="preserve"><value>Pacing mode</value></data>
-  <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge stabilizes submissions; Async controls frame starts; Reflex uses driver pacing. XeSS FG uses XeLL.</value></data>
+  <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge: steady submissions; Async: strict intervals; Reflex: driver pacing.</value></data>
   <data name="Overlay_FrameSync_Enable" xml:space="preserve"><value>Enable frame synchronization</value></data>
   <data name="Overlay_FrameSync_ActiveOff" xml:space="preserve"><value>Current: frame synchronization off. Existing profile and effect limits still apply.</value></data>
   <data name="Overlay_FrameSync_ActiveFrontEdge" xml:space="preserve"><value>Current: Front Edge Sync.</value></data>

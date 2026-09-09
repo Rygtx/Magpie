@@ -1426,11 +1426,11 @@
   <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_x2_ZeroMV_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高品質（極高開銷）</value></data>
   <data name="Motion_Nvidia_5" xml:space="preserve"><value>最高品質</value></data>
   <data name="Home_FrameSync.Header" xml:space="preserve"><value>畫格同步</value></data>
-  <data name="Home_FrameSync.Description" xml:space="preserve"><value>修改自動儲存，重新啟用效果組後生效。</value></data>
+  <data name="Home_FrameSync.Description" xml:space="preserve"><value>自動儲存，重新啟用縮放後生效。</value></data>
   <data name="Home_FrameSync_FrontEdgeSync.Header" xml:space="preserve"><value>啟用幀同步</value></data>
-  <data name="Home_FrameSync_FrontEdgeSync.Description" xml:space="preserve"><value>選擇 Magpie 的幀處理節奏，重新啟用縮放後生效。</value></data>
+  <data name="Home_FrameSync_FrontEdgeSync.Description" xml:space="preserve"><value>控制 Magpie 的畫格處理節奏。</value></data>
   <data name="Home_FrameSync_Target.Header" xml:space="preserve"><value>目標基礎幀率（FPS）</value></data>
-  <data name="Home_FrameSync_Target.Description" xml:space="preserve"><value>0 為自動：按顯示器更新率設定，FG 按倍率折算基礎畫格速率。目標需同步限制畫格速率。</value></data>
+  <data name="Home_FrameSync_Target.Description" xml:space="preserve"><value>0 為自動，補幀時按倍率折算。請同步設定來源應用程式的畫格速率上限。</value></data>
   <data name="Home_FrameSync_Target_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>目標畫格速率</value></data>
   <data name="Home_FrameSync_VRR.Header" xml:space="preserve"><value>VRR（可變更新頻率）</value></data>
   <data name="Home_FrameSync_VRR.Description" xml:space="preserve"><value>允許相容 FreeSync / G-SYNC 的呈現。需同時在顯示器和驅動程式中開啟 VRR；未生效時可能出現撕裂。</value></data>
@@ -1550,10 +1550,10 @@
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_middleGray_Label" xml:space="preserve"><value>中間灰</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_peakNits_Label" xml:space="preserve"><value>峰值亮度（尼特）</value></data>
   <data name="FrameSync_Mode_FrontEdge.Content" xml:space="preserve"><value>Front Edge Sync</value></data>
-  <data name="FrameSync_Mode_Async.Content" xml:space="preserve"><value>Async（嚴格間隔）</value></data>
-  <data name="FrameSync_Mode_Reflex.Content" xml:space="preserve"><value>NVIDIA Reflex（實驗）</value></data>
+  <data name="FrameSync_Mode_Async.Content" xml:space="preserve"><value>Async</value></data>
+  <data name="FrameSync_Mode_Reflex.Content" xml:space="preserve"><value>NVIDIA Reflex</value></data>
   <data name="Home_FrameSync_Mode.Header" xml:space="preserve"><value>同步模式</value></data>
-  <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge 穩定提交；Async 限制開始間隔；Reflex 由驅動程式限幀。XeSS FG 使用 XeLL。</value></data>
+  <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge 穩定提交；Async 嚴格間隔；Reflex 驅動限幀。</value></data>
   <data name="Overlay_FrameSync_Enable" xml:space="preserve"><value>啟用幀同步</value></data>
   <data name="Overlay_FrameSync_ActiveOff" xml:space="preserve"><value>目前：幀同步關閉。設定與效果器的既有上限仍生效。</value></data>
   <data name="Overlay_FrameSync_ActiveFrontEdge" xml:space="preserve"><value>目前：Front Edge Sync。</value></data>
