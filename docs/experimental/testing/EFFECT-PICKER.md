@@ -78,7 +78,7 @@ MV 调试效果器 `Diagnostics\FrameGuidance_Motion` 同样提供无／AMDOF／
 
 ## v4e 配置隔离与恢复
 
-- 用户配置写入 `%LOCALAPPDATA%/Magpie/config/v4e/config.json`；便携配置写入程序目录的 `config/v4e/config.json`。原版 v4 与旧便携 config.json 仅用于读取迁移，保留原件。
+- 用户配置写入 `%LOCALAPPDATA%\Magpie\config\v4e\config.json`；便携配置写入程序目录的 `config\v4e\config.json`。原版 v4 与旧便携 config.json 仅用于读取迁移，保留原件。
 - 优先增强版配置；用户主文件缺失时可读取同目录备份。已有增强版主文件损坏时使用该文件的恢复流程，不退回原版覆盖增强版设置。无法访问或目标为目录时提示修复路径。
 - 正常读取、版本迁移、可修复参数及完整备份恢复成功均不弹提示。只在完全无可恢复配置或读写失败时提示；无法使用的效果在组内显示下一步。
 - 单个结构损坏的效果保留位置及原始数据，缺失效果保留名称与参数；已弃用的深度诊断也保留为待替换项。含失效项的组在启动缩放前拦截。

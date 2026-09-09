@@ -14,7 +14,12 @@ struct Selection {
 
 inline std::filesystem::path Directory(const std::filesystem::path& exe,
 	const std::filesystem::path& localAppData, bool portable) {
-	return portable ? exe / L"config/v4e" : localAppData / L"Magpie/config/v4e";
+	auto directory = portable ? exe / L"config" / L"v4e" :
+		localAppData / L"Magpie" / L"config" / L"v4e";
+	// The recursive Win32 directory helper and shell actions require native
+	// separators, including any separators inherited from the root path.
+	directory.make_preferred();
+	return directory;
 }
 
 // An unreadable existing file is not absence. Never silently select an older
@@ -25,9 +30,9 @@ inline Selection Select(const std::filesystem::path& exe, const std::filesystem:
 	Selection result{user};
 	const std::pair<std::filesystem::path, bool> candidates[]{
 		{portable, true}, {user, false}, {user.native() + L".bak", false},
-		{exe / L"config/config.json", true},
-		{localAppData / L"Magpie/config/v4/config.json", false},
-		{localAppData / L"Magpie/config/v4/config.json.bak", false}
+		{(exe / L"config" / L"config.json").make_preferred(), true},
+		{(localAppData / L"Magpie" / L"config" / L"v4" / L"config.json").make_preferred(), false},
+		{(localAppData / L"Magpie" / L"config" / L"v4" / L"config.json.bak").make_preferred(), false}
 	};
 	for (const auto& [path, isPortable] : candidates) {
 		const DWORD attributes = GetFileAttributesW(path.c_str());

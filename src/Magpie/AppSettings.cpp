@@ -260,11 +260,12 @@ bool AppSettings::Initialize() noexcept {
 
 	std::filesystem::path existingConfigPath;
 	if (!_UpdateConfigPath(&existingConfigPath)) {
+		const DWORD pathError = GetLastError();
 		logger.Error("_UpdateConfigPath 失败");
 		const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
 		const auto path = _configPath.empty() ? Win32Helper::GetExePath() : _configPath;
 		const auto content = std::wstring(loader.GetString(L"AppSettings_ConfigLocationFailed")) + L"\n" + path.native();
-		ShowErrorMessage(loader.GetString(L"AppSettings_ErrorDialog_ReadFailed").c_str(), content.c_str(), path);
+		ShowErrorMessage(loader.GetString(L"AppSettings_ErrorDialog_ReadFailed").c_str(), content.c_str(), path, pathError);
 		return false;
 	}
 
@@ -1584,6 +1585,7 @@ bool AppSettings::_UpdateConfigPath(std::filesystem::path* existingConfigPath) n
 	const HRESULT hr = SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_DEFAULT, nullptr, localAppData.put());
 	if (FAILED(hr)) {
 		Logger::Get().ComError("SHGetKnownFolderPath failed", hr);
+		SetLastError(HRESULT_FACILITY(hr) == FACILITY_WIN32 ? HRESULT_CODE(hr) : static_cast<DWORD>(hr));
 		return false;
 	}
 	const auto exeDirectory = std::filesystem::path(Win32Helper::GetExePath()).parent_path();
@@ -1594,6 +1596,7 @@ bool AppSettings::_UpdateConfigPath(std::filesystem::path* existingConfigPath) n
 		if (selected.error) {
 			SetLastError(selected.error);
 			Logger::Get().Win32Error("Inspect configuration location failed");
+			SetLastError(selected.error);
 			return false;
 		}
 		_isPortableMode = selected.portable;
@@ -1605,7 +1608,9 @@ bool AppSettings::_UpdateConfigPath(std::filesystem::path* existingConfigPath) n
 
 	// 确保配置文件夹存在
 	if (!Win32Helper::CreateDir(_configDir.native(), true)) {
+		const DWORD error = GetLastError();
 		Logger::Get().Win32Error("创建配置文件夹失败");
+		SetLastError(error);
 		return false;
 	}
 

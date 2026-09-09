@@ -16,9 +16,9 @@ int wmain(int argc, wchar_t** argv) {
 	const auto root = std::filesystem::absolute(argv[1]) / (L"locations-" + std::to_wstring(GetCurrentProcessId()));
 	const auto exe = root / L"app";
 	const auto user = root / L"local";
-	const auto enhanced = user / L"Magpie/config/v4e/config.json";
-	const auto legacy = user / L"Magpie/config/v4/config.json";
-	const auto portable = exe / L"config/v4e/config.json";
+	const auto enhanced = user / L"Magpie" / L"config" / L"v4e" / L"config.json";
+	const auto legacy = user / L"Magpie" / L"config" / L"v4" / L"config.json";
+	const auto portable = exe / L"config" / L"v4e" / L"config.json";
 	using Magpie::ConfigLocations::Select;
 	auto selected = Select(exe, user);
 	assert(selected.source.empty() && selected.destination == enhanced && !selected.error);
@@ -44,9 +44,9 @@ int wmain(int argc, wchar_t** argv) {
 	Put(enhanced.native() + L".bak");
 	assert(Select(exe, user).source == enhanced.native() + L".bak");
 	std::filesystem::remove(enhanced.native() + L".bak");
-	Put(exe / L"config/config.json", R"({"portableOriginal":true})");
+	Put(exe / L"config" / L"config.json", R"({"portableOriginal":true})");
 	selected = Select(exe, user);
-	assert(selected.portable && selected.source == exe / L"config/config.json" && selected.destination == portable);
+	assert(selected.portable && selected.source == exe / L"config" / L"config.json" && selected.destination == portable);
 	Put(enhanced);
 	assert(Select(exe, user).source == enhanced); // A migrated user copy beats stale portable legacy data.
 	Put(portable);

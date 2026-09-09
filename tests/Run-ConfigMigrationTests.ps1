@@ -11,9 +11,15 @@ Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-ar
 $rapid = Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.conan2/p') -Directory -Filter 'rapid*' |
     Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'p/include/rapidjson/document.h') } | Select-Object -First 1
 if (!$rapid) { throw 'Restore rapidjson before running configuration tests.' }
-foreach ($test in @('tests/ConfigLocationsTests.cpp', 'scripts/tests/config_recovery.cpp')) {
+$helperSource = Get-Content -LiteralPath (Join-Path $repo 'src/Magpie.Core/Win32Helper.cpp') -Raw
+$helperStart = $helperSource.IndexOf('bool Win32Helper::DirExists(')
+$helperEnd = $helperSource.IndexOf('const Win32Helper::OSVersion&', $helperStart)
+if ($helperStart -lt 0 -or $helperEnd -le $helperStart) { throw 'Configuration directory fixture extraction failed.' }
+$helperSource.Substring($helperStart, $helperEnd - $helperStart) |
+    Set-Content -LiteralPath (Join-Path $output 'ConfigDirectoryHelpers.inc') -Encoding utf8
+foreach ($test in @('tests/ConfigLocationsTests.cpp', 'tests/ConfigDirectoryTests.cpp', 'scripts/tests/config_recovery.cpp')) {
     $name = [IO.Path]::GetFileNameWithoutExtension($test)
-    & cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /DNOMINMAX "/I$repo/src/Magpie" "/I$($rapid.FullName)/p/include" `
+    & cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /DNOMINMAX /DUNICODE /D_UNICODE "/I$output" "/I$repo/src/Magpie" "/I$($rapid.FullName)/p/include" `
         "$repo/$test" "/Fe:$output/$name.exe" "/Fo:$output/$name.obj"
     if ($LASTEXITCODE) { throw "Configuration test compilation failed: $name" }
     & "$output/$name.exe" $output
