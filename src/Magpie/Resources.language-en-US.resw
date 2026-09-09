@@ -1590,7 +1590,7 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>Quality</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>OF Quality</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_1" xml:space="preserve"><value>Performance</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>Balanced (Recommended)</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>Balanced</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>Quality</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>High Quality (High Cost)</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Label" xml:space="preserve"><value>Optical Flow Method</value></data>
@@ -1624,4 +1624,20 @@
   <data name="EffectParam_Diagnostics_FrameGuidance_Motion_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMDOF</value></data>
   <data name="EffectParam_Diagnostics_FrameGuidance_Motion_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVOF</value></data>
   <data name="EffectParam_Diagnostics_FrameGuidance_Motion_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_amdOpticalFlowMode_Label" xml:space="preserve"><value>OF Quality</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_amdOpticalFlowMode_Option_0" xml:space="preserve"><value>Performance</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>Quality</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>OF Quality</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Option_1" xml:space="preserve"><value>Performance</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>Balanced (Recommended)</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>Quality</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>High Quality (High Cost)</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_opticalFlowMethod_Label" xml:space="preserve"><value>Optical Flow Method</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_opticalFlowMethod_Option_0" xml:space="preserve"><value>None</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMDOF</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVOF</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
+  <data name="ScalingModes_RecoveryInvalid_Name" xml:space="preserve"><value>Invalid effect</value></data>
+  <data name="ScalingModes_RecoveryInvalid_Description" xml:space="preserve"><value>This item could not be fully recovered. Remove it and add the effect you want.</value></data>
+  <data name="ScalingModes_MissingEffect_Description" xml:space="preserve"><value>The effect file is unavailable. Restore its file, or remove this item and add a replacement.</value></data>
 </root>

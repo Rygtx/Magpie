@@ -22,8 +22,7 @@ struct DLSSNRSettings {
 	float skinStructureStrength = -1.0f;
 	bool useAutoMask = false;
 	bool uiCorrection = false;
-	MotionVectorRequest motionRequest = MotionVectorRequest::Nvidia(
-		NvidiaOpticalFlowQuality::Balanced);
+	MotionVectorRequest motionRequest{};
 	// Experimental FP16 path. SDR RGBA8 remains the default.
 	DlssnrExperimentProtocol experimentalHdr{};
 };

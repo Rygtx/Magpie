@@ -71,7 +71,7 @@ float reflectionGlowMultiplier;
 //!PARAMETER
 //!GROUP Detail Control
 //!LABEL Optical Flow Method
-//!DEFAULT 2
+//!DEFAULT 0
 //!OPTION 0 None
 //!OPTION 1 AMDOF
 //!OPTION 2 NVOF
@@ -90,7 +90,7 @@ int amdOpticalFlowMode;
 //!LABEL OF Quality
 //!DEFAULT 2
 //!OPTION 1 Performance
-//!OPTION 2 Balanced (Recommended)
+//!OPTION 2 Balanced
 //!OPTION 3 Quality
 //!OPTION 4 High Quality (High Cost)
 //!OPTION 5 Highest Quality (Very High Cost)

@@ -74,7 +74,7 @@ bool FrameGuidanceDiagnostics::ApplyLiveParameters(
 	const EffectOption& option,
 	std::span<const std::string> parameterNames
 ) noexcept {
-	if (ParseOpticalFlowRequest(option, OpticalFlowMethod::Nvidia) != _settings.motionRequest)
+	if (ParseOpticalFlowRequest(option) != _settings.motionRequest)
 		return false;
 	if (std::ranges::any_of(parameterNames, [](const std::string& name) {
 		return name != "gain";

@@ -4,7 +4,7 @@
 
 //!PARAMETER
 //!LABEL Optical Flow Method
-//!DEFAULT 2
+//!DEFAULT 0
 //!OPTION 0 None
 //!OPTION 1 AMDOF
 //!OPTION 2 NVOF

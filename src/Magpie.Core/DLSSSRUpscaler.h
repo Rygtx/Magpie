@@ -7,8 +7,7 @@ namespace Magpie {
 class DeviceResources;
 
 struct DLSSSRSettings {
-	MotionVectorRequest motionRequest = MotionVectorRequest::Nvidia(
-		NvidiaOpticalFlowQuality::Balanced);
+	MotionVectorRequest motionRequest{};
 };
 
 // DLSS SR adapter for captured colour frames, with shared optical flow

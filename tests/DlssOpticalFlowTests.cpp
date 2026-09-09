@@ -1,6 +1,8 @@
 #include "DlssOpticalFlowParameters.h"
 #include "EffectParameterRules.h"
 #include "MotionVectorRequest.h"
+#include "OpticalFlowDefaults.h"
+#include <vector>
 #include <cassert>
 #include <iostream>
 #include <limits>
@@ -72,7 +74,7 @@ int main() {
 		assert(!MigrateDlssOpticalFlowParameters(custom) && custom.parameters.size() == 1);
 		StoredEffect fresh{id};
 		assert(MigrateDlssOpticalFlowParameters(fresh));
-		assert(fresh.parameters.at(L"opticalFlowMethod") == 2);
+		assert(fresh.parameters.at(L"opticalFlowMethod") == 0);
 		StoredEffect selected{id, {{L"opticalFlowMethod", 1.0f}, {L"amdOpticalFlowMode", 0.0f},
 			{L"motionVectorQuality", 0.0f}, {L"nvidiaOpticalFlowQuality", 5.0f}}};
 		assert(MigrateDlssOpticalFlowParameters(selected));
@@ -80,12 +82,12 @@ int main() {
 		assert(selected.parameters.at(L"nvidiaOpticalFlowQuality") == 5);
 		assert(!MigrateDlssOpticalFlowParameters(selected));
 	}
-	assert(ParseDlssOpticalFlowRequest({}) == nvBalanced);
+	assert(ParseDlssOpticalFlowRequest({}) == MotionVectorRequest{});
 	for (float invalid : {-1.0f, 9.0f, 1.5f, std::numeric_limits<float>::infinity(),
 		std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::max()}) {
-		assert(ParseDlssOpticalFlowRequest({{{"motionVectorQuality", invalid}}}) == nvBalanced);
-		assert(ParseDlssOpticalFlowRequest({{{"motionVectorQuality", invalid}, {"useMotionVectors", 0.0f}}}) == nvBalanced);
-		assert(ParseDlssOpticalFlowRequest({{{"opticalFlowMethod", invalid}}}) == nvBalanced);
+		assert(ParseDlssOpticalFlowRequest({{{"motionVectorQuality", invalid}}}) == MotionVectorRequest{});
+		assert(ParseDlssOpticalFlowRequest({{{"motionVectorQuality", invalid}, {"useMotionVectors", 0.0f}}}) == MotionVectorRequest{});
+		assert(ParseDlssOpticalFlowRequest({{{"opticalFlowMethod", invalid}}}) == MotionVectorRequest{});
 		assert(ParseDlssOpticalFlowRequest({{{"opticalFlowMethod", 2.0f}, {"nvidiaOpticalFlowQuality", invalid}}}) == nvBalanced);
 		assert(ParseDlssOpticalFlowRequest({{{"motionVectorQuality", 5.0f}, {"nvidiaOpticalFlowQuality", invalid}}}) == nvBalanced);
 		assert(ParseDlssOpticalFlowRequest({{{"opticalFlowMethod", 1.0f}, {"amdOpticalFlowMode", invalid}}}) ==
@@ -95,7 +97,7 @@ int main() {
 	DLSSNRFilter nr{&impl};
 	DLSSFrameGenerator fg;
 	FrameGuidanceDiagnostics diagnostic;
-	assert(ParseOpticalFlowRequest({}, OpticalFlowMethod::Nvidia) == nvBalanced);
+	assert(ParseOpticalFlowRequest({}) == MotionVectorRequest{});
 	for (int method = 0; method <= 2; ++method) {
 		for (int quality = (method == 2 ? 1 : 0); quality <= (method == 2 ? 5 : 1); ++quality) {
 			const auto request = ParseDlssOpticalFlowRequest({{{"opticalFlowMethod", float(method)},
@@ -141,7 +143,7 @@ int main() {
 		assert(diagnostic.GetParameterApplyMode(name) == EffectParameterApplyMode::RestartRequired);
 	}
 	assert(diagnostic.GetParameterApplyMode("gain") == EffectParameterApplyMode::Live);
-	for (auto id : {"DLSSNR\\DLSSNR_AI_Filter", "DLSSFG\\DLSS_FrameGeneration", "Diagnostics\\FrameGuidance_Motion"}) {
+	for (auto id : {"DLSSNR\\DLSSNR_AI_Filter", "DLSSFG\\DLSS_FrameGeneration", "Diagnostics\\FrameGuidance_Motion", "Diagnostics\\FrameGuidance_Confidence"}) {
 		for (int method = 0; method <= 2; ++method) {
 			auto get = [&](auto name, float fallback) { return std::string_view(name) == "opticalFlowMethod" ? float(method) : fallback; };
 			assert(IsEffectParameterVisible(id, "amdOpticalFlowMode", get) == (method == 1));
@@ -150,5 +152,17 @@ int main() {
 		}
 	}
 	assert(IsEffectParameterVisible("Custom", "amdOpticalFlowMode", [](auto, float fallback) { return fallback; }));
+	struct StoredMode { std::vector<StoredEffect> effects; };
+	std::vector<StoredMode> modes{{{{L"DLSSNR\\DLSSNR_AI_Filter", {{L"opticalFlowMethod", 2.0f}}},
+		{L"Diagnostics\\FrameGuidance_Confidence", {{L"opticalFlowMethod", 1.0f}}},
+		{L"Custom", {{L"opticalFlowMethod", 2.0f}}}}}};
+	uint32_t defaultsVersion = 0;
+	assert(ApplyOpticalFlowDefaultsMigration(modes, defaultsVersion));
+	assert(defaultsVersion == 1 && modes[0].effects[0].parameters.at(L"opticalFlowMethod") == 0);
+	assert(modes[0].effects[1].parameters.at(L"opticalFlowMethod") == 0);
+	assert(modes[0].effects[2].parameters.at(L"opticalFlowMethod") == 2);
+	modes[0].effects[0].parameters[L"opticalFlowMethod"] = 1;
+	assert(!ApplyOpticalFlowDefaultsMigration(modes, defaultsVersion));
+	assert(modes[0].effects[0].parameters.at(L"opticalFlowMethod") == 1);
 	std::cout << "DLSS and motion diagnostic optical flow: migration, defaults, invalid values, AMD/NVIDIA/None routing, shared requests, visibility and live gain isolation passed.\n";
 }

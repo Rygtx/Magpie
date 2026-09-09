@@ -7,7 +7,7 @@
 namespace Magpie {
 
 struct DlssOpticalFlowChoices {
-	int method = 2;
+	int method = 0;
 	int amdQuality = 1;
 	int nvidiaQuality = 2;
 };
@@ -25,9 +25,9 @@ DlssOpticalFlowChoices ReadDlssOpticalFlowChoices(GetValue&& getValue) noexcept 
 	const auto legacyEnabled = getValue("useMotionVectors");
 	const int legacyQuality = choice("motionVectorQuality", 0, 5,
 		!getValue("motionVectorQuality") && legacyEnabled &&
-		std::isfinite(*legacyEnabled) && *legacyEnabled < 0.5f ? 0 : 2);
+		std::isfinite(*legacyEnabled) && *legacyEnabled >= 0.5f ? 2 : 0);
 	const int method = getValue("opticalFlowMethod")
-		? choice("opticalFlowMethod", 0, 2, 2) : (legacyQuality == 0 ? 0 : 2);
+		? choice("opticalFlowMethod", 0, 2, 0) : (legacyQuality == 0 ? 0 : 2);
 	return { method, choice("amdOpticalFlowMode", 0, 1, 1),
 		choice("nvidiaOpticalFlowQuality", 1, 5,
 			!getValue("nvidiaOpticalFlowQuality") && legacyQuality > 0 ? legacyQuality : 2) };

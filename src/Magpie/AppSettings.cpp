@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "AppSettings.h"
 #include "ConfigRecovery.h"
+#include "ConfigLocations.h"
+#include "OpticalFlowDefaults.h"
 #include "App.h"
 #include "ErrorService.h"
 #include "EffectsService.h"
@@ -28,8 +30,7 @@ using namespace winrt::Magpie;
 
 namespace Magpie {
 
-// 如果配置文件和已发布的正式版本不再兼容，应提高此版本号
-static constexpr uint32_t CONFIG_VERSION = 4;
+// Enhanced settings use an isolated v4e directory; legacy v4 is import-only.
 static constexpr uint32_t EXPERIMENTAL_DLSSNR_SETTINGS_VERSION = 2;
 static constexpr uint32_t EXPERIMENTAL_DLSS_SR_SETTINGS_VERSION = 1;
 
@@ -257,10 +258,6 @@ AppSettings::~AppSettings() {}
 bool AppSettings::Initialize() noexcept {
 	Logger& logger = Logger::Get();
 
-	// 若程序所在目录存在配置文件则为便携模式
-	_isPortableMode = Win32Helper::FileExists(StrHelper::Concat(
-		CommonSharedConstants::CONFIG_DIR, L"\\", CommonSharedConstants::CONFIG_FILENAME).c_str());
-
 	std::filesystem::path existingConfigPath;
 	if (!_UpdateConfigPath(&existingConfigPath)) {
 		logger.Error("_UpdateConfigPath 失败");
@@ -285,7 +282,7 @@ bool AppSettings::Initialize() noexcept {
 	
 	std::string configText;
 	uint32_t readError = 0;
-	if (!Win32Helper::ReadTextFile(existingConfigPath.c_str(), configText, &readError)) {
+	if (!ConfigPersistence::ReadFileBytes(existingConfigPath, configText, &readError)) {
 		logger.Error("读取配置文件失败");
 		ResourceLoader resourceLoader =
 			ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
@@ -330,21 +327,23 @@ bool AppSettings::Initialize() noexcept {
 			if (!ConfigRecovery::Preserve(existingConfigPath, configText, files))
 				return failRecovery(L"AppSettings_BackupFailed", files.original, GetLastError());
 			if (Win32Helper::FileExists(files.result.c_str())) {
-				// Reuse the previously completed recovery for these exact input bytes.
-				// A damaged recovery record needs user attention, not another reset.
 				const auto previous = ConfigPersistence::Read(files.result);
-				if (!ConfigPersistence::IsValid(previous))
-					return failRecovery(L"AppSettings_RecoveryRecordFailed", files.result, ERROR_INVALID_DATA);
-				auto cached = ConfigRecovery::Prepare(previous, {}, recoveredName, rules);
-				if (cached.kind != ConfigRecovery::Kind::None)
-					return failRecovery(L"AppSettings_RecoveryRecordFailed", files.result, ERROR_INVALID_DATA);
-				plan.document = std::move(cached.document);
-				plan.defaultModes = false;
-				reused = true;
+				if (ConfigPersistence::IsValid(previous)) {
+					auto cached = ConfigRecovery::Prepare(previous, {}, recoveredName, rules);
+					if (cached.kind == ConfigRecovery::Kind::None) {
+						plan.document = std::move(cached.document);
+						plan.defaultModes = false;
+						reused = true;
+					}
+				}
+				// An unusable cache never blocks repair of the preserved input.
+				if (!reused) logger.Warn("Rebuilding an outdated or damaged configuration recovery record");
 			}
 		}
 		if (plan.defaultModes) _SetDefaultScalingModes();
 		_LoadSettings(static_cast<const rapidjson::Document&>(plan.document).GetObj());
+		_isConfigMigrationNeeded |= ApplyOpticalFlowDefaultsMigration(
+			_scalingModes, _experimentalOpticalFlowDefaultsVersion);
 		// Retire the hidden HDR toggle in every loaded profile, including the
 		// default and older versioned configurations. Preserve all other flags.
 		bool hdrSettingsChanged = false;
@@ -374,7 +373,10 @@ bool AppSettings::Initialize() noexcept {
 			// original and completed recovery available for a subsequent save attempt.
 			if (!ConfigPersistence::WriteAtomic(_configPath, result, ++_saveState->nextRevision, *_saveState))
 				return failRecovery(L"AppSettings_RecoveryWriteFailed", _configPath, GetLastError());
-			_recoveredConfigPath = files.original;
+			// Successful imports, migrations and selective repairs stay silent.
+			// Unusable items are explained in their effect rows. Only a total reset
+			// needs a startup notice because no original groups could be recovered.
+			if (plan.kind == ConfigRecovery::Kind::Defaults) _recoveredConfigPath = files.original;
 			_recoveryNotice = plan.kind == ConfigRecovery::Kind::Backup ? ScalingError::ConfigurationRecoveredBackup :
 				plan.kind == ConfigRecovery::Kind::Defaults ? ScalingError::ConfigurationResetDefaults :
 				plan.kind == ConfigRecovery::Kind::Repaired ? ScalingError::ConfigurationRepaired :
@@ -456,29 +458,40 @@ fire_and_forget AppSettings::SaveAsync(std::function<void(bool)> onCompleted) no
 }
 
 void AppSettings::IsPortableMode(bool value) noexcept {
-	if (_isPortableMode == value) {
+	if (_isPortableMode == value) return;
+	const auto previousPath = _configPath;
+	const auto previousDirectory = _configDir;
+	const bool previousPortable = _isPortableMode;
+	auto restoreLocation = [&]() {
+		_isPortableMode = previousPortable;
+		_configPath = previousPath;
+		_configDir = previousDirectory;
+	};
+	_isPortableMode = value;
+	// Commit a newer revision to the destination before removing our old
+	// portable file. Pending older saves then cannot recreate that file.
+	if (!_UpdateConfigPath()) {
+		const auto failedPath = _configPath;
+		const DWORD error = GetLastError();
+		restoreLocation();
+		ErrorService::Get().Report(ScalingError::ConfigurationWriteFailed,
+			StrHelper::UTF16ToUTF8(failedPath.native()), nullptr, error);
 		return;
 	}
-
-	if (!value) {
-		// 关闭便携模式需删除本地配置文件
-		if (!DeleteFile((_configDir / CommonSharedConstants::CONFIG_FILENAME).c_str())) {
-			if (GetLastError() != ERROR_FILE_NOT_FOUND) {
-				Logger::Get().Win32Error("删除本地配置文件失败");
-				return;
-			}
+	if (!Save()) {
+		restoreLocation();
+		return;
+	}
+	if (!value && !DeleteFileW(previousPath.c_str())) {
+		const DWORD error = GetLastError();
+		if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND) {
+			restoreLocation();
+			ErrorService::Get().Report(ScalingError::ConfigurationWriteFailed,
+				StrHelper::UTF16ToUTF8(previousPath.native()), nullptr, error);
+			return;
 		}
 	}
-
-	_isPortableMode = value;
-
-	if (_UpdateConfigPath()) {
-		Logger::Get().Info(value ? "已开启便携模式" : "已关闭便携模式");
-		SaveAsync();
-	} else {
-		Logger::Get().Error(value ? "开启便携模式失败" : "关闭便携模式失败");
-		_isPortableMode = !value;
-	}
+	Logger::Get().Info(value ? "Portable configuration enabled" : "User configuration enabled");
 }
 
 void AppSettings::Language(int value) {
@@ -814,6 +827,8 @@ std::string AppSettings::_Serialize(const _AppSettingsData& data) {
 	writer.Uint(data._experimentalDlssSrSettingsVersion);
 	writer.Key("experimentalDepthRemovalVersion");
 	writer.Uint(data._experimentalDepthRemovalVersion);
+	writer.Key("experimentalOpticalFlowDefaultsVersion");
+	writer.Uint(data._experimentalOpticalFlowDefaultsVersion);
 
 	ScalingModesService::Export(writer, data._scalingModes);
 
@@ -868,6 +883,9 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 	_experimentalDlssSrSettingsVersion = 0;
 	JsonHelper::ReadUInt(root, "experimentalDlssSrSettingsVersion",
 		_experimentalDlssSrSettingsVersion);
+	_experimentalOpticalFlowDefaultsVersion = 0;
+	JsonHelper::ReadUInt(root, "experimentalOpticalFlowDefaultsVersion",
+		_experimentalOpticalFlowDefaultsVersion);
 	_experimentalDepthRemovalVersion = 0;
 	JsonHelper::ReadUInt(root, "experimentalDepthRemovalVersion",
 		_experimentalDepthRemovalVersion);
@@ -1561,75 +1579,28 @@ void AppSettings::ResetScalingModes() noexcept {
 	SaveAsync();
 }
 
-static std::wstring FindOldConfig(const wchar_t* localAppDataDir) noexcept {
-	for (uint32_t version = CONFIG_VERSION - 1; version >= 2; --version) {
-		std::wstring oldConfigPath = fmt::format(
-			L"{}\\Magpie\\{}\\v{}\\{}",
-			localAppDataDir,
-			CommonSharedConstants::CONFIG_DIR,
-			version,
-			CommonSharedConstants::CONFIG_FILENAME
-		);
-
-		if (Win32Helper::FileExists(oldConfigPath.c_str())) {
-			return oldConfigPath;
-		}
-	}
-
-	// v1 版本的配置文件不在子目录中
-	std::wstring v1ConfigPath = StrHelper::Concat(
-		localAppDataDir,
-		L"\\Magpie\\",
-		CommonSharedConstants::CONFIG_DIR,
-		L"\\",
-		CommonSharedConstants::CONFIG_FILENAME
-	);
-
-	if (Win32Helper::FileExists(v1ConfigPath.c_str())) {
-		return v1ConfigPath;
-	}
-
-	return {};
-}
-
 bool AppSettings::_UpdateConfigPath(std::filesystem::path* existingConfigPath) noexcept {
-	if (_isPortableMode) {
-		std::wstring value;
-		HRESULT hr = wil::GetFullPathNameW(CommonSharedConstants::CONFIG_DIR, value);
-		if (FAILED(hr)) {
-			Logger::Get().ComError("GetFullPathNameW 失败", hr);
+	wil::unique_cotaskmem_string localAppData;
+	const HRESULT hr = SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_DEFAULT, nullptr, localAppData.put());
+	if (FAILED(hr)) {
+		Logger::Get().ComError("SHGetKnownFolderPath failed", hr);
+		return false;
+	}
+	const auto exeDirectory = std::filesystem::path(Win32Helper::GetExePath()).parent_path();
+	if (existingConfigPath) {
+		const auto selected = ConfigLocations::Select(exeDirectory, localAppData.get());
+		_configPath = selected.destination;
+		_configDir = _configPath.parent_path();
+		if (selected.error) {
+			SetLastError(selected.error);
+			Logger::Get().Win32Error("Inspect configuration location failed");
 			return false;
 		}
-		_configDir = std::move(value);
-
-		_configPath = _configDir / CommonSharedConstants::CONFIG_FILENAME;
-
-		if (existingConfigPath) {
-			if (Win32Helper::FileExists(_configPath.c_str())) {
-				*existingConfigPath = _configPath;
-			}
-		}
+		_isPortableMode = selected.portable;
+		*existingConfigPath = selected.source;
 	} else {
-		wil::unique_cotaskmem_string localAppDataDir;
-		HRESULT hr = SHGetKnownFolderPath(
-			FOLDERID_LocalAppData, KF_FLAG_DEFAULT, NULL, localAppDataDir.put());
-		if (FAILED(hr)) {
-			Logger::Get().ComError("SHGetKnownFolderPath 失败", hr);
-			return false;
-		}
-
-		_configDir = fmt::format(L"{}\\Magpie\\{}\\v{}\\",
-			localAppDataDir.get(), CommonSharedConstants::CONFIG_DIR, CONFIG_VERSION);
+		_configDir = ConfigLocations::Directory(exeDirectory, localAppData.get(), _isPortableMode);
 		_configPath = _configDir / CommonSharedConstants::CONFIG_FILENAME;
-
-		if (existingConfigPath) {
-			if (Win32Helper::FileExists(_configPath.c_str())) {
-				*existingConfigPath = _configPath;
-			} else {
-				// 查找旧版本配置文件
-				*existingConfigPath = FindOldConfig(localAppDataDir.get());
-			}
-		}
 	}
 
 	// 确保配置文件夹存在

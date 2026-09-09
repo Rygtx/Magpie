@@ -447,6 +447,7 @@
 									<ListView.ItemTemplate>
 										<DataTemplate x:DataType="local:ScalingModeEffectItem">
 											<local:SettingsCard Header="{x:Bind Name}"
+											                    Description="{x:Bind IssueDescription}"
 											                    Loaded="EffectSettingsCard_Loaded"
 											                    Style="{StaticResource DefaultSettingsExpanderItemStyle}">
 												<local:SimpleStackPanel Orientation="Horizontal">

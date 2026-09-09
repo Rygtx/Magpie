@@ -113,6 +113,12 @@ static void WriteScalingMode(rapidjson::PrettyWriter<rapidjson::StringBuffer>& w
 			writer.StartObject();
 			writer.Key("name");
 			writer.String(StrHelper::UTF16ToUTF8(effect.name).c_str());
+			if (effect.isRecoveryInvalid) {
+				writer.Key("recoveryInvalid");
+				writer.Bool(true);
+				writer.Key("recoveryOriginal");
+				writer.String(effect.recoveryOriginal.data(), static_cast<rapidjson::SizeType>(effect.recoveryOriginal.size()));
+			}
 
 			if (effect.HasScale()) {
 				writer.Key("scalingType");
@@ -200,6 +206,9 @@ static bool LoadScalingMode(
 				return false;
 			}
 		}
+		JsonHelper::ReadBool(elemObj, "recoveryInvalid", effect.isRecoveryInvalid);
+		if (auto raw = elemObj.FindMember("recoveryOriginal"); raw != elemObj.MemberEnd() && raw->value.IsString())
+			effect.recoveryOriginal.assign(raw->value.GetString(), raw->value.GetStringLength());
 		// Frame Rate Filter used to live in the Utility folder. Keep existing
 		// user scaling modes working after moving it to the root effect list.
 		if (effect.name == L"Utility\\FrameRate_Filter") {
@@ -288,15 +297,8 @@ static V065NormalizationStats NormalizeV065ScalingModes(
 ) noexcept {
 	V065NormalizationStats stats;
 	for (ScalingMode& scalingMode : scalingModes) {
-		const size_t oldEffectCount = scalingMode.effects.size();
-		std::erase_if(scalingMode.effects, [](const EffectItem& effect) {
-			return effect.name == L"Diagnostics\\FrameGuidance_Depth" ||
-				effect.name == L"Diagnostics\\FrameGuidance_DepthResidual";
-		});
-		stats.removedDepthDiagnostics += static_cast<uint32_t>(
-			oldEffectCount - scalingMode.effects.size());
-
 		for (EffectItem& effect : scalingMode.effects) {
+			if (effect.isRecoveryInvalid) continue;
 
 			if (effect.name == L"DLSSNR\\DLSSNR_AI_Filter") {
 				auto guidanceMode = effect.parameters.find(L"guidanceMode");
@@ -336,7 +338,7 @@ static V065NormalizationStats NormalizeV065ScalingModes(
 				if (quality == effect.parameters.end()) {
 					auto legacy = effect.parameters.find(L"useMotionVectors");
 					const float migrated = legacy != effect.parameters.end() &&
-						legacy->second < 0.5f ? 0.0f : 2.0f;
+						legacy->second >= 0.5f ? 2.0f : 0.0f;
 					effect.parameters[L"motionVectorQuality"] = migrated;
 					++stats.migratedMotionVectorChoices;
 				} else {
@@ -366,12 +368,12 @@ static V065NormalizationStats NormalizeV065ScalingModes(
 				}
 				if (family == L"DLSS") {
 					auto old = effect.parameters.find(L"motionVectorQuality");
-					const float quality = old != effect.parameters.end() ? old->second : 2.0f;
+					const float quality = old != effect.parameters.end() ? old->second : 0.0f;
 					if (effect.parameters.try_emplace(L"opticalFlowMethod", quality == 0.0f ? 0.0f : 2.0f).second) ++stats.migratedMotionVectorChoices;
 					effect.parameters.try_emplace(L"nvidiaOpticalFlowQuality", quality >= 1.0f && quality <= 5.0f ? quality : 2.0f);
 				}
 				for (const auto& [name, minimum, maximum, fallback] : {
-					std::tuple{ L"opticalFlowMethod", 0.0f, 2.0f, family == L"DLSS" ? 2.0f : 0.0f },
+					std::tuple{ L"opticalFlowMethod", 0.0f, 2.0f, 0.0f },
 					std::tuple{ L"amdOpticalFlowMode", 0.0f, 1.0f, 1.0f },
 					std::tuple{ L"nvidiaOpticalFlowQuality", 1.0f, 5.0f, 2.0f } }) {
 					auto [it, inserted] = effect.parameters.try_emplace(name, fallback);
@@ -429,12 +431,6 @@ static V065NormalizationStats NormalizeV065ScalingModes(
 			}
 		}
 
-		if (oldEffectCount != 0 && scalingMode.effects.empty()) {
-			EffectItem& fallback = scalingMode.effects.emplace_back();
-			fallback.name = L"Bilinear";
-			fallback.scalingType = ScalingType::Fit;
-			++stats.insertedFallbacks;
-		}
 	}
 	return stats;
 }

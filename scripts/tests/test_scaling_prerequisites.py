@@ -30,6 +30,7 @@ for prerequisite in ('_options.effects.empty()', 'ValidateFrameGenerationChain('
 assert start.index('if (!_hwndRenderer)') < start.index('_renderer->Initialize(')
 assert 'startupDiagnostic.Details()' in window and 'startupDiagnostic.SystemError()' in window
 assert service.index('if (windowedMode && profile.captureMethod == CaptureMethod::DesktopDuplication)') < service.index('TouchHelper::TryLaunchTouchHelper(')
+assert service.index('if (effect.isRecoveryInvalid || !EffectsService::Get().GetEffect(effect.name))') < service.index('TouchHelper::TryLaunchTouchHelper(')
 
 # Use the real chain classifier and validation template with small effect stubs.
 classifier = block(options, 'inline FrameGenerationEffectKind ClassifyFrameGenerationEffect(\n\tstd::string_view')

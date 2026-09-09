@@ -10,7 +10,7 @@
 namespace Magpie::ConfigRecovery {
 
 // Increment when the recovery policy changes, independently of release versions.
-inline constexpr uint32_t POLICY_VERSION = 2;
+inline constexpr uint32_t POLICY_VERSION = 3;
 enum class Kind { None, Backup, Partial, Defaults, Repaired };
 struct Plan {
 	rapidjson::Document document;
@@ -37,23 +37,57 @@ inline bool FloatInRange(const rapidjson::Value& value, double min, double max) 
 		value.GetDouble() >= min && value.GetDouble() <= max;
 }
 
+inline rapidjson::Value InvalidEffect(const rapidjson::Value& original,
+	rapidjson::Document::AllocatorType& allocator) {
+	rapidjson::StringBuffer raw;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(raw);
+	original.Accept(writer);
+	rapidjson::Value effect(rapidjson::kObjectType);
+	effect.AddMember("name", "__MagpieRecoveryInvalidEffect__", allocator);
+	effect.AddMember("recoveryInvalid", true, allocator);
+	effect.AddMember("recoveryOriginal", rapidjson::Value(raw.GetString(),
+		static_cast<rapidjson::SizeType>(raw.GetSize()), allocator), allocator);
+	return effect;
+}
+
 inline Plan Prepare(std::string_view source, std::string_view backup,
 	std::string_view recoveredGroupName, const ParameterRules& rules = {}) {
 	Plan plan;
+	ConfigPersistence::IncompleteChain incomplete = ConfigPersistence::IncompleteChain::None;
 	std::string input(source);
 	if (!ConfigPersistence::IsValid(input)) {
 		if (ConfigPersistence::IsValid(backup)) {
 			input = backup;
 			plan.kind = Kind::Backup;
 		} else {
-			input = ConfigPersistence::RecoverPrefix(source);
+			input = ConfigPersistence::RecoverPrefix(source, &incomplete);
 			plan.kind = input.empty() ? Kind::Defaults : Kind::Partial;
 			if (input.empty()) input = "{}";
 		}
 	}
 	auto& doc = plan.document;
-	doc.Parse(input.data(), input.size());
+	const auto json = ConfigPersistence::JsonText(input);
+	doc.Parse(json.data(), json.size());
 	auto& allocator = doc.GetAllocator();
+	if (incomplete != ConfigPersistence::IncompleteChain::None && !doc.HasMember("scalingModes"))
+		doc.AddMember("scalingModes", rapidjson::Value(rapidjson::kArrayType), allocator);
+	if (incomplete != ConfigPersistence::IncompleteChain::None && doc["scalingModes"].IsArray()) {
+		auto& modes = doc["scalingModes"];
+		if (incomplete == ConfigPersistence::IncompleteChain::NewGroup || modes.Empty()) {
+			rapidjson::Value group(rapidjson::kObjectType);
+			group.AddMember("name", rapidjson::Value(recoveredGroupName.data(),
+				static_cast<rapidjson::SizeType>(recoveredGroupName.size()), allocator), allocator);
+			modes.PushBack(group, allocator);
+		}
+		auto& group = modes[modes.Size() - 1];
+		if (group.IsObject()) {
+			if (!group.HasMember("effects")) group.AddMember("effects", rapidjson::Value(rapidjson::kArrayType), allocator);
+			if (group["effects"].IsArray()) {
+				rapidjson::Value original(source.data(), static_cast<rapidjson::SizeType>(source.size()), allocator);
+				group["effects"].PushBack(InvalidEffect(original, allocator), allocator);
+			}
+		}
+	}
 	auto note = [&](const std::string& path) {
 		plan.fields.push_back(path);
 		if (plan.kind == Kind::None) plan.kind = Kind::Repaired;
@@ -80,10 +114,7 @@ inline Plan Prepare(std::string_view source, std::string_view backup,
 		check(doc, key, "", object);
 	for (const char* key : { "scalingModes", "profiles", "scalingProfiles" })
 		check(doc, key, "", array);
-	for (const auto& [key, version] : { std::pair{ "experimentalDlssnrSettingsVersion", 2u },
-		std::pair{ "experimentalDlssSrSettingsVersion", 1u }, std::pair{ "experimentalDepthRemovalVersion", 1u } }) {
-		if (!doc.HasMember(key) || !doc[key].IsUint() || doc[key].GetUint() < version) note(std::string("/") + key);
-	}
+	// Version migrations are normal loading, not evidence of damaged settings.
 	number(doc, "minFrameRate", "", 0, 1000);
 	check(doc, "frontEdgeSyncFrameRate", "", [](const auto& v) {
 		return FloatInRange(v, 0, 1000) && (v.GetDouble() == 0 || v.GetDouble() >= 1);
@@ -105,34 +136,43 @@ inline Plan Prepare(std::string_view source, std::string_view backup,
 			auto& mode = doc["scalingModes"][i];
 			const std::string path = "/scalingModes/" + std::to_string(i);
 			const bool invalidMode = !mode.IsObject();
-			if (invalidMode) { mode.SetObject(); note(path); }
+			if (invalidMode) {
+				auto placeholder = InvalidEffect(mode, allocator);
+				mode.SetObject();
+				rapidjson::Value effects(rapidjson::kArrayType);
+				effects.PushBack(placeholder, allocator);
+				mode.AddMember("effects", effects, allocator);
+				note(path);
+			}
 			if (!mode.HasMember("name") || !mode["name"].IsString()) {
 				mode.RemoveMember("name");
 				mode.AddMember("name", rapidjson::Value(recoveredGroupName.data(),
 					static_cast<rapidjson::SizeType>(recoveredGroupName.size()), allocator), allocator);
 				note(path + "/name");
 			}
-			// Empty groups are legitimate drafts. A malformed chain falls back only
-			// within this group; keep its index so other profile selections stay valid.
-			bool broken = invalidMode || (mode.HasMember("effects") && !mode["effects"].IsArray());
-			if (!broken && mode.HasMember("effects")) {
-				for (auto& effect : mode["effects"].GetArray()) {
-					if (!effect.IsObject() || !effect.HasMember("name") ||
-						!effect["name"].IsString() || !effect["name"].GetStringLength()) { broken = true; break; }
-				}
-			}
-			if (broken) {
-				mode.RemoveMember("effects");
-				rapidjson::Value effects(rapidjson::kArrayType), effect(rapidjson::kObjectType);
-				effect.AddMember("name", "Lanczos", allocator);
-				effects.PushBack(effect, allocator);
-				mode.AddMember("effects", effects, allocator);
+			// Retain each healthy item and its index. A broken chain/item is a
+			// visible placeholder, never an automatic replacement image filter.
+			if (mode.HasMember("effects") && !mode["effects"].IsArray()) {
+				auto& malformed = mode["effects"];
+				rapidjson::Value effects(rapidjson::kArrayType);
+				if (malformed.IsObject() && malformed.HasMember("name") &&
+					malformed["name"].IsString() && malformed["name"].GetStringLength()) {
+					rapidjson::Value item;
+					item.CopyFrom(malformed, allocator);
+					effects.PushBack(item, allocator);
+				} else effects.PushBack(InvalidEffect(malformed, allocator), allocator);
+				malformed.Swap(effects);
 				note(path + "/effects");
 			}
 			if (!mode.HasMember("effects")) continue;
 			for (rapidjson::SizeType j = 0; j < mode["effects"].Size(); ++j) {
 				auto& effect = mode["effects"][j];
 				const std::string effectPath = path + "/effects/" + std::to_string(j);
+				if (!effect.IsObject() || !effect.HasMember("name") ||
+					!effect["name"].IsString() || !effect["name"].GetStringLength()) {
+					effect = InvalidEffect(effect, allocator);
+					note(effectPath);
+				}
 				enumeration(effect, "scalingType", effectPath, 4);
 				check(effect, "scale", effectPath, object);
 				if (effect.HasMember("scale")) {

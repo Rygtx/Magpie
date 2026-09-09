@@ -121,6 +121,7 @@
     <ClInclude Include="ErrorGuidance.h" />
     <ClInclude Include="ConfigPersistence.h" />
     <ClInclude Include="ConfigRecovery.h" />
+    <ClInclude Include="ConfigLocations.h" />
     <ClInclude Include="AppXReader.h" />
     <ClInclude Include="AutoStartHelper.h" />
     <ClInclude Include="BlueInfoBarStyle.h">

@@ -96,9 +96,7 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 				.kind = kind,
 				.gain = std::max(0.001f, getParameter("gain",
 					FrameGuidanceDiagnosticSettings{}.gain)),
-				.motionRequest = kind == FrameGuidanceDiagnosticKind::Motion
-					? ParseOpticalFlowRequest(option, OpticalFlowMethod::Nvidia)
-					: FrameGuidanceDiagnosticSettings{}.motionRequest
+				.motionRequest = ParseOpticalFlowRequest(option)
 			});
 	}
 
@@ -129,8 +127,7 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 
 	if (!hdrEnabled) {
 		if (IsSuperResolutionEffect(effectName)) {
-			const auto motion = ParseOpticalFlowRequest(option,
-				effectName == "DLSS\\DLSS_SR" ? OpticalFlowMethod::Nvidia : OpticalFlowMethod::None);
+			const auto motion = ParseOpticalFlowRequest(option);
 			if (effectName == "DLSS\\DLSS_SR")
 				return CreateBackend<DLSSSRUpscaler>(effectName, resources, input, output,
 					DLSSSRSettings{ .motionRequest = motion });
@@ -199,8 +196,7 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 		effectName == "FSR3\\FSR3_SR" ||
 		effectName == "FSR4\\FSR4_SR" ||
 		effectName == "XeSS\\XeSS_SR")) {
-		const auto motion = ParseOpticalFlowRequest(option,
-			effectName == "DLSS\\DLSS_SR" ? OpticalFlowMethod::Nvidia : OpticalFlowMethod::None);
+		const auto motion = ParseOpticalFlowRequest(option);
 		const D3D11_TEXTURE2D_DESC inputDesc = [&]() {
 			D3D11_TEXTURE2D_DESC desc{};
 			input->GetDesc(&desc);

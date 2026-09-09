@@ -121,6 +121,7 @@
     <ClInclude Include="OpticalFlowSettings.h" />
     <ClInclude Include="include\EffectParameterRules.h" />
     <ClInclude Include="include\DlssOpticalFlowParameters.h" />
+    <ClInclude Include="include\OpticalFlowDefaults.h" />
     <ClInclude Include="PresentationFrameRate.h" />
     <ClInclude Include="FramePresentationTiming.h" />
     <ClInclude Include="FramePacingWait.h" />

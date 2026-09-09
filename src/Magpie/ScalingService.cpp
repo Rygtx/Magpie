@@ -324,7 +324,8 @@ void ScalingService::_StartScale(HWND hWnd, const Profile& profile, bool windowe
 		if (profile.scalingMode >= 0 && static_cast<size_t>(profile.scalingMode) < modes.size()) {
 			const auto& effects = modes[profile.scalingMode].effects;
 			for (size_t i = 0; i < effects.size(); ++i) {
-				if ((error == ScalingError::ScalingModeUnknownEffect && !EffectsService::Get().GetEffect(effects[i].name)) ||
+				if ((error == ScalingError::ScalingModeUnknownEffect &&
+					(effects[i].isRecoveryInvalid || !EffectsService::Get().GetEffect(effects[i].name))) ||
 					(error == ScalingError::ConflictingFrameGenerationEffects &&
 						ClassifyFrameGenerationEffect(effects[i].name) != FrameGenerationEffectKind::None)) {
 					if (!context.empty()) context += '\n';
@@ -358,7 +359,7 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 		return ScalingError::ScalingModeEmpty;
 	} else {
 		for (const EffectItem& effect : effects) {
-			if (!EffectsService::Get().GetEffect(effect.name)) {
+			if (effect.isRecoveryInvalid || !EffectsService::Get().GetEffect(effect.name)) {
 				// 存在无法解析的效果
 				return ScalingError::ScalingModeUnknownEffect;
 			}

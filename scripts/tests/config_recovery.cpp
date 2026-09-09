@@ -30,6 +30,8 @@ int wmain(int argc, wchar_t** argv) {
 	const auto valid = Current(R"("language":"zh-hans","shortcuts":{"scale":123},"scalingModes":[{"name":"custom","effects":[{"name":"user-installed-effect","parameters":{"strength":0.7}}]},{"name":"draft"}],"profiles":[{"scalingMode":0},{"name":"app","scalingMode":1}])");
 	auto untouched = PrepareTest(valid);
 	assert(untouched.kind == Kind::None && untouched.fields.empty());
+	const auto withBom = PrepareTest(std::string("\xEF\xBB\xBF") + valid);
+	assert(withBom.kind == Kind::None && withBom.document["scalingModes"].Size() == 2);
 	assert(untouched.document["scalingModes"].Size() == 2);
 	assert(!untouched.document["scalingModes"][1].HasMember("effects"));
 	// Missing optional SDKs and legitimate unfinished groups do not trigger recovery.
@@ -81,9 +83,32 @@ int wmain(int argc, wchar_t** argv) {
 	auto fromBackup = PrepareTest("{broken", valid);
 	assert(fromBackup.kind == Kind::Backup && fromBackup.document["scalingModes"].Size() == 2);
 	auto partial = PrepareTest(R"({"language":"zh-hans","scalingModes":[{"name":"complete"},{"name":"unfinished)" );
-	assert(partial.kind == Kind::Partial && partial.document["scalingModes"].Size() == 1);
+	assert(partial.kind == Kind::Partial && partial.document["scalingModes"].Size() == 2);
 	assert(PrepareTest("{broken", "also broken").kind == Kind::Defaults);
-	assert(PrepareTest(R"({"scalingModes":[{"name":"old"}]})").kind == Kind::Repaired);
+	assert(PrepareTest(R"({"scalingModes":[{"name":"old"}]})").kind == Kind::None);
+	const auto chain = PrepareTest(Current(R"("scalingModes":[{"name":"mixed","effects":[{"name":"keep-a","parameters":{"gain":0.5}},42,{"name":"keep-b"},{}]}],"profiles":[{"scalingMode":0}])"));
+	const auto& effects = chain.document["scalingModes"][0]["effects"];
+	assert(effects.Size() == 4 && effects[1]["recoveryInvalid"].GetBool() && effects[3]["recoveryInvalid"].GetBool());
+	assert(effects[0]["parameters"]["gain"].GetFloat() == 0.5f);
+	assert(std::string_view(effects[2]["name"].GetString()) == "keep-b");
+	assert(std::string_view(effects[1]["recoveryOriginal"].GetString()) == "42");
+	assert(PrepareTest(Serialize(chain.document)).kind == Kind::None);
+	const auto truncatedChain = PrepareTest(R"({"scalingModes":[{"name":"retain","effects":[{"name":"keep"},{"name":"cut)" );
+	assert(truncatedChain.kind == Kind::Partial);
+	const auto& truncatedEffects = truncatedChain.document["scalingModes"][0]["effects"];
+	assert(truncatedEffects.Size() == 2 && std::string_view(truncatedEffects[0]["name"].GetString()) == "keep");
+	assert(truncatedEffects[1]["recoveryInvalid"].GetBool());
+	for (const auto damaged : { R"({"scalingModes":[{"name":"cut)", R"({"language":"zh-hans","scalingModes":[{"name":"cut)" }) {
+		const auto firstBroken = PrepareTest(damaged);
+		assert(firstBroken.kind == Kind::Partial && !firstBroken.defaultModes);
+		assert(firstBroken.document["scalingModes"].Size() == 1);
+		assert(firstBroken.document["scalingModes"][0]["effects"][0]["recoveryInvalid"].GetBool());
+	}
+	const auto closedEffects = PrepareTest(R"({"scalingModes":[{"name":"retain","effects":[{"name":"keep"}])" );
+	assert(closedEffects.document["scalingModes"][0]["effects"].Size() == 1);
+	const auto wrongArray = PrepareTest(Current(R"("scalingModes":[{"name":"bad","effects":"broken"},{"name":"single","effects":{"name":"keep"}}])"));
+	assert(wrongArray.document["scalingModes"][0]["effects"][0]["recoveryInvalid"].GetBool());
+	assert(std::string_view(wrongArray.document["scalingModes"][1]["effects"][0]["name"].GetString()) == "keep");
 	// Real files: exact original is immutable, and each input gets its own record.
 	const std::string damaged = "{broken";
 	Put(config, damaged);

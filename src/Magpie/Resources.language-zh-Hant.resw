@@ -1557,7 +1557,7 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>品質</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>光流品質</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_1" xml:space="preserve"><value>效能</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>均衡（推薦）</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>均衡</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>品質</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>高品質（高開銷）</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Label" xml:space="preserve"><value>光流方法</value></data>
@@ -1591,4 +1591,20 @@
   <data name="EffectParam_Diagnostics_FrameGuidance_Motion_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMD 光流</value></data>
   <data name="EffectParam_Diagnostics_FrameGuidance_Motion_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVIDIA 光流</value></data>
   <data name="EffectParam_Diagnostics_FrameGuidance_Motion_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高品質（極高開銷）</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_amdOpticalFlowMode_Label" xml:space="preserve"><value>光流品質</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_amdOpticalFlowMode_Option_0" xml:space="preserve"><value>效能</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>品質</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>光流品質</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Option_1" xml:space="preserve"><value>效能</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>均衡（推薦）</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>品質</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>高品質（高開銷）</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_opticalFlowMethod_Label" xml:space="preserve"><value>光流方法</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_opticalFlowMethod_Option_0" xml:space="preserve"><value>無</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMD 光流</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVIDIA 光流</value></data>
+  <data name="EffectParam_Diagnostics_FrameGuidance_Confidence_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高品質（極高開銷）</value></data>
+  <data name="ScalingModes_RecoveryInvalid_Name" xml:space="preserve"><value>失效效果器</value></data>
+  <data name="ScalingModes_RecoveryInvalid_Description" xml:space="preserve"><value>此項設定無法完整復原。請移除此項，並重新新增所需效果器。</value></data>
+  <data name="ScalingModes_MissingEffect_Description" xml:space="preserve"><value>找不到對應效果檔案。請還原該檔案，或移除此項並新增替代效果器。</value></data>
 </root>
