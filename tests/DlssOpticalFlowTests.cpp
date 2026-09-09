@@ -5,11 +5,14 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <algorithm>
+#include <span>
 
 namespace Magpie {
 struct EffectOption { std::map<std::string, float, std::less<>> parameters; };
-struct MotionSettings { MotionVectorRequest motionRequest; };
-enum class EffectParameterRestartReason { FrameGuidance, ResourceRecreation };
+struct MotionSettings { MotionVectorRequest motionRequest; float gain = 0.08f; };
+enum class EffectParameterRestartReason { FrameGuidance, ResourceRecreation, NativeBackend };
+enum class EffectParameterApplyMode { Live, RestartRequired };
 struct DLSSNRFilter {
 	struct Impl { bool disabled = false; };
 	Impl* _impl = nullptr;
@@ -20,6 +23,13 @@ struct DLSSNRFilter {
 struct DLSSFrameGenerator {
 	MotionSettings _requestedSettings;
 	FrameGuidanceRequirements GetFrameGuidanceRequirements() const noexcept;
+};
+struct FrameGuidanceDiagnostics {
+	MotionSettings _settings;
+	FrameGuidanceRequirements GetFrameGuidanceRequirements() const noexcept;
+	EffectParameterApplyMode GetParameterApplyMode(std::string_view) const noexcept;
+	EffectParameterRestartReason GetParameterRestartReason(std::string_view) const noexcept;
+	bool ApplyLiveParameters(const EffectOption&, std::span<const std::string>) noexcept;
 };
 }
 #include "dlss_optical_flow_production.h"
@@ -84,21 +94,38 @@ int main() {
 	DLSSNRFilter::Impl impl;
 	DLSSNRFilter nr{&impl};
 	DLSSFrameGenerator fg;
+	FrameGuidanceDiagnostics diagnostic;
+	assert(ParseOpticalFlowRequest({}, OpticalFlowMethod::Nvidia) == nvBalanced);
 	for (int method = 0; method <= 2; ++method) {
 		for (int quality = (method == 2 ? 1 : 0); quality <= (method == 2 ? 5 : 1); ++quality) {
 			const auto request = ParseDlssOpticalFlowRequest({{{"opticalFlowMethod", float(method)},
 				{"amdOpticalFlowMode", float(quality)}, {"nvidiaOpticalFlowQuality", float(quality)}}});
 			assert(request.method == static_cast<OpticalFlowMethod>(method));
 			nr._settings.motionRequest = fg._requestedSettings.motionRequest = request;
+			diagnostic._settings.motionRequest = request;
 			const auto nrReq = nr.GetFrameGuidanceRequirements();
 			const auto fgReq = fg.GetFrameGuidanceRequirements();
 			assert(nrReq == fgReq && nrReq.zero && nrReq.HasMotion() == (method != 0));
+			assert(diagnostic.GetFrameGuidanceRequirements() == nrReq);
 			if (method) assert(nrReq.Contains(request) && request.quality == quality);
 			FrameGuidanceRequirements combined = nrReq;
 			combined.Merge(fgReq);
+			combined.Merge(diagnostic.GetFrameGuidanceRequirements());
 			int providers = 0;
 			combined.Resolved().ForEachMotion([&](auto) { ++providers; });
 			assert(providers == (method != 0));
+			const EffectOption gainUpdate{{{"opticalFlowMethod", float(method)},
+				{"amdOpticalFlowMode", float(quality)}, {"nvidiaOpticalFlowQuality", float(quality)}, {"gain", 0.5f}}};
+			const std::string gainName[]{"gain"};
+			assert(diagnostic.ApplyLiveParameters(gainUpdate, gainName));
+			assert(diagnostic._settings.gain == 0.5f);
+			auto changedProvider = gainUpdate;
+			changedProvider.parameters["opticalFlowMethod"] = float((method + 1) % 3);
+			changedProvider.parameters["gain"] = 0.75f;
+			assert(!diagnostic.ApplyLiveParameters(changedProvider, gainName));
+			assert(diagnostic._settings.gain == 0.5f);
+			const std::string providerName[]{"opticalFlowMethod"};
+			assert(!diagnostic.ApplyLiveParameters(gainUpdate, providerName));
 		}
 	}
 	impl.disabled = true;
@@ -108,9 +135,13 @@ int main() {
 	mixed.Add(nvBalanced);
 	assert(mixed.PreferredMotion() == nvBalanced);
 	assert(FrameGuidanceRequirements::ResolveConsumer({}, nvBalanced) == MotionVectorRequest{});
-	for (auto name : {"opticalFlowMethod", "amdOpticalFlowMode", "nvidiaOpticalFlowQuality"})
+	for (auto name : {"opticalFlowMethod", "amdOpticalFlowMode", "nvidiaOpticalFlowQuality"}) {
 		assert(nr.GetParameterRestartReason(name) == EffectParameterRestartReason::FrameGuidance);
-	for (auto id : {"DLSSNR\\DLSSNR_AI_Filter", "DLSSFG\\DLSS_FrameGeneration"}) {
+		assert(diagnostic.GetParameterRestartReason(name) == EffectParameterRestartReason::FrameGuidance);
+		assert(diagnostic.GetParameterApplyMode(name) == EffectParameterApplyMode::RestartRequired);
+	}
+	assert(diagnostic.GetParameterApplyMode("gain") == EffectParameterApplyMode::Live);
+	for (auto id : {"DLSSNR\\DLSSNR_AI_Filter", "DLSSFG\\DLSS_FrameGeneration", "Diagnostics\\FrameGuidance_Motion"}) {
 		for (int method = 0; method <= 2; ++method) {
 			auto get = [&](auto name, float fallback) { return std::string_view(name) == "opticalFlowMethod" ? float(method) : fallback; };
 			assert(IsEffectParameterVisible(id, "amdOpticalFlowMode", get) == (method == 1));
@@ -119,5 +150,5 @@ int main() {
 		}
 	}
 	assert(IsEffectParameterVisible("Custom", "amdOpticalFlowMode", [](auto, float fallback) { return fallback; }));
-	std::cout << "DLSS optical flow: legacy migration, defaults, invalid values, AMD/NVIDIA/None routing, shared requests and parameter visibility passed.\n";
+	std::cout << "DLSS and motion diagnostic optical flow: migration, defaults, invalid values, AMD/NVIDIA/None routing, shared requests, visibility and live gain isolation passed.\n";
 }

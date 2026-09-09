@@ -18,14 +18,21 @@ def function(path, signature):
     return source[start:end]
 
 
-parts = ['namespace Magpie {', function(
-    'src/Magpie.Core/OpticalFlowSettings.h', 'inline MotionVectorRequest ParseDlssOpticalFlowRequest(')]
+parts = ['namespace Magpie {']
+parts.extend(function('src/Magpie.Core/OpticalFlowSettings.h', signature) for signature in [
+    'inline MotionVectorRequest ParseOpticalFlowRequest(',
+    'inline MotionVectorRequest ParseDlssOpticalFlowRequest('])
 for path, signatures in [
     ('src/Magpie.Core/DLSSNRFilter.cpp', [
         'FrameGuidanceRequirements\nDLSSNRFilter::GetFrameGuidanceRequirements()',
         'EffectParameterRestartReason DLSSNRFilter::GetParameterRestartReason(']),
     ('src/Magpie.Core/DLSSFrameGenerator.cpp', [
         'FrameGuidanceRequirements\nDLSSFrameGenerator::GetFrameGuidanceRequirements()']),
+    ('src/Magpie.Core/FrameGuidanceDiagnostics.cpp', [
+        'FrameGuidanceRequirements\nFrameGuidanceDiagnostics::GetFrameGuidanceRequirements()',
+        'EffectParameterApplyMode FrameGuidanceDiagnostics::GetParameterApplyMode(',
+        'EffectParameterRestartReason FrameGuidanceDiagnostics::GetParameterRestartReason(',
+        'bool FrameGuidanceDiagnostics::ApplyLiveParameters(']),
 ]:
     parts.extend(function(path, signature) for signature in signatures)
 parts.append('}')

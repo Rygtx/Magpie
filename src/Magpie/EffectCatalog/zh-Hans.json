@@ -1578,10 +1578,10 @@
         "diagnostic"
       ],
       "summary": "把帧引导运动可视化，帮助检查捕获帧间运动估计。",
-      "details": "调试自定义 › 诊断\n\n这是诊断输出，不是画质增强；应临时放在链尾观察。\n\n变体差异：运动视图，同尺寸、单通道；输出不应继续当作正常图像处理。\n\n调试用途：仅在排查帧引导时使用。\n\n尝试建议：观察完毕后从正常效果组移除\n\n组合建议：临时链尾诊断；在「被诊断的处理」之后。便于观察最终帧引导状态。\n\n输出尺寸：保持输入尺寸\n\n组合注意：输出为可视化，不应继续作为正常画面\n\n使用条件：Direct3D 11 效果着色器可编译；目标输出尺寸满足该文件的尺寸表达式\n\n性能成本：低到中；具体帧率需在目标画面实测。\n\nHDR 注意：这是诊断色图，不代表 HDR 画面输出。",
+      "details": "调试自定义 › 诊断\n\n将 MV 显示为颜色图，可选择 AMDOF 或 NVOF；建议放在效果组末尾观察。\n\n变体差异：方向以色相表示，位移强弱以亮度和饱和度表示；显示增益仅影响色图。\n\n调试用途：仅在排查帧引导时使用。\n\n尝试建议：观察完毕后从正常效果组移除\n\n组合建议：临时链尾诊断；在「被诊断的处理」之后。便于观察最终帧引导状态。\n\n输出尺寸：保持输入尺寸\n\n组合注意：输出为可视化，不应继续作为正常画面\n\n使用条件：满足所选光流提供者的运行条件；同组比较时统一提供者，混用时 NVOF 优先；目标输出尺寸满足该文件的尺寸表达式\n\n性能成本：取决于所选光流；具体帧率需在目标画面实测。\n\nHDR 注意：这是诊断色图，不代表 HDR 画面输出。",
       "level": "diagnostic",
       "recommendation": "调试用途",
-      "search": "Diagnostics\\FrameGuidance_Motion FrameGuidance Motion Frame Guidance Diagnostics 调试自定义 诊断 Frame Guidance Diagnostics FrameGuidance Motion Diagnostics FrameGuidance_Motion 把帧引导运动可视化，帮助检查捕获帧间运动估计。 这是诊断输出，不是画质增强；应临时放在链尾观察。 调试自定义 诊断",
+      "search": "Diagnostics\\FrameGuidance_Motion FrameGuidance Motion Frame Guidance Diagnostics 调试自定义 诊断 Frame Guidance Diagnostics FrameGuidance Motion Diagnostics FrameGuidance_Motion 把帧引导运动可视化，帮助检查捕获帧间运动估计。 将 MV 显示为颜色图，可选择 AMDOF 或 NVOF；建议放在效果组末尾观察。 调试自定义 诊断",
       "family": null,
       "subfamily": null
     },

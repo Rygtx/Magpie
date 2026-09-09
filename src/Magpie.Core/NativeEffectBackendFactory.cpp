@@ -95,7 +95,10 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 			FrameGuidanceDiagnosticSettings{
 				.kind = kind,
 				.gain = std::max(0.001f, getParameter("gain",
-					FrameGuidanceDiagnosticSettings{}.gain))
+					FrameGuidanceDiagnosticSettings{}.gain)),
+				.motionRequest = kind == FrameGuidanceDiagnosticKind::Motion
+					? ParseOpticalFlowRequest(option, OpticalFlowMethod::Nvidia)
+					: FrameGuidanceDiagnosticSettings{}.motionRequest
 			});
 	}
 

@@ -5629,8 +5629,8 @@
         "Diagnostics FrameGuidance_Motion"
       ],
       "purpose": "把帧引导运动可视化，帮助检查捕获帧间运动估计。",
-      "description": "这是诊断输出，不是画质增强；应临时放在链尾观察。",
-      "variantNotes": "运动视图，同尺寸、单通道；输出不应继续当作正常图像处理。",
+      "description": "将 MV 显示为颜色图，可选择 AMDOF 或 NVOF；建议放在效果组末尾观察。",
+      "variantNotes": "方向以色相表示，位移强弱以亮度和饱和度表示；显示增益仅影响色图。",
       "outputSize": {
         "mode": "same",
         "widthExpression": "INPUT_WIDTH",
@@ -5656,11 +5656,11 @@
         ]
       },
       "cost": {
-        "qualitative": "低到中",
-        "basis": "源码声明 1 个 pass；1 个可调参数。未进行 GPU 基准测试。"
+        "qualitative": "取决于所选光流",
+        "basis": "共享光流后生成色图；提供者、质量和输入尺寸决定主要成本。未进行 GPU 基准测试。"
       },
       "requirements": [
-        "Direct3D 11 效果着色器可编译",
+        "满足所选光流提供者的运行条件；同组比较时统一提供者，混用时 NVOF 优先",
         "目标输出尺寸满足该文件的尺寸表达式"
       ],
       "hdr": {
