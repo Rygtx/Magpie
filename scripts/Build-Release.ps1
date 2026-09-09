@@ -347,6 +347,9 @@ $buildOptions.Project.PropertyGroup.ChildNodes | Where-Object {
     $_.Name -like "Enable*"
 } | ForEach-Object {
     $supportedFeatureOptions[$_.Name] = $true
+    if ($_.InnerText -in @("true", "false")) {
+        $featureOptions[$_.Name] = [string]$_.InnerText
+    }
 }
 $userOptionsPath = Join-Path $sourceRoot "src\BuildOptions.props.user"
 if (Test-Path -LiteralPath $userOptionsPath) {
@@ -358,9 +361,11 @@ if (Test-Path -LiteralPath $userOptionsPath) {
         $featureOptions[$property.Name] = [string]$property.InnerText
     }
 }
-# Match BuildOptions.props' compatibility default so the manifest records the
-# effective AMDOF feature state even when an older user override only enables
-# FSR3.
+# Match the compatibility defaults as well as explicit user overrides.
+if (!$featureOptions.Contains("EnableDLSSSR") -and
+    $featureOptions.Contains("EnableDLSSZeroMV")) {
+    $featureOptions["EnableDLSSSR"] = $featureOptions["EnableDLSSZeroMV"]
+}
 if (!$featureOptions.Contains("EnableAmdOpticalFlow") -and
     $featureOptions.Contains("EnableFSR3ZeroMV")) {
     $featureOptions["EnableAmdOpticalFlow"] =

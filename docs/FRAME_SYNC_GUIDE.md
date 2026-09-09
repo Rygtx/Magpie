@@ -1,4 +1,4 @@
-# 帧同步（0.6.7 local）
+# 帧同步（0.6.7）
 
 主页和工具栏参数面板使用同一组帧同步设置：开关、模式、目标基础 FPS。默认开启 Front Edge Sync，目标 60 FPS。修改自动保存，点击工具栏的“应用并重新启用”，或手动停止再启用缩放后生效。已有配置保留原开关与帧率，缺少模式字段时继续使用 Front Edge Sync。
 
@@ -7,8 +7,8 @@
 | 模式 | 普通 NR／SR 等效果 | DLSS FG | XeSS FG／MFG |
 | --- | --- | --- | --- |
 | Front Edge Sync | 在提交前对齐节奏，可能增加等待 | 保留原有 FG 输入和输出节奏 | XeLL 接管 |
-| Async（严格间隔） | 在取帧前限制开始间隔，迟到后不追赶旧网格 | 控制基础输入，保留生成帧排序与输出间隔 | XeLL 接管 |
-| NVIDIA Reflex（实验） | 将统一目标交给驱动；低延迟 On，Boost Off | 当前使用 Front Edge 限帧；保留独立的 Reflex 低延迟 | XeLL 接管 |
+| Async | 在取帧前限制开始间隔，迟到后不追赶旧网格 | 控制基础输入，保留生成帧排序与输出间隔 | XeLL 接管 |
+| NVIDIA Reflex | 将统一目标交给驱动；低延迟 On，Boost Off | 当前使用 Front Edge 限帧；保留独立的 Reflex 低延迟 | XeLL 接管 |
 
 Reflex 驱动限帧目前面向无 FG 的 NVIDIA DXGI 路径，效果处理和呈现需使用同一显卡。当前 D3D11 异步标记接口要求 R565+ 驱动。初始化／调用失败时回退 Async，并保留同一个目标；工具栏说明实际模式与重试方法。窗口调整期间可暂时使用 Async，恢复 DXGI 呈现后自动恢复 Reflex。
 
