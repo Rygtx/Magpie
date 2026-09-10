@@ -262,6 +262,19 @@ int main() {
     auto& io=ImGui::GetIO(); unsigned char* pixels; int w,h;
     io.Fonts->GetTexDataAsRGBA32(&pixels,&w,&h);
     io.DisplaySize={800,600}; io.DeltaTime=1.0f/60;
+    // One shared toolbar/shortcut action opens edit and closes visible panels.
+    panel._ToggleParameterPanel(); Frames(); assert(panel.IsEditingParameters());
+    panel._ToggleParameterPanel(); Frames(); panel.UpdateParameterInputHost();
+    assert(panel._parameterPanelState==ParameterPanelState::Closed && !panel._isEffectParametersVisible && foreground==game);
+    panel._ToggleParameterPanel(); Frames();
+    panel._SetParameterPanelState(ParameterPanelState::Preview); Frames(); panel.UpdateParameterInputHost();
+    assert(panel._isEffectParametersVisible && !panel.IsEditingParameters());
+    panel._ToggleParameterPanel(); Frames(); assert(!panel._isEffectParametersVisible);
+    // Closing through the action still waits for held shortcut modifiers.
+    panel._ToggleParameterPanel(); Frames(); Key(WM_KEYDOWN,VK_MENU);
+    panel._ToggleParameterPanel(); Frames(); assert(panel.IsEditingParameters());
+    Key(WM_KEYUP,VK_MENU); Frames(); panel.UpdateParameterInputHost();
+    assert(panel._parameterPanelState==ParameterPanelState::Closed && foreground==game);
     panel._SetParameterPanelState(ParameterPanelState::Edit); Frame();
     assert(panel._imguiImpl.OwnsPointerAtCursor()); Frames();
     assert(panel.IsEditingParameters() && foreground==inputHost && visibleHost);
@@ -400,6 +413,11 @@ fixture = fixture.replace('STOP_PROCESS', method(scaling_header, 'bool ProcessPe
 session_header = (core / 'include/ScalingOptions.h').read_text(encoding='utf-8-sig')
 fixture = fixture.replace('SESSION', method(session_header, 'struct OverlaySessionState') + ';')
 drawer_cpp = (core / 'OverlayDrawer.cpp').read_text(encoding='utf-8-sig')
+assert '"closeParameters"' not in drawer_cpp
+assert 'ImGui::Begin(title.c_str(), nullptr,' in drawer_cpp
+parameter_action = drawer_cpp.split('case OverlayAction::EffectParameters:', 1)[1].split('break;', 1)[0]
+assert '_ToggleParameterPanel();' in parameter_action
+assert 'parametersVisible != _isEffectParametersVisible) InvokeAction(OverlayAction::EffectParameters)' in drawer_cpp
 session_code = 'namespace Magpie {\n' + method(drawer_cpp, 'OverlaySessionState OverlayDrawer::CaptureSessionState()') + '\n' + method(drawer_cpp, 'void OverlayDrawer::RestoreSessionState(') + '\n}\n'
 shortcut_cpp = (root / 'src/Magpie/ShortcutService.cpp').read_text(encoding='utf-8-sig')
 tests = tests.replace('SHORTCUT_EDGE', method(shortcut_cpp, 'if (info->vkCode < that._parameterShortcutKeys.size()'))

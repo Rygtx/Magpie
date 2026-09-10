@@ -97,6 +97,10 @@ void OverlayDrawer::_EndParameterInput(bool returnFocus) noexcept {
 	_parameterInputTransition = false;
 }
 
+void OverlayDrawer::_ToggleParameterPanel() noexcept {
+	_SetParameterPanelState(_isEffectParametersVisible ? ParameterPanelState::Closed : ParameterPanelState::Edit);
+}
+
 void OverlayDrawer::_SetParameterPanelState(ParameterPanelState state, bool returnFocus) noexcept {
 	if (state == ParameterPanelState::Edit) {
 		_isEffectParametersVisible = true;

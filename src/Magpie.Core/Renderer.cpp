@@ -309,14 +309,41 @@ static DXGI_ADAPTER_DESC1 LogAdapter(IDXGIAdapter4* adapter) noexcept {
 	return desc;
 }
 
-static void SetGpuPriority() noexcept {
-	// 来自 https://github.com/obsproject/obs-studio/blob/16cb051a57bb357fe866252c1360ce2c38e2deec/libobs-d3d11/d3d11-subsystem.cpp#L429
-	// 使用 REALTIME 避免与游戏同时运行时 Magpie 的 GPU 工作被持续抢占。
-	// 这里只更改 GPU 调度类，不会更改 Windows 的 CPU 进程优先级。
-	NTSTATUS status = D3DKMTSetProcessSchedulingPriorityClass(
+void Renderer::_EnsureGpuPriority(bool force) noexcept {
+	const auto now = std::chrono::steady_clock::now();
+	if (!force && now < _nextGpuPriorityCheck) return;
+	_nextGpuPriorityCheck = now + std::chrono::seconds(1);
+
+	D3DKMT_SCHEDULINGPRIORITYCLASS actual{};
+	NTSTATUS status = D3DKMTGetProcessSchedulingPriorityClass(GetCurrentProcess(), &actual);
+	if (status == STATUS_SUCCESS && actual == D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME) {
+		if (force || !_gpuPriorityVerified) Logger::Get().Info("GPU process priority verified: REALTIME");
+		_gpuPriorityVerified = true;
+		_gpuPriorityFailureLogged = false;
+		return;
+	}
+	const int previous = status == STATUS_SUCCESS ? static_cast<int>(actual) : -1;
+	// Only REALTIME is ever written. SDK creation/recovery may affect process
+	// state, so verify after those boundaries and periodically while active.
+	status = D3DKMTSetProcessSchedulingPriorityClass(
 		GetCurrentProcess(), D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME);
-	if (status != STATUS_SUCCESS) {
-		Logger::Get().NTError("D3DKMTSetProcessSchedulingPriorityClass 失败", status);
+	if (status == STATUS_SUCCESS) {
+		status = D3DKMTGetProcessSchedulingPriorityClass(GetCurrentProcess(), &actual);
+		if (status == STATUS_SUCCESS && actual == D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME) {
+			Logger::Get().Info(fmt::format("GPU process priority restored: previous={} actual=REALTIME", previous));
+			_gpuPriorityVerified = true;
+			_gpuPriorityFailureLogged = false;
+			return;
+		}
+	}
+	_gpuPriorityVerified = false;
+	if (!_gpuPriorityFailureLogged) {
+		_gpuPriorityFailureLogged = true;
+		if (status != STATUS_SUCCESS) {
+			Logger::Get().NTError("Ensure REALTIME GPU process priority failed; will retry", status);
+		} else {
+			Logger::Get().Error(fmt::format("GPU priority verification failed: expected=REALTIME actual={}; will retry", static_cast<int>(actual)));
+		}
 	}
 }
 
@@ -389,8 +416,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	const DXGI_ADAPTER_DESC1 adapterDesc =
 		LogAdapter(_frontendResources.GetGraphicsAdapter());
 
-	// 每次创建 D3D 设备后尝试提高 GPU 优先级，OBS 也是这么做的
-	SetGpuPriority();
+	_EnsureGpuPriority(true);
 	_UpdateOverlayRefreshRate();
 
 	if (xessVariant) {
@@ -2252,6 +2278,7 @@ bool Renderer::_AppendBicubic(ID3D11Texture2D** inOutTexture) noexcept {
 }
 
 ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
+	const auto priorityCheck = wil::scope_exit([this] { _EnsureGpuPriority(true); });
 	const std::vector<EffectOption>& effects = _runtimeEffectOptions;
 	assert(!effects.empty());
 	const uint32_t effectCount = (uint32_t)effects.size();
@@ -2436,6 +2463,7 @@ bool Renderer::_InitializeDLSSFrameGenerator(
 }
 
 void Renderer::_HandleDLSSFrameGenerationFailure(ID3D11Texture2D* input) noexcept {
+	const auto priorityCheck = wil::scope_exit([this] { _EnsureGpuPriority(true); });
 	if (!_dlssFrameGenerator) {
 		return;
 	}
@@ -2727,6 +2755,7 @@ void Renderer::_BackendThreadProc() noexcept {
 	winrt::init_apartment(winrt::apartment_type::single_threaded);
 
 	if (const HANDLE sharedHandle = _InitBackend()) {
+		_EnsureGpuPriority(true);
 		_sharedTextureHandle.store(sharedHandle, std::memory_order_release);
 		_sharedTextureHandle.notify_one();
 	} else {
@@ -2775,6 +2804,7 @@ void Renderer::_BackendThreadProc() noexcept {
 			DispatchMessage(&msg);
 			continue;
 		}
+		_EnsureGpuPriority();
 		bool fpsUpdated = false;
 		if (ActiveFrameSyncBackend() != _appliedFrameSyncBackend) _UpdateFrameRateLimits();
 		bool waitedForContent = false;

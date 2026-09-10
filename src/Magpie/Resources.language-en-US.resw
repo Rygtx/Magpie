@@ -1099,7 +1099,7 @@
   <data name="Settings_General_SmoothMotionCompatibilityMode.Description" xml:space="preserve">
     <value>Restart Magpie after each effect session to release GPU memory retained by NVIDIA Smooth Motion. Enable only when Smooth Motion is configured for Magpie.</value>
   </data>
-  <data name="Overlay_Toolbar_EffectParameters" xml:space="preserve"><value>Effect parameters</value></data>
+  <data name="Overlay_Toolbar_EffectParameters" xml:space="preserve"><value>Open / close parameter panel</value></data>
   <data name="Overlay_EffectParameters" xml:space="preserve"><value>Effect parameters</value></data>
   <data name="Overlay_EffectParameters_Live" xml:space="preserve"><value>Live</value></data>
   <data name="Overlay_EffectParameters_RestartRequired" xml:space="preserve"><value>Restart</value></data>
@@ -1132,8 +1132,8 @@
   <data name="Message_XeSSMfgMultiplierUnsupported" xml:space="preserve"><value>The selected XeSS Multi-Frame Generation multiplier is not supported by this GPU or driver. Select a lower MFG multiplier, or use XeSS Frame Generation x2.</value></data>
   <data name="Home_Toolbar_Profiler.Header" xml:space="preserve"><value>Performance monitor</value></data>
   <data name="Home_Toolbar_Profiler_ShortcutControl.Title" xml:space="preserve"><value>Performance monitor</value></data>
-  <data name="Home_Toolbar_EffectParameters.Header" xml:space="preserve"><value>Edit parameters / return to game</value></data>
-  <data name="Home_Toolbar_EffectParameters_ShortcutControl.Title" xml:space="preserve"><value>Edit parameters / return to game</value></data>
+  <data name="Home_Toolbar_EffectParameters.Header" xml:space="preserve"><value>Open / close parameter panel</value></data>
+  <data name="Home_Toolbar_EffectParameters_ShortcutControl.Title" xml:space="preserve"><value>Open / close parameter panel</value></data>
   <data name="Home_Toolbar_Screenshot.Header" xml:space="preserve"><value>Take screenshot</value></data>
   <data name="Home_Toolbar_Screenshot_ShortcutControl.Title" xml:space="preserve"><value>Take screenshot</value></data>
   <data name="Home_Toolbar_ToolbarPin.Header" xml:space="preserve"><value>Pin toolbar</value></data>
@@ -1649,7 +1649,6 @@
   <data name="Message_DuplicateScalingModeNames" xml:space="preserve"><value>Existing settings contain duplicate effect-group names. Open Effect groups and rename them using the pencil button; all groups have been retained.</value></data>
   <data name="Overlay_Parameters_Edit" xml:space="preserve"><value>Edit</value></data>
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>Preview</value></data>
-  <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Edit parameters / return to game. Ctrl+click a slider to enter its value. Esc closes temporary controls first. Shortcut:</value></data>
-  <data name="Overlay_Parameters_Close" xml:space="preserve"><value>Close parameter panel</value></data>
+  <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Ctrl+click a slider to enter its value. Esc returns to game preview. Open / close shortcut:</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>Click the game window to restore control</value></data>
 </root>

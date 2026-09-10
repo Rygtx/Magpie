@@ -342,6 +342,11 @@ private:
 	uint32_t _dlssFgRecoveryAttempts = 0;
 
 	StepTimer _stepTimer;
+	// Frontend-owned before backend creation; backend-owned for the session.
+	void _EnsureGpuPriority(bool force = false) noexcept;
+	std::chrono::steady_clock::time_point _nextGpuPriorityCheck{};
+	bool _gpuPriorityVerified = false;
+	bool _gpuPriorityFailureLogged = false;
 	EffectsProfiler _effectsProfiler;
 
 	winrt::com_ptr<ID3D11Fence> _d3dFence;

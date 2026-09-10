@@ -276,7 +276,7 @@ void OverlayDrawer::InvokeAction(OverlayAction action) noexcept {
         else ScalingWindow::Get().Renderer().StopProfile();
         break;
     case OverlayAction::EffectParameters:
-        _SetParameterPanelState(IsEditingParameters() ? ParameterPanelState::Preview : ParameterPanelState::Edit);
+        _ToggleParameterPanel();
         break;
     case OverlayAction::ToolbarPin:
         _isToolbarPinned = !_isToolbarPinned;
@@ -916,18 +916,10 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		const std::string& profilerStr = _GetResourceString(L"Overlay_Toolbar_Profiler");
 		drawToggleButton(_isProfilerVisible, OverlayHelper::SegoeIcons::Diagnostic, profilerStr.c_str());
 		ImGui::SameLine();
-		const std::string parametersStr = StrHelper::Concat(
-			_GetResourceString(L"Overlay_Parameters_InputHint"), " ", ScalingWindow::Get().Options().parameterShortcutLabel);
-		bool editingParameters = IsEditingParameters();
-		drawToggleButton(editingParameters, OverlayHelper::SegoeIcons::Parameters, parametersStr.c_str());
-		if (editingParameters != IsEditingParameters()) InvokeAction(OverlayAction::EffectParameters);
-		if (_isEffectParametersVisible) {
-			ImGui::SameLine();
-			ImGui::PushID("closeParameters");
-			if (drawButton(OverlayHelper::SegoeIcons::Cancel, _GetResourceString(L"Overlay_Parameters_Close").c_str()))
-				_SetParameterPanelState(ParameterPanelState::Closed);
-			ImGui::PopID();
-		}
+		const std::string& parametersStr = _GetResourceString(L"Overlay_Toolbar_EffectParameters");
+		bool parametersVisible = _isEffectParametersVisible;
+		drawToggleButton(parametersVisible, OverlayHelper::SegoeIcons::Parameters, parametersStr.c_str());
+		if (parametersVisible != _isEffectParametersVisible) InvokeAction(OverlayAction::EffectParameters);
 		ImGui::SameLine();
 		Renderer& renderer = ScalingWindow::Get().Renderer();
 		bool passThrough = renderer.IsPassThroughActive();
@@ -1390,7 +1382,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		ImGuiCol_ResizeGripHovered, ImVec4(0.35f, 0.67f, 0.95f, 0.72f));
 	ImGui::PushStyleColor(
 		ImGuiCol_ResizeGripActive, ImVec4(0.35f, 0.67f, 0.95f, 1.0f));
-	const bool expanded = ImGui::Begin(title.c_str(), &_isEffectParametersVisible,
+	const bool expanded = ImGui::Begin(title.c_str(), nullptr,
 		IsEditingParameters() ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	if (IsEditingParameters() && window->TitleBarRect().Contains(ImGui::GetIO().MousePos)) {

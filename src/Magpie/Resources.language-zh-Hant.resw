@@ -1066,7 +1066,7 @@
   <data name="Home_Advanced_DeveloperOptions_DisableTopmost.Content" xml:space="preserve">
     <value>停用輸出視窗置頂</value>
   </data>
-  <data name="Overlay_Toolbar_EffectParameters" xml:space="preserve"><value>效果參數</value></data>
+  <data name="Overlay_Toolbar_EffectParameters" xml:space="preserve"><value>開啟／關閉即時參數面板</value></data>
   <data name="Overlay_EffectParameters" xml:space="preserve"><value>效果參數</value></data>
   <data name="Overlay_EffectParameters_Live" xml:space="preserve"><value>即時</value></data>
   <data name="Overlay_EffectParameters_RestartRequired" xml:space="preserve"><value>重啟</value></data>
@@ -1099,8 +1099,8 @@
   <data name="Message_XeSSMfgMultiplierUnsupported" xml:space="preserve"><value>目前顯示卡或驅動程式不支援所選 XeSS 多畫格生成倍率。請選擇較低的 MFG 倍率，或改用 XeSS 畫格生成 x2。</value></data>
   <data name="Home_Toolbar_Profiler.Header" xml:space="preserve"><value>效能監測</value></data>
   <data name="Home_Toolbar_Profiler_ShortcutControl.Title" xml:space="preserve"><value>效能監測</value></data>
-  <data name="Home_Toolbar_EffectParameters.Header" xml:space="preserve"><value>編輯參數／返回遊戲</value></data>
-  <data name="Home_Toolbar_EffectParameters_ShortcutControl.Title" xml:space="preserve"><value>編輯參數／返回遊戲</value></data>
+  <data name="Home_Toolbar_EffectParameters.Header" xml:space="preserve"><value>開啟／關閉即時參數面板</value></data>
+  <data name="Home_Toolbar_EffectParameters_ShortcutControl.Title" xml:space="preserve"><value>開啟／關閉即時參數面板</value></data>
   <data name="Home_Toolbar_Screenshot.Header" xml:space="preserve"><value>擷取螢幕畫面</value></data>
   <data name="Home_Toolbar_Screenshot_ShortcutControl.Title" xml:space="preserve"><value>擷取螢幕畫面</value></data>
   <data name="Home_Toolbar_ToolbarPin.Header" xml:space="preserve"><value>釘選工具列</value></data>
@@ -1616,7 +1616,6 @@
   <data name="Message_DuplicateScalingModeNames" xml:space="preserve"><value>舊設定中存在同名效果組，請開啟「效果組」，使用鉛筆按鈕修改名稱；全部效果組已保留。</value></data>
   <data name="Overlay_Parameters_Edit" xml:space="preserve"><value>編輯</value></data>
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>預覽</value></data>
-  <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>編輯參數／返回遊戲。Ctrl+點擊滑桿輸入數值，Esc 先關閉臨時介面。快捷鍵：</value></data>
-  <data name="Overlay_Parameters_Close" xml:space="preserve"><value>關閉參數面板</value></data>
+  <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Ctrl+點擊滑桿輸入數值，Esc 返回遊戲並保留預覽。面板開關快捷鍵：</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>請點擊遊戲視窗恢復控制</value></data>
 </root>

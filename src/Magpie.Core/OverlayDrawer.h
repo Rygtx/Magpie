@@ -64,6 +64,7 @@ public:
 
 private:
 	void _SetParameterPanelState(ParameterPanelState state, bool returnFocus = true) noexcept;
+	void _ToggleParameterPanel() noexcept;
 	bool _BeginParameterInput() noexcept;
 	void _EndParameterInput(bool returnFocus) noexcept;
 	void _FinishParameterInput() noexcept;
