@@ -106,7 +106,7 @@ public:
 	bool IsEffectParameterInputActive() const noexcept { return _overlayDrawer.IsEffectParameterInputActive(); }
 	bool IsEffectParametersVisible() const noexcept { return _overlayDrawer.IsEffectParametersVisible(); }
 	FrameSyncBackend ActiveFrameSyncBackend() const noexcept {
-		return _frameSyncBackend == FrameSyncBackend::Reflex && !_reflex.Available()
+		return _frameSyncBackend == FrameSyncBackend::Reflex && _reflex.CanUseAsync()
 			? FrameSyncBackend::Async : _frameSyncBackend;
 	}
 	const wchar_t* FrameSyncStatusResource() const noexcept;

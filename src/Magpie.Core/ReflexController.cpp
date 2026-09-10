@@ -120,7 +120,7 @@ public:
 			? "Select the same NVIDIA adapter for effects and presentation, then restart scaling to retry Reflex."
 			: "Update the NVIDIA driver and restart scaling to retry Reflex.";
 		Logger::Get().Warn(fmt::format(
-			"Reflex unavailable: operation={} status={}; continuing existing presentation. "
+			"Reflex call failed: operation={} status={}; renderer will report pacing/fallback state. "
 			"{}", operation, status, nextStep));
 	}
 

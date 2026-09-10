@@ -54,14 +54,14 @@ inline FrameSyncBackend ResolveFrameSyncBackend(FrameSyncSettings settings,
 	if (!settings.enabled || benchmark) return FrameSyncBackend::None;
 	if (xessFG) return FrameSyncBackend::XeLL;
 	if (settings.mode == FrameSyncMode::Async) return FrameSyncBackend::Async;
-	// DLSS FG uses one base limiter before capture. Reflex is a separate
-	// low-latency request with zero extra driver limit until FG units are tested.
 	if (settings.mode == FrameSyncMode::Reflex)
-		return dlssFG ? FrameSyncBackend::Async : FrameSyncBackend::Reflex;
+		return FrameSyncBackend::Reflex;
 	return dlssFG || frontEdgeSupported ? FrameSyncBackend::FrontEdge : FrameSyncBackend::None;
 }
 
 inline uint32_t FrameSyncIntervalUs(double frameRate) noexcept {
+	// Direct NVAPI: microseconds per base capture/SIMULATION cycle. Generated
+	// presents use OUT_OF_BAND markers; do not multiply the base target here.
 	return std::isfinite(frameRate) && frameRate > 0
 		? static_cast<uint32_t>(std::ceil(1'000'000.0 / std::clamp(frameRate, 1.0, 1000.0))) : 0;
 }

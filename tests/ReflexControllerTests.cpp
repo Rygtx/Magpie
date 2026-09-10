@@ -28,6 +28,9 @@ public:
 	std::vector<ReflexSettings> settings;
 	std::string failure;
 	bool actualOn = true;
+	bool failClear = false;
+	bool failClearQuery = false;
+	std::function<void(ReflexSettings)> configureHook;
 	std::function<void()> sleepHook;
 	std::function<void()> presentHook;
 	int Record(std::string name, uint64_t frame = 0, uint64_t present = 0) noexcept {
@@ -36,9 +39,12 @@ public:
 		return failure == name ? -1 : 0;
 	}
 	ReflexConfigurationResult Configure(ReflexSettings value) noexcept override {
+		if (configureHook) configureHook(value);
 		{ std::scoped_lock lock(mutex); settings.push_back(value); }
-		const int status = Record(value.lowLatency ? "on" : "off", value.minimumIntervalUs);
-		return { status, failure == "query" && value.lowLatency ? -2 : 0,
+		const int recorded = Record(value.lowLatency ? "on" : "off", value.minimumIntervalUs);
+		const int status = failClear && !value.minimumIntervalUs && !value.lowLatency ? -3 : recorded;
+		return { status, (failure == "query" && value.lowLatency) ||
+			(failClearQuery && !value.lowLatency) ? -2 : 0,
 			status == 0, value.lowLatency && actualOn };
 	}
 	int Sleep() noexcept override {
@@ -239,12 +245,12 @@ static void TestDriverOffIsNotFailure() {
 		for (int i = 0; i < 100; ++i) {
 			reflex.SetPresentationAvailable(true);
 			reflex.SetFrameRateLimit(interval);
-			Require(reflex.BeginCapture() == 0, "inactive low latency must use Async fallback");
+			Require(reflex.BeginCapture() != 0, "usable driver must keep Sleep/markers even with low latency Off");
 		}
-		Require(driver->Count("failure") == 0 && driver->Count("on") == 1 && driver->Count("sleep") == 0,
+		Require(driver->Count("failure") == 0 && driver->Count("on") == 1 && driver->Count("sleep") == 1,
 			"Off query must not synthesize a failure or repeatedly force driver activation");
-		Require(driver->settings.back().minimumIntervalUs == 0,
-			"inactive driver cap must be cleared before Async takes over");
+		Require(driver->settings.back().minimumIntervalUs == interval && reflex.PacingAvailable() == (interval != 0),
+			"driver Off query must preserve independent accepted interval");
 		reflex.SetPresentationAvailable(false);
 		Require(reflex.State() == ReflexState::Paused, "presentation pause must differ from driver Off");
 		driver->actualOn = true;
@@ -256,6 +262,69 @@ static void TestDriverOffIsNotFailure() {
 	}
 }
 
+static void TestClearBeforeFallback() {
+	for (bool failClear : {false, true}) {
+		ReflexController reflex;
+		auto fake = std::make_unique<FakeDriver>();
+		auto* driver = fake.get();
+		reflex.Initialize(std::move(fake), { .minimumIntervalUs = 16667 });
+		driver->failClear = failClear;
+		driver->configureHook = [&](ReflexSettings settings) {
+			if (!settings.minimumIntervalUs) {
+				Require(!reflex.CanUseAsync() && reflex.CaptureBlocked(), "Async must wait for clear completion");
+			}
+		};
+		driver->failure = "sleep";
+		Require(reflex.BeginCapture() == 0, "failed sleep must not accept input");
+		Require(reflex.CanUseAsync() == !failClear, "clear failure must never claim safe Async fallback");
+		Require(reflex.CaptureBlocked() == failClear, "clear failure must block capture until session stops");
+		const auto calls = driver->events.size();
+		for (int retry = 0; retry < 20; ++retry) {
+			reflex.Stop(); reflex.SetFrameRateLimit(10000); reflex.SetPresentationAvailable(true);
+			Require(!reflex.BeginCapture(), "faulted candidate must stay closed");
+		}
+		Require(calls == driver->events.size(), "failed cleanup must not cause retry/log storms");
+	}
+}
+
+static void TestCandidateAcrossPause() {
+	ReflexController reflex;
+	reflex.Initialize(std::make_unique<FakeDriver>(), { .minimumIntervalUs = 10000 });
+	const auto old = reflex.BeginCapture(70);
+	reflex.SetPresentationAvailable(false);
+	Require(!reflex.BeginCapture() && reflex.CanUseAsync(), "paused driver must clear before fallback");
+	reflex.SetFrameRateLimit(12500);
+	reflex.SetPresentationAvailable(true);
+	Require(reflex.BeginCapture(71) > old && reflex.PacingAvailable(), "resume must use a new slept candidate");
+}
+
+static void TestPauseDuringSleepAndClearQueryFailure() {
+	ReflexController reflex;
+	auto fake = std::make_unique<FakeDriver>();
+	auto* driver = fake.get();
+	reflex.Initialize(std::move(fake), { .minimumIntervalUs = 10000 });
+	std::promise<void> sleepEntered, releaseSleep;
+	auto entered = sleepEntered.get_future();
+	auto release = releaseSleep.get_future().share();
+	driver->sleepHook = [&] { sleepEntered.set_value(); release.wait_for(2s); };
+	auto backend = std::async(std::launch::async, [&] { return reflex.BeginCapture(80); });
+	Require(entered.wait_for(1s) == std::future_status::ready, "capture did not enter Sleep");
+	reflex.SetPresentationAvailable(false);
+	reflex.SetFrameRateLimit(12500);
+	reflex.SetPresentationAvailable(true);
+	releaseSleep.set_value();
+	Require(backend.get() == 0, "Sleep spanning configuration changes must not accept a stale candidate");
+	driver->sleepHook = {};
+	Require(reflex.BeginCapture(80) == 80 && driver->Count("sleep") == 2,
+		"new configuration needs a fresh Sleep before capture");
+	reflex.CompleteCapture();
+	driver->failClearQuery = true;
+	reflex.Stop();
+	Require(reflex.CanUseAsync() && !reflex.CaptureBlocked() && driver->settings.back().minimumIntervalUs == 0,
+		"successful clear Set must permit fallback even if low-latency query fails");
+	Require(driver->Count("failure") == 1, "clear query failure must still be reported");
+}
+
 int main() {
 	try {
 		TestFrameLifecycle();
@@ -263,6 +332,9 @@ int main() {
 		TestSleepDoesNotBlockPresentOrStop();
 		TestOrdinaryFrameLimit();
 		TestDriverOffIsNotFailure();
+		TestClearBeforeFallback();
+		TestCandidateAcrossPause();
+		TestPauseDuringSleepAndClearQueryFailure();
 		std::cout << "PASS: Reflex 2x/3x/4x IDs, capture retries, skipped interpolation, FIFO IDs, 14 driver failure points, concurrent Sleep/Present/Stop; ordinary frame limits, same-target deduplication, Off-query distinction and pause/resume\n";
 		return 0;
 	} catch (const std::exception& error) {

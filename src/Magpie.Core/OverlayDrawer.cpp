@@ -1478,6 +1478,10 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	}
 	ImGui::EndDisabled();
 	ImGui::TextWrapped("%s", _GetResourceString(ScalingWindow::Get().Renderer().FrameSyncStatusResource()).c_str());
+	if (_startupFrameSync.enabled && _startupFrameSync.mode == FrameSyncMode::Reflex &&
+		!ScalingWindow::Get().Renderer().HasFrameGeneration()) {
+		ImGui::TextWrapped("%s", _GetResourceString(ScalingWindow::Get().Renderer().ReflexStatusResource()).c_str());
+	}
 	ImGui::TextUnformatted(_GetResourceString(L"Overlay_FrameSync_Target").c_str());
 	ImGui::SameLine();
 	ImGui::TextDisabled("%s", _GetResourceString(L"Overlay_EffectParameters_RestartRequired").c_str());

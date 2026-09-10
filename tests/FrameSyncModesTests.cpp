@@ -16,7 +16,7 @@ int main() {
 	}
 	assert(ResolveFrameSyncBackend({true,80,FrameSyncMode::Async}, false,false,false,false) == FrameSyncBackend::Async);
 	assert(ResolveFrameSyncBackend({true,80,FrameSyncMode::Reflex}, false,false,true,false) == FrameSyncBackend::Reflex);
-	assert(ResolveFrameSyncBackend({true,80,FrameSyncMode::Reflex}, true,false,true,false) == FrameSyncBackend::Async);
+	assert(ResolveFrameSyncBackend({true,80,FrameSyncMode::Reflex}, true,false,true,false) == FrameSyncBackend::Reflex);
 	assert(ResolveFrameSyncBackend({true,80,FrameSyncMode::Async}, true,false,true,false) == FrameSyncBackend::Async);
 	assert(ResolveFrameSyncBackend(defaults, false,false,false,false) == FrameSyncBackend::None);
 	FrameSyncSettings current{ true, 90, FrameSyncMode::FrontEdge };

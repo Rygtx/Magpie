@@ -1,4 +1,4 @@
-﻿# 帧同步（0.6.7）
+# 帧同步（0.6.7）
 
 主页和工具栏参数面板使用同一组帧同步设置：开关、模式、目标基础 FPS。默认开启 Front Edge Sync，目标 60 FPS。修改自动保存，点击工具栏的“应用并重新启用”，或手动停止再启用缩放后生效。已有配置保留原开关与帧率，缺少模式字段时继续使用 Front Edge Sync。
 
@@ -8,21 +8,24 @@
 | --- | --- | --- | --- |
 | Front Edge Sync | 在提交前对齐节奏，可能增加等待 | 保留原有 FG 输入和输出节奏 | XeLL 接管 |
 | Async | 在取帧前限制开始间隔，迟到后不追赶旧网格 | 控制基础输入，保留生成帧排序与输出间隔 | XeLL 接管 |
-| NVIDIA Reflex | 将统一目标交给驱动；低延迟 On，Boost Off | 捕获前使用 Async 限帧；独立请求 Reflex 低延迟 | XeLL 接管 |
+| NVIDIA Reflex | 将统一目标交给驱动；请求低延迟 On、Boost Off | 驱动负责统一基础 FPS；每个基础候选在捕获前 Sleep 一次 | XeLL 接管 |
 
-Reflex 驱动限帧目前面向无 FG 的 NVIDIA DXGI 路径，效果处理和呈现需使用同一显卡。当前 D3D11 异步标记接口要求 R565+ 驱动。初始化／调用失败时回退 Async，并保留同一个目标；工具栏说明实际模式与重试方法。窗口调整期间可暂时使用 Async，恢复 DXGI 呈现后自动恢复 Reflex。
+Beta 6 Fix1 起，普通效果与 DLSS FG 都可使用 Reflex 驱动基础限帧：要求 NVIDIA DXGI 呈现、效果与呈现位于同一显卡，当前 D3D11 异步标记接口要求 R565+。初始化／调用失败时先清除应用设置的驱动限帧，再回退 Async 并保留有效基础目标。清除失败会明确报告并停止本轮缩放，不能显示为已成功回退；请重启 Magpie 后再试。窗口切换期间清除驱动配置，恢复 DXGI 后重新应用最新目标。
 
-DLSS FG 默认请求 Reflex 低延迟 On、Boost Off，额外驱动限帧目标为 0。选择 Async／Front Edge 或关闭帧同步均不会因此关闭低延迟。DLSS FG 的 Reflex 驱动限帧尚待独立验证，选择 Reflex 时会说明当前由 Async 控制基础节奏。工具栏 DLSS FG 参数区分别显示请求、驱动最近一次查询状态和 FG 输出方式。驱动查询成功但报告 Off 不等于接口调用失败；普通 Reflex 回退 Async 前会清除独立驱动限帧。
+Reflex 生效时不再为同一基础目标运行 StepTimer 固定限帧，也不使用 Front Edge 的 FG 输入期限等待。生成／真实帧 FIFO、独立输出间隔、容量与资源背压和 fence 保留。显式 Async／Front Edge 或关闭帧同步时，DLSS FG 仍请求低延迟 On、Boost Off，应用驱动限帧间隔为 0。
+
+工具栏分别显示请求模式、实际基础限帧器、低延迟请求与最近一次查询状态、FG 输出方式。低延迟查询 Off 不代表帧率间隔不可用：成功接受的驱动限帧继续负责基础节奏，Sleep 与标记也保留。状态显示“驱动已接受”表示软件路径和 API 请求成功，实际基础帧率、显示间隔及性能收益仍须实机验证。原 Beta 6 的“选择 Reflex 实际使用 Async”映射已由 Fix1 取代。
 
 XeSS 使用 XeLL 自身的低延迟和限帧，不叠加 Magpie 的 Async／Reflex 限帧器。工具栏明确显示 XeLL 接管。
 
 ## 目标基础帧率
 
-| 目标 | 无 FG | 2 倍 FG | 3 倍 FG |
-| --- | --- | --- | --- |
-| 手动 80 FPS | 基础内容目标 80 FPS | 基础 80，名义输出 160 FPS | 基础 80，名义输出 240 FPS |
-| 0 自动，240 Hz 显示器 | 240 FPS | 基础 120 FPS | 基础 80 FPS |
+| 目标 | 无 FG | 2 倍 FG | 3 倍 FG | 4 倍 FG |
+| --- | --- | --- | --- | --- |
+| 手动 80 FPS | 基础内容目标 80 FPS | 基础 80，名义输出 160 FPS | 基础 80，名义输出 240 FPS | 基础 80，名义输出 320 FPS |
+| 0 自动，240 Hz 显示器 | 240 FPS | 基础 120 FPS | 基础 80 FPS | 基础 60 FPS |
 
+- 直接 NVAPI 使用 `ceil(1,000,000 / 有效基础 FPS)` 微秒。80 FPS 在 2×／3×／4× 下均为 12500 µs；0 自动且 240 Hz 时分别为 8334／12500／16667 µs。倍率只参与自动基础目标计算，不再额外乘除驱动间隔。
 - 0 根据输出刷新率和 FG 倍率计算；刷新率不可读取时按 60 Hz。已有配置／捕获路径的更低上限继续生效。
 - 主页范围为 0 自动、1–1000 FPS，可输入小数。工具栏滑条仍是 15–360 FPS；仅打开面板不会改变已有的 0、小数或范围外合法值。
 - 模式控制 Magpie 自己的捕获、处理和提交；源程序继续使用其自身限帧或 RTSS。两侧 FPS 相同不表示建立了逐帧同步。
@@ -53,3 +56,5 @@ XeSS 使用 XeLL 自身的低延迟和限帧，不叠加 Magpie 的 Async／Refl
 Beta 6 新增源窗口焦点交接保护、持久待重建请求、FIFO 重试计时及捕获前背压。见 [Beta 6 实施与验证](experimental/reviews/20260910-beta6-implementation.md)。
 
 实现记录：[帧同步模式与 Reflex 职责](experimental/reviews/20260909-v0.6.7-frame-sync-modes.md)。技术来源：[RTSS 与官方资料调查](experimental/reviews/20260909-rtss-async-reflex-frame-sync-review.md)、[NVAPI](https://docs.nvidia.com/nvapi/group__dx.html)、[XeLL](https://github.com/intel/xess/blob/main/doc/xell_developer_guide_english.md)。
+
+Fix1 代码、自动验证与实机状态分别见 [Reflex 驱动基础限帧实施记录](experimental/reviews/20260910-beta6-fix1-reflex.md)。

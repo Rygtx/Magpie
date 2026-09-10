@@ -1288,6 +1288,8 @@ void Renderer::_UpdateOverlayRefreshRate() noexcept {
 
 
 const wchar_t* Renderer::FrameSyncStatusResource() const noexcept {
+	if (_reflex.PacingState() == ReflexPacingState::CleanupFailed) return L"Overlay_Reflex_CleanupFailed";
+	if (_reflex.CaptureBlocked()) return L"Overlay_Reflex_Configuring";
 	switch (ActiveFrameSyncBackend()) {
 	case FrameSyncBackend::None: return ScalingWindow::Get().Options().isFrontEdgeSyncEnabled &&
 		!ScalingWindow::Get().Options().IsBenchmarkMode() ? L"Overlay_FrameSync_Unsupported" : L"Overlay_FrameSync_ActiveOff";
@@ -1295,8 +1297,7 @@ const wchar_t* Renderer::FrameSyncStatusResource() const noexcept {
 		if (_frameSyncBackend == FrameSyncBackend::Reflex)
 			return _reflex.State() == ReflexState::DriverOff ? L"Overlay_FrameSync_ReflexDriverOff" :
 				(_reflex.State() == ReflexState::Paused ? L"Overlay_FrameSync_ReflexPaused" : L"Overlay_FrameSync_ReflexFallback");
-		return _hasFrameGeneration && ScalingWindow::Get().Options().frameSyncMode == FrameSyncMode::Reflex
-			? L"Overlay_FrameSync_DlssReflexDeferred" : L"Overlay_FrameSync_ActiveAsync";
+		return L"Overlay_FrameSync_ActiveAsync";
 	case FrameSyncBackend::Reflex: return L"Overlay_FrameSync_ActiveReflex";
 	case FrameSyncBackend::XeLL: return L"Overlay_FrameSync_ActiveXeLL";
 	default: return L"Overlay_FrameSync_ActiveFrontEdge";
@@ -1304,6 +1305,7 @@ const wchar_t* Renderer::FrameSyncStatusResource() const noexcept {
 }
 
 const wchar_t* Renderer::ReflexStatusResource() const noexcept {
+	if (_reflex.PacingState() == ReflexPacingState::CleanupFailed) return L"Overlay_Reflex_CleanupFailed";
 	switch (_reflex.State()) {
 	case ReflexState::Active: return L"Overlay_FrameSync_DlssLowLatencyOn";
 	case ReflexState::DriverOff: return L"Overlay_Reflex_DriverOff";
@@ -2839,7 +2841,23 @@ void Renderer::_BackendThreadProc() noexcept {
 		_frameSource->WaitType() == FrameSourceWaitType::WaitForEvent;
 
 	MSG msg;
+	bool reflexCleanupReported = false;
 	while (true) {
+		if (_reflex.PacingState() == ReflexPacingState::CleanupFailed && !reflexCleanupReported) {
+			reflexCleanupReported = true;
+			ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime] {
+				auto& window = ScalingWindow::Get();
+				if (!session->IsCurrent(ScalingWindow::RunId()) || !window) return;
+				const auto message = window.GetLocalizedString(L"Overlay_Reflex_CleanupFailed");
+				if (const auto report = window.Options().reportErrorDetails) {
+					report(window.SrcTracker().Handle(), ScalingError::ScalingFailedGeneral,
+						winrt::to_string(message), 0);
+				} else {
+					window.ShowToast(message);
+				}
+				window.Stop();
+			});
+		}
 		if (NgxRuntimeGuard::IsFaulted() && _ngxD3D12Core.Device() && !_sessionLifetime->IsStopping()) {
 			ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime]() {
 				auto& window = ScalingWindow::Get();
@@ -2870,7 +2888,10 @@ void Renderer::_BackendThreadProc() noexcept {
 		if (ActiveFrameSyncBackend() != _appliedFrameSyncBackend) _UpdateFrameRateLimits();
 		bool waitedForContent = false;
 		FrameTrace::Scope traceWait(FrameTrace::Event::BackendWait);
-		if (_IsDLSSFGQueueFull()) {
+		if (_reflex.CaptureBlocked()) {
+			waitedForContent = true;
+			MsgWaitForMultipleObjectsEx(0, nullptr, 50, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+		} else if (_IsDLSSFGQueueFull()) {
 			// Apply existing output backpressure before accepting/processing the
 			// next base image. Slot events still own the eventual publication.
 			waitedForContent = true;
@@ -2938,8 +2959,11 @@ void Renderer::_BackendThreadProc() noexcept {
 
 		FrameTrace::SetFrame(_capturedFrameId + 1); // Candidate id until CaptureAccepted.
 		FrameTrace::Scope traceCapture(FrameTrace::Event::CaptureUpdate);
-		if (_dlssFrameGenerator || _frameSyncBackend == FrameSyncBackend::Reflex)
-			_reflex.BeginCapture(_capturedFrameId + 1);
+		if (_dlssFrameGenerator || _frameSyncBackend == FrameSyncBackend::Reflex) {
+			const auto candidate = _reflex.BeginCapture(_capturedFrameId + 1);
+			if (!candidate && ActiveFrameSyncBackend() == FrameSyncBackend::Reflex) continue;
+		}
+		if (_reflex.CaptureBlocked()) continue;
 		if (ActiveFrameSyncBackend() != _appliedFrameSyncBackend) {
 			_UpdateFrameRateLimits();
 			continue;
@@ -3125,7 +3149,7 @@ HANDLE Renderer::_InitBackend() noexcept {
 	}
 
 	ID3D11Device5* d3dDevice = _backendResources.GetD3DDevice();
-	if (_frameSyncBackend == FrameSyncBackend::Reflex && _reflex.Available()) {
+	if (_frameSyncBackend == FrameSyncBackend::Reflex && _reflex.CanResume()) {
 		DXGI_ADAPTER_DESC1 backend{}, frontend{};
 		if (FAILED(_backendResources.GetGraphicsAdapter()->GetDesc1(&backend)) ||
 			FAILED(_frontendResources.GetGraphicsAdapter()->GetDesc1(&frontend)) ||

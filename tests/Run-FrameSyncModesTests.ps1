@@ -28,6 +28,14 @@ if ($LASTEXITCODE) { throw 'Extract production limiter configuration failed' }
 if ($LASTEXITCODE) { throw 'Production limiter configuration test compilation failed' }
 & "$syncOutput/runtime.exe"
 if ($LASTEXITCODE) { throw 'Production limiter configuration tests failed' }
+foreach ($negative in @('negative_policy/runtime', 'negative_double')) {
+    & cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX "/I$syncRepo/src/Magpie.Core" "/I$syncRepo/src/Magpie.Core/include" `
+        "$syncOutput/$negative.cpp" "/Fe:$syncOutput/$negative.exe" "/Fo:$syncOutput/$negative.obj"
+    if ($LASTEXITCODE) { throw "Negative regression failed to compile: $negative" }
+    & "$syncOutput/$negative.exe"
+    if ($LASTEXITCODE -ne 42) { throw "Negative regression was not detected: $negative" }
+    Write-Host "PASS: rejected production mutation $negative"
+}
 if (!$RapidJsonIncludeDirectory) {
     $syncRapidJson = Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.conan2/p') -Directory -Filter 'rapid*' |
         Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'p/include/rapidjson/document.h') } | Select-Object -First 1

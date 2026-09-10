@@ -14,6 +14,10 @@ enum class ReflexMarker { SimulationStart, SimulationEnd, RenderStart, RenderEnd
 
 enum class ReflexState { Unavailable, Active, DriverOff, Paused, Faulted, Stopped };
 
+// Clear is published only after SetSleepMode accepts interval=0. During a
+// transition or failed cleanup the renderer must not start an Async limiter.
+enum class ReflexPacingState { Clear, Configuring, Active, CleanupFailed };
+
 struct ReflexConfigurationResult {
 	int setStatus = 0;
 	int queryStatus = 0;
@@ -77,13 +81,28 @@ public:
 	}
 	ReflexState State() const noexcept { return _state.load(); }
 	bool Available() const noexcept { return State() == ReflexState::Active; }
+	ReflexPacingState PacingState() const noexcept { return _pacingState.load(); }
+	bool PacingAvailable() const noexcept { return PacingState() == ReflexPacingState::Active; }
+	bool CanUseAsync() const noexcept { return PacingState() == ReflexPacingState::Clear; }
+	bool CaptureBlocked() const noexcept {
+		const auto state = PacingState();
+		return state == ReflexPacingState::Configuring || state == ReflexPacingState::CleanupFailed;
+	}
 	bool CanResume() const noexcept { return _driver && !_stopped.load(); }
 
 	// Backend only. A Waiting/duplicate capture keeps this candidate open;
 	// polling, staged FG input and generated frames must not call Sleep again.
 	uint64_t BeginCapture(uint64_t minimumFrameId = 1) noexcept {
+		const auto revision = _configurationRevision.load();
+		if (_captureFrameId && _captureRevision != revision) CompleteCapture();
+		if (CaptureBlocked() || !_presentationAvailable.load() || _stopped.load()) return 0;
 		if (_captureFrameId) return _captureFrameId;
-		if (!Available() || !_Check("Sleep", _driver->Sleep()) || !Available()) return 0;
+		// Keep Sleep/markers while the interface is usable even if the driver's
+		// low-latency query is Off (including an explicit zero application cap).
+		if (!_Usable() || !_Check("Sleep", _driver->Sleep()) ||
+			CaptureBlocked() || _stopped.load() || !_presentationAvailable.load() ||
+			_configurationRevision.load() != revision) return 0;
+		_captureRevision = revision;
 		_nextFrameId = std::max(_nextFrameId + 1, minimumFrameId);
 		_captureFrameId = _nextFrameId;
 		_renderEnded = false;
@@ -127,27 +146,22 @@ public:
 
 private:
 	void _ConfigureLocked(ReflexSettings settings) noexcept {
+		_pacingState.store(ReflexPacingState::Configuring);
+		++_configurationRevision;
 		const auto result = _driver->Configure(settings);
 		if (result.setStatus || (result.queried && result.queryStatus)) {
 			_StopLocked(result.setStatus ? "SetSleepMode" : "GetSleepStatus",
 				result.setStatus ? result.setStatus : result.queryStatus);
 			return;
 		}
-		if (_presentationAvailable.load() && !result.lowLatency && settings.minimumIntervalUs) {
-			// The driver cap is independent of low-latency activation. Clear it
-			// before the renderer falls back to Async, so two limiters cannot run.
-			const auto reset = _driver->Configure(ReflexSettings{ .lowLatency = false });
-			if (reset.setStatus || (reset.queried && reset.queryStatus)) {
-				_StopLocked("clear inactive Reflex frame limit",
-					reset.setStatus ? reset.setStatus : reset.queryStatus);
-				return;
-			}
-		}
 		// A successful request does not guarantee driver activation (for example,
 		// a control-panel override). Keep the interface alive without re-requesting
 		// On every frame or pretending that the driver returned NOT_SUPPORTED.
 		_state.store(!_presentationAvailable.load() ? ReflexState::Paused :
 			(result.queried && result.lowLatency ? ReflexState::Active : ReflexState::DriverOff));
+		// NVAPI's interval and low-latency switch are independent. A successful
+		// Off query cannot revoke an accepted frame limit.
+		_pacingState.store(settings.minimumIntervalUs ? ReflexPacingState::Active : ReflexPacingState::Clear);
 	}
 	bool _Usable() const noexcept { return _driver && !_stopped.load(); }
 	void _Marker(ReflexMarker marker) noexcept {
@@ -161,17 +175,24 @@ private:
 	}
 	void _StopLocked(const char* operation, int status) noexcept {
 		if (!_driver || _stopped.exchange(true)) return;
+		_pacingState.store(ReflexPacingState::Configuring);
 		_state.store(operation ? ReflexState::Faulted : ReflexState::Stopped);
 		if (operation) _driver->ReportFailure(operation, status);
 		const auto reset = _driver->Configure(ReflexSettings{ .lowLatency = false });
 		if (reset.setStatus) _driver->ReportFailure("restore SleepMode Off", reset.setStatus);
 		else if (reset.queried && reset.queryStatus)
 			_driver->ReportFailure("query restored SleepMode", reset.queryStatus);
+		// GetSleepStatus reports low latency, not the interval. Set success is
+		// the cleanup contract; a failed query cannot make a cleared cap unsafe.
+		_pacingState.store(reset.setStatus ? ReflexPacingState::CleanupFailed : ReflexPacingState::Clear);
 	}
 	std::unique_ptr<ReflexDriver> _driver;
 	ReflexSettings _settings;
 	std::mutex _configurationMutex;
 	std::atomic<ReflexState> _state = ReflexState::Unavailable;
+	std::atomic<ReflexPacingState> _pacingState = ReflexPacingState::Clear;
+	std::atomic<uint64_t> _configurationRevision = 0;
+	uint64_t _captureRevision = 0;
 	std::atomic<bool> _presentationAvailable = false;
 	std::atomic<bool> _stopped = false;
 	uint64_t _nextFrameId = 0;
