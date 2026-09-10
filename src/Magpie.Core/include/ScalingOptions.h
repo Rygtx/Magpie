@@ -277,11 +277,14 @@ enum class ToolbarState {
 	COUNT
 };
 
+enum class ParameterPanelState : uint8_t { Closed, Edit, Preview };
+
 struct OverlaySessionState {
 	bool toolbarVisible = false;
 	bool toolbarPinned = false;
 	bool profilerVisible = false;
 	bool effectParametersVisible = false;
+	ParameterPanelState parameterPanelState = ParameterPanelState::Closed;
 };
 
 struct OverlayOptions {
@@ -480,6 +483,7 @@ struct ScalingOptions {
 
 	// 下面的成员支持在缩放时修改
 	OverlayOptions overlayOptions;
+	std::string parameterShortcutLabel;
 
 	void (*showToast)(HWND hwndTarget, std::wstring_view msg) noexcept = nullptr;
 	std::function<void(HWND hwndTarget, ScalingError error)> showError;

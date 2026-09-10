@@ -338,6 +338,10 @@ $frameSyncGuide = Join-Path $sourceRoot "docs\FRAME_SYNC_GUIDE.md"
 if (Test-Path -LiteralPath $frameSyncGuide) {
     Copy-Item -LiteralPath $frameSyncGuide -Destination (Join-Path $stagingDir "FRAME_SYNC_GUIDE.md")
 }
+$parameterInputGuide = Join-Path $sourceRoot "docs\experimental\testing\PARAMETER-INPUT.md"
+if (Test-Path -LiteralPath $parameterInputGuide) {
+    Copy-Item -LiteralPath $parameterInputGuide -Destination (Join-Path $stagingDir "PARAMETER-INPUT.md")
+}
 
 $featureOptions = [ordered]@{}
 $buildOptionsPath = Join-Path $sourceRoot "src\BuildOptions.props"

@@ -141,6 +141,14 @@ LRESULT CALLBACK ShortcutService::_LowLevelKeyboardProc(int nCode, WPARAM wParam
 	ShortcutService& that = Get();
 	if (nCode < 0) return CallNextHookEx(NULL, nCode, wParam, lParam);
 	const KBDLLHOOKSTRUCT* info = ((KBDLLHOOKSTRUCT*)lParam);
+	if (info->vkCode < that._parameterShortcutKeys.size() && that._parameterShortcutKeys[info->vkCode]) {
+		if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
+			that._parameterShortcutKeys[info->vkCode] = false;
+			that._keyboardHookShortcutActivated = false;
+		}
+		// Do not leak the toggle's repeats or release to the newly focused game.
+		return 1;
+	}
 
 	if ((wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) && info->vkCode == VK_TAB &&
 		((info->flags & LLKHF_ALTDOWN) || (GetAsyncKeyState(VK_MENU) & 0x8000) ||
@@ -213,6 +221,8 @@ LRESULT CALLBACK ShortcutService::_LowLevelKeyboardProc(int nCode, WPARAM wParam
 		}
 
 		if (AppSettings::Get().GetShortcut(action) == curKeys) {
+			if (action == ShortcutAction::EffectParameters && !(GetAsyncKeyState(code) & 0x8000))
+				that._parameterShortcutKeys[code] = true;
 			// 防止长按时重复触发热键
 			if (!that._keyboardHookShortcutActivated) {
 				that._keyboardHookShortcutActivated = true;

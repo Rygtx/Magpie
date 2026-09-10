@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "SrcTracker.h"
+#include "ScalingWindow.h"
 #include "SourceWindowGeometry.h"
 #include "Logger.h"
 #include "SmallVector.h"
@@ -218,7 +219,9 @@ bool SrcTracker::UpdateState(
 		}
 	}
 
-	if (_isFocused != (hwndFore == _hWnd)) {
+	// Internal parameter input keeps the scaling session active while the actual
+	// Windows keyboard focus belongs exclusively to its input host.
+	if (_isFocused != (hwndFore == _hWnd || ScalingWindow::Get().IsParameterInputWindow(hwndFore))) {
 		_isFocused = !_isFocused;
 		focusedChanged = true;
 	}

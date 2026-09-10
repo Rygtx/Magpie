@@ -48,6 +48,10 @@ void ScalingService::Initialize() {
 
 	_shortcutActivatedRevoker = ShortcutService::Get().ShortcutActivated(
 		auto_revoke, std::bind_front(&ScalingService::_ShortcutService_ShortcutPressed, this));
+	_parameterShortcutChangedRevoker = AppSettings::Get().ShortcutChanged(auto_revoke, [this](ShortcutAction action) {
+		if (action == ShortcutAction::EffectParameters && _scalingRuntime)
+			_scalingRuntime->UpdateParameterShortcutLabel(StrHelper::UTF16ToUTF8(AppSettings::Get().GetShortcut(action).ToString()));
+	});
 	_frameSyncChangedRevoker = AppSettings::Get().FrontEdgeSyncChanged(auto_revoke, [this] {
 		const auto& settings = AppSettings::Get();
 		if (_scalingRuntime) _scalingRuntime->UpdateFrameSyncSettings(
@@ -66,6 +70,7 @@ void ScalingService::Uninitialize() {
 	_checkForegroundTimer.Stop();
 	_countDownTimer.Stop();
 	_frameSyncChangedRevoker.Revoke();
+	_parameterShortcutChangedRevoker.Revoke();
 	_scalingRuntime.reset();
 	// The runtime destructor drains UI requests before this final flush.
 	_FlushEffectParametersSaves(true);
@@ -483,6 +488,7 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 
 	// 应用全局配置
 	AppSettings& settings = AppSettings::Get();
+	options.parameterShortcutLabel = StrHelper::UTF16ToUTF8(settings.GetShortcut(ShortcutAction::EffectParameters).ToString());
 	options.IsDeveloperMode(settings.IsDeveloperMode());
 	options.IsDebugMode(settings.IsDebugMode());
 	options.IsBenchmarkMode(settings.IsBenchmarkMode());

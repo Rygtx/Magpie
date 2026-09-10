@@ -61,6 +61,8 @@ private:
 	bool _isKeyboardHookActive = true;
 	// 用于防止长按时重复触发热键
 	bool _keyboardHookShortcutActivated = false;
+	// The parameter toggle owns both edges even if its modifiers are released first.
+	std::array<bool, 256> _parameterShortcutKeys{};
 };
 
 }

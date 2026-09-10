@@ -498,6 +498,21 @@ void CursorManager::_UpdateCursorState() noexcept {
 	// Overlay cleanup still clears its flags, but must not initiate hit tests,
 	// cursor capture or renderer work once shutdown has begun.
 	if (_lifetime->IsStopping()) return;
+	if (ScalingWindow::Get().Renderer().IsEditingParameters()) {
+		// Input ownership overrides 3D-game confinement and coordinate mapping.
+		POINT point{};
+		if (_isUnderCapture && GetCursorPos(&point)) {
+			_StopCapture(point, true);
+			ClipCursor(nullptr);
+			_ReliableSetCursorPos(point);
+		}
+		_RestoreClipCursor();
+		_isCapturedOnForeground = false;
+		_shouldDrawCursor = false;
+		_ClearHitTestResult();
+		_ShowSystemCursor(true);
+		return;
+	}
 	if (ScalingWindow::Get().IsResizingOrMoving()) {
 		_RestoreClipCursor();
 		return;
@@ -1069,6 +1084,12 @@ void CursorManager::_ClipCursorOnSrcMoving() noexcept {
 
 void CursorManager::_UpdateCursorPos() noexcept {
 	if (_lifetime->IsStopping()) return;
+	if (ScalingWindow::Get().Renderer().IsEditingParameters()) {
+		GetCursorPos(&_cursorPos);
+		// The host uses the native cursor. Do not also draw a scaled copy.
+		_hCursor = nullptr;
+		return;
+	}
 	if (_shouldDrawCursor) {
 		CURSORINFO ci{ .cbSize = sizeof(CURSORINFO) };
 		if (!GetCursorInfo(&ci)) {

@@ -35,6 +35,9 @@ public:
 	void Draw(POINT drawOffset) noexcept;
 
 	void ClearStates() noexcept;
+	void ParameterEditing(bool value) noexcept { _parameterEditing = value; }
+	bool OwnsPointerAtCursor() const noexcept;
+	bool DismissParameterPopup() noexcept;
 	void OnPresentSucceeded() noexcept;
 
 	ImGuiInputResult MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
@@ -58,11 +61,14 @@ public:
 		float maxWidth = -1.0f
 	) noexcept;
 private:
+	bool _parameterEditing = false;
 	enum class PendingInputEventType : uint8_t {
 		Move,
 		Button,
 		Wheel,
 		Leave,
+		Key,
+		Character,
 		Cancel
 	};
 
@@ -77,6 +83,8 @@ private:
 		uint64_t timestampUs = 0;
 		bool dragged = false;
 		bool controlDown = false;
+		ImGuiKey key = ImGuiKey_None;
+		unsigned int character = 0;
 	};
 
 	struct PendingInputBuffer {

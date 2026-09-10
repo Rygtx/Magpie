@@ -41,10 +41,12 @@ public:
 		if (Handle() && !_isDestroying && runId == RunId()) _stopRequested = true;
 	}
 	bool ProcessPendingStop() noexcept {
-		if (!std::exchange(_stopRequested, false)) return false;
+		if (!_stopRequested || HasHeldParameterInput()) return false;
+		_stopRequested = false;
 		Stop();
-		return true;
+		return !Handle();
 	}
+	bool HasHeldParameterInput() const noexcept;
 
 	void ToggleScaling(bool isWindowedMode) noexcept;
 
@@ -99,6 +101,8 @@ public:
 	}
 
 	class Renderer* TryGetRenderer() noexcept { return _renderer.get(); }
+	bool IsParameterInputWindow(HWND hwnd) const noexcept;
+	void ParameterShortcutLabel(std::string value) noexcept;
 	class CursorManager* TryGetCursorManager() noexcept { return _cursorManager.get(); }
 
 	bool IsSrcRepositioning() const noexcept {
@@ -236,6 +240,9 @@ private:
 	};
 	std::vector<std::vector<RestartParameter>> _restartParameters;
 	OverlaySessionState _restartOverlayState;
+	std::optional<OverlaySessionState> _repositionOverlayState;
+	std::optional<bool> _pendingWindowedMode;
+	std::optional<std::pair<std::vector<EffectOption>, FrameSyncSettings>> _pendingManualParameterRestart;
 	std::unique_ptr<class Renderer> _renderer;
 	std::unique_ptr<class CursorManager> _cursorManager;
 

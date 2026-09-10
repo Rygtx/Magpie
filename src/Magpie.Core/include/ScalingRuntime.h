@@ -31,6 +31,7 @@ public:
 	// Main-thread system-key notification; cancels pending fullscreen restarts too.
 	bool StopForTaskSwitch();
 	void UpdateFrameSyncSettings(FrameSyncSettings settings);
+	void UpdateParameterShortcutLabel(std::string label);
 
 	uint32_t RunId() const noexcept;
 	void UpdateEffectParameterFromSettings(uint32_t modeIdx, std::wstring modeName,

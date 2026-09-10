@@ -103,6 +103,15 @@ void OverlayDrawer::Draw(
 	// back buffer. Build and draw one complete ImGui frame in the same frontend
 	// render that will present it.
 	_overlayDirty = false;
+	const float dpiScale = GetDpiForWindow(ScalingWindow::Get().Handle()) / float(USER_DEFAULT_SCREEN_DPI);
+	if (dpiScale > 0 && dpiScale != _dpiScale) {
+		ClearStates();
+		const float ratio = dpiScale / _dpiScale;
+		ImGui::GetStyle().ScaleAllSizes(ratio);
+		ImGui::GetIO().FontGlobalScale *= ratio;
+		_dpiScale = dpiScale;
+		_effectParametersWindowLayoutInitialized = false;
+	}
 	if (!AnyVisibleWindow()) {
 		_lastComparisonStatusAlpha = 0.0f;
 		return;
@@ -140,6 +149,10 @@ void OverlayDrawer::Draw(
 
 	if (_isEffectParametersVisible && _DrawEffectParameters(itemId)) {
 		needRedraw = true;
+	}
+	if (!_isEffectParametersVisible && _parameterPanelState != ParameterPanelState::Closed) {
+		_SetParameterPanelState(ParameterPanelState::Closed);
+		_isEffectParametersVisible = _parameterPanelState != ParameterPanelState::Closed;
 	}
 	if (_effectParametersWindowLayoutDirty && !ImGui::IsAnyMouseDown()) {
 		const ScalingWindow& scalingWindow = ScalingWindow::Get();
@@ -241,13 +254,15 @@ void OverlayDrawer::ToolbarState(Magpie::ToolbarState value) noexcept {
 }
 
 OverlaySessionState OverlayDrawer::CaptureSessionState() const noexcept {
-	return { _isToolbarVisible, _isToolbarPinned, _isProfilerVisible, _isEffectParametersVisible };
+	const auto state = IsEditingParameters() ? _pendingParameterPanelState : _parameterPanelState;
+	return { _isToolbarVisible, _isToolbarPinned, _isProfilerVisible, state != ParameterPanelState::Closed, state };
 }
 
 void OverlayDrawer::RestoreSessionState(const OverlaySessionState& state) noexcept {
 	_isToolbarVisible = state.toolbarVisible;
 	_isToolbarPinned = state.toolbarPinned;
-	_isEffectParametersVisible = state.effectParametersVisible;
+	_SetParameterPanelState(state.parameterPanelState == ParameterPanelState::Closed && state.effectParametersVisible
+		? ParameterPanelState::Preview : state.parameterPanelState, false);
 	if (_isProfilerVisible != state.profilerVisible) InvokeAction(OverlayAction::Profiler);
 	_overlayDirty = true;
 	_ClearStatesIfNoVisibleWindow();
@@ -261,7 +276,7 @@ void OverlayDrawer::InvokeAction(OverlayAction action) noexcept {
         else ScalingWindow::Get().Renderer().StopProfile();
         break;
     case OverlayAction::EffectParameters:
-        _isEffectParametersVisible = !_isEffectParametersVisible;
+        _SetParameterPanelState(IsEditingParameters() ? ParameterPanelState::Preview : ParameterPanelState::Edit);
         break;
     case OverlayAction::ToolbarPin:
         _isToolbarPinned = !_isToolbarPinned;
@@ -893,7 +908,7 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		};
 
 		// 光标不在缩放窗口上时阻止交互
-		ImGui::BeginDisabled(!ScalingWindow::Get().CursorManager().CursorHandle());
+		ImGui::BeginDisabled(!IsEditingParameters() && !ScalingWindow::Get().CursorManager().CursorHandle());
 
 		const std::string& pinStr = _GetResourceString(L"Overlay_Toolbar_Pin");
 		drawToggleButton(_isToolbarPinned, OverlayHelper::SegoeIcons::Pinned, pinStr.c_str());
@@ -901,10 +916,18 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		const std::string& profilerStr = _GetResourceString(L"Overlay_Toolbar_Profiler");
 		drawToggleButton(_isProfilerVisible, OverlayHelper::SegoeIcons::Diagnostic, profilerStr.c_str());
 		ImGui::SameLine();
-		const std::string& parametersStr =
-			_GetResourceString(L"Overlay_Toolbar_EffectParameters");
-		drawToggleButton(_isEffectParametersVisible,
-			OverlayHelper::SegoeIcons::Parameters, parametersStr.c_str());
+		const std::string parametersStr = StrHelper::Concat(
+			_GetResourceString(L"Overlay_Parameters_InputHint"), " ", ScalingWindow::Get().Options().parameterShortcutLabel);
+		bool editingParameters = IsEditingParameters();
+		drawToggleButton(editingParameters, OverlayHelper::SegoeIcons::Parameters, parametersStr.c_str());
+		if (editingParameters != IsEditingParameters()) InvokeAction(OverlayAction::EffectParameters);
+		if (_isEffectParametersVisible) {
+			ImGui::SameLine();
+			ImGui::PushID("closeParameters");
+			if (drawButton(OverlayHelper::SegoeIcons::Cancel, _GetResourceString(L"Overlay_Parameters_Close").c_str()))
+				_SetParameterPanelState(ParameterPanelState::Closed);
+			ImGui::PopID();
+		}
 		ImGui::SameLine();
 		Renderer& renderer = ScalingWindow::Get().Renderer();
 		bool passThrough = renderer.IsPassThroughActive();
@@ -1336,15 +1359,22 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 
 	const std::string title = StrHelper::Concat(
 		_GetResourceString(L"Overlay_EffectParameters"),
-		"##", EFFECT_PARAMETERS_WINDOW_ID);
+		" - ", _GetResourceString(IsEditingParameters() ? L"Overlay_Parameters_Edit" : L"Overlay_Parameters_Preview"),
+		"###", EFFECT_PARAMETERS_WINDOW_ID);
 	ImGui::PushStyleColor(
 		ImGuiCol_ResizeGrip, ImVec4(0.55f, 0.55f, 0.55f, 0.28f));
 	ImGui::PushStyleColor(
 		ImGuiCol_ResizeGripHovered, ImVec4(0.35f, 0.67f, 0.95f, 0.72f));
 	ImGui::PushStyleColor(
 		ImGuiCol_ResizeGripActive, ImVec4(0.35f, 0.67f, 0.95f, 1.0f));
-	const bool expanded = ImGui::Begin(title.c_str(), &_isEffectParametersVisible);
+	const bool expanded = ImGui::Begin(title.c_str(), &_isEffectParametersVisible,
+		IsEditingParameters() ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	if (IsEditingParameters() && window->TitleBarRect().Contains(ImGui::GetIO().MousePos)) {
+		const std::string hint = StrHelper::Concat(_GetResourceString(L"Overlay_Parameters_InputHint"),
+			" ", ScalingWindow::Get().Options().parameterShortcutLabel);
+		_imguiImpl.Tooltip(hint.c_str(), _dpiScale);
+	}
 	const OverlayWindowRect rect{
 		std::clamp(window->Pos.x, 0.0f, std::max(0.0f, displaySize.x - window->SizeFull.x)),
 		std::clamp(window->Pos.y, 0.0f, std::max(0.0f, displaySize.y - window->SizeFull.y)),
@@ -1371,6 +1401,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		_parameterResetGesture.Clear();
 		return false;
 	}
+	if (_parameterFocusFailed) ImGui::TextWrapped("%s", _GetResourceString(L"Overlay_Parameters_FocusFailed").c_str());
 
 	if (!renderer.MotionConfigurationNotice().empty()) {
 		ImGui::TextWrapped("%s", StrHelper::UTF16ToUTF8(renderer.MotionConfigurationNotice()).c_str());
@@ -1387,7 +1418,8 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		100.0f * _dpiScale, ImGui::GetContentRegionAvail().y - footerHeight);
 	ImGui::BeginChild(
 		"##effectParametersContent", ImVec2(0.0f, contentHeight),
-		ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+		ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar |
+		(IsEditingParameters() ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs));
 
 	bool needRedraw = false;
 	bool queueFailure = false;
@@ -1796,7 +1828,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		"##effectParametersStatus",
 		ImVec2(-ImGui::GetFrameHeight(), statusHeight),
 		ImGuiChildFlags_None,
-		ImGuiWindowFlags_None);
+		IsEditingParameters() ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs);
 	ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 	ImGui::TextWrapped("%s", status.c_str());
 	ImGui::PopStyleColor();

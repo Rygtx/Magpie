@@ -78,6 +78,7 @@ if (!$BuildOnly -and ((& git -C $sourceRoot rev-parse HEAD).Trim() -ne $commit -
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'LICENSE') -Destination (Join-Path $buildOutput 'LICENSE-Magpie.txt')
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'docs/experimental/testing/SCALING-PREFLIGHT.md') -Destination (Join-Path $buildOutput 'LOCAL-NOTES.md')
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'docs/experimental/testing/EFFECT-PICKER.md') -Destination (Join-Path $buildOutput 'EFFECT-PICKER.md')
+Copy-Item -LiteralPath (Join-Path $sourceRoot 'docs/experimental/testing/PARAMETER-INPUT.md') -Destination (Join-Path $buildOutput 'PARAMETER-INPUT.md')
 if ($BuildOnly) {
     [ordered]@{ status = 'built_for_validation'; commit = $commit; sourceDirty = [bool]$dirty.Count } |
         ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding utf8

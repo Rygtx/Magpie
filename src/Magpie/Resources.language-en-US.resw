@@ -1132,8 +1132,8 @@
   <data name="Message_XeSSMfgMultiplierUnsupported" xml:space="preserve"><value>The selected XeSS Multi-Frame Generation multiplier is not supported by this GPU or driver. Select a lower MFG multiplier, or use XeSS Frame Generation x2.</value></data>
   <data name="Home_Toolbar_Profiler.Header" xml:space="preserve"><value>Performance monitor</value></data>
   <data name="Home_Toolbar_Profiler_ShortcutControl.Title" xml:space="preserve"><value>Performance monitor</value></data>
-  <data name="Home_Toolbar_EffectParameters.Header" xml:space="preserve"><value>Effect parameters</value></data>
-  <data name="Home_Toolbar_EffectParameters_ShortcutControl.Title" xml:space="preserve"><value>Effect parameters</value></data>
+  <data name="Home_Toolbar_EffectParameters.Header" xml:space="preserve"><value>Edit parameters / return to game</value></data>
+  <data name="Home_Toolbar_EffectParameters_ShortcutControl.Title" xml:space="preserve"><value>Edit parameters / return to game</value></data>
   <data name="Home_Toolbar_Screenshot.Header" xml:space="preserve"><value>Take screenshot</value></data>
   <data name="Home_Toolbar_Screenshot_ShortcutControl.Title" xml:space="preserve"><value>Take screenshot</value></data>
   <data name="Home_Toolbar_ToolbarPin.Header" xml:space="preserve"><value>Pin toolbar</value></data>
@@ -1647,4 +1647,9 @@
   <data name="ScalingModes_NameConflict.Message" xml:space="preserve"><value>Another group uses this name. Use the pencil button to choose a different name.</value></data>
   <data name="ScalingModes_ImportRenamed" xml:space="preserve"><value>Imported all effect groups; duplicate names received numbered suffixes. You can rename them using the pencil button.</value></data>
   <data name="Message_DuplicateScalingModeNames" xml:space="preserve"><value>Existing settings contain duplicate effect-group names. Open Effect groups and rename them using the pencil button; all groups have been retained.</value></data>
+  <data name="Overlay_Parameters_Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>Preview</value></data>
+  <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Edit parameters / return to game. Esc closes a popup first, then returns to the game. Shortcut:</value></data>
+  <data name="Overlay_Parameters_Close" xml:space="preserve"><value>Close parameter panel</value></data>
+  <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>Click the game window to restore control</value></data>
 </root>

@@ -68,6 +68,14 @@ public:
 	void SwitchToolbarState() noexcept;
 	void InvokeOverlayAction(OverlayAction action) noexcept;
 	OverlaySessionState CaptureOverlayState() const noexcept { return _overlayDrawer.CaptureSessionState(); }
+	bool IsEditingParameters() const noexcept { return _overlayDrawer.IsEditingParameters(); }
+	HWND ParameterInputHandle() const noexcept { return _overlayDrawer.ParameterInputHandle(); }
+	void SuspendParameterInput() noexcept { _overlayDrawer.SuspendParameterInput(); }
+	void ReleaseParameterInput() noexcept { _overlayDrawer.ReleaseParameterInput(); }
+	bool HasHeldParameterInput() const noexcept { return _overlayDrawer.HasHeldParameterInput(); }
+	bool AllowAutomaticSourceFocus() const noexcept { return _overlayDrawer.AllowAutomaticSourceFocus(); }
+	void UpdateParameterInputHost() noexcept { _overlayDrawer.UpdateParameterInputHost(); }
+	void RefreshOverlay() noexcept { ++_overlayActionRevision; }
 	void RestoreOverlayState(const OverlaySessionState& state) noexcept;
 	bool IsPassThroughActive() const noexcept { return _isPassThroughActive; }
 	bool SetPassThroughActive(bool value) noexcept;

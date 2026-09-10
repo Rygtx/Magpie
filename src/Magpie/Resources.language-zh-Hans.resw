@@ -1132,8 +1132,8 @@
   <data name="Message_XeSSMfgMultiplierUnsupported" xml:space="preserve"><value>当前显卡或驱动不支持所选 XeSS 多帧生成倍率。请选择较低的 MFG 倍率，或改用 XeSS 帧生成 x2。</value></data>
   <data name="Home_Toolbar_Profiler.Header" xml:space="preserve"><value>性能监测</value></data>
   <data name="Home_Toolbar_Profiler_ShortcutControl.Title" xml:space="preserve"><value>性能监测</value></data>
-  <data name="Home_Toolbar_EffectParameters.Header" xml:space="preserve"><value>效果参数</value></data>
-  <data name="Home_Toolbar_EffectParameters_ShortcutControl.Title" xml:space="preserve"><value>效果参数</value></data>
+  <data name="Home_Toolbar_EffectParameters.Header" xml:space="preserve"><value>编辑参数／返回游戏</value></data>
+  <data name="Home_Toolbar_EffectParameters_ShortcutControl.Title" xml:space="preserve"><value>编辑参数／返回游戏</value></data>
   <data name="Home_Toolbar_Screenshot.Header" xml:space="preserve"><value>截屏</value></data>
   <data name="Home_Toolbar_Screenshot_ShortcutControl.Title" xml:space="preserve"><value>截屏</value></data>
   <data name="Home_Toolbar_ToolbarPin.Header" xml:space="preserve"><value>固定工具栏</value></data>
@@ -1647,4 +1647,9 @@
   <data name="ScalingModes_NameConflict.Message" xml:space="preserve"><value>此名称与其他效果组重复，请点击铅笔按钮修改名称。</value></data>
   <data name="ScalingModes_ImportRenamed" xml:space="preserve"><value>效果组已全部导入，重复名称已自动添加序号；可使用铅笔按钮重新命名。</value></data>
   <data name="Message_DuplicateScalingModeNames" xml:space="preserve"><value>旧配置中存在同名效果组，请打开“效果组”，使用铅笔按钮修改名称；全部效果组已保留。</value></data>
+  <data name="Overlay_Parameters_Edit" xml:space="preserve"><value>编辑</value></data>
+  <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>预览</value></data>
+  <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>编辑参数／返回游戏。Esc 先关闭临时界面，再返回游戏。快捷键：</value></data>
+  <data name="Overlay_Parameters_Close" xml:space="preserve"><value>关闭参数面板</value></data>
+  <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>请点击游戏窗口恢复控制</value></data>
 </root>

@@ -13,6 +13,7 @@ struct EffectParameterDesc;
 class OverlayDrawer {
 public:
 	OverlayDrawer() = default;
+	~OverlayDrawer() noexcept;
 	OverlayDrawer(const OverlayDrawer&) = delete;
 	OverlayDrawer(OverlayDrawer&&) = delete;
 
@@ -37,6 +38,13 @@ public:
 
 	bool AnyVisibleWindow() const noexcept;
 	bool IsEffectParametersVisible() const noexcept { return _isEffectParametersVisible; }
+	bool IsEditingParameters() const noexcept { return _parameterPanelState == ParameterPanelState::Edit; }
+	HWND ParameterInputHandle() const noexcept { return _hwndParameterInput; }
+	void SuspendParameterInput() noexcept;
+	void ReleaseParameterInput() noexcept;
+	bool HasHeldParameterInput() const noexcept;
+	bool AllowAutomaticSourceFocus() const noexcept { return !IsEditingParameters() && !_parameterFocusFailed; }
+	void UpdateParameterInputHost() noexcept;
 	bool IsEffectParameterInputActive() const noexcept {
 		return _isEffectParametersVisible && _isEffectParameterInputActive;
 	}
@@ -55,6 +63,20 @@ public:
 	}
 
 private:
+	void _SetParameterPanelState(ParameterPanelState state, bool returnFocus = true) noexcept;
+	bool _BeginParameterInput() noexcept;
+	void _EndParameterInput(bool returnFocus) noexcept;
+	void _FinishParameterInput() noexcept;
+	static LRESULT CALLBACK _ParameterInputWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
+	HWND _hwndParameterInput = nullptr;
+	ParameterPanelState _parameterPanelState = ParameterPanelState::Closed;
+	ParameterPanelState _pendingParameterPanelState = ParameterPanelState::Edit;
+	bool _parameterInputTransition = false;
+	bool _returnClickPending = false;
+	bool _escapePending = false;
+	bool _parameterFocusFailed = false;
+	std::array<bool, 256> _parameterHeldKeys{};
+	uint32_t _parameterHeldButtons = 0;
 	bool _BuildFonts() noexcept;
 	SmallVector<ImWchar> _BuildFontUI(std::wstring_view language, const std::vector<uint8_t>& fontData) noexcept;
 	void _BuildFontIcons(const char* fontPath) noexcept;
