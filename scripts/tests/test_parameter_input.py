@@ -234,7 +234,7 @@ static void Mouse(UINT msg, int x, int y) {
     cursor={x,y};
     if(msg==WM_LBUTTONDOWN) keys[VK_LBUTTON]=true;
     if(msg==WM_LBUTTONUP) keys[VK_LBUTTON]=false;
-    if (foreground==game) { ++gameEdges; return; }
+    if (foreground==game) { if (msg==WM_LBUTTONDOWN || msg==WM_LBUTTONUP) ++gameEdges; return; }
     OverlayDrawer::_ParameterInputWndProc(inputHost,msg,0,0);
 }
 static void Key(UINT msg, int key) {
@@ -260,7 +260,11 @@ int main() {
     Mouse(WM_MOUSEMOVE,600,450); Frames(); assert(panel.IsEditingParameters());
     Mouse(WM_LBUTTONDOWN,600,450); Frames(); panel.UpdateParameterInputHost();
     assert(panel.IsEditingParameters() && foreground==inputHost && gameEdges==0);
-    Mouse(WM_LBUTTONUP,600,450); Frames(); panel.UpdateParameterInputHost();
+    Mouse(WM_MOUSEMOVE,610,455); // Queued noncritical movement must not postpone the release.
+    Mouse(WM_LBUTTONUP,600,450);
+    assert(!panel.IsEditingParameters()); Frames();
+    Mouse(WM_MOUSEMOVE,610,455);
+    panel.UpdateParameterInputHost();
     assert(panel._parameterPanelState==ParameterPanelState::Preview && !visibleHost && foreground==game && gameEdges==0);
     // Preview, including child windows, must not claim ImGui mouse input.
     cursor={100,80}; Frames(); assert(!io.WantCaptureMouse);

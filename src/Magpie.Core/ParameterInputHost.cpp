@@ -121,7 +121,9 @@ void OverlayDrawer::_FinishParameterInput() noexcept {
 	if (_pendingParameterPanelState == ParameterPanelState::Edit || HasHeldParameterInput()) return;
 
 	// Let ImGui consume a queued release before clearing its active item.
-	if (_imguiImpl.HasPendingInput()) return;
+	// Hover moves may keep arriving while the user returns to the game. Only
+	// complete control edges need presentation; movement must not postpone focus.
+	if (_imguiImpl.HasCriticalInput()) return;
 	_EndParameterInput(true);
 	_parameterPanelState = _pendingParameterPanelState;
 	_isEffectParametersVisible = _parameterPanelState != ParameterPanelState::Closed;
