@@ -36,7 +36,10 @@ public:
 
 	void ClearStates() noexcept;
 	void ParameterEditing(bool value) noexcept;
+	void ParameterPreview(bool value) noexcept { _parameterPreview = value; }
+	bool IsParameterPreviewAt(POINT screenPoint) const noexcept;
 	bool OwnsPointerAtCursor() const noexcept;
+	bool OwnsPointerAt(POINT screenPoint) const noexcept;
 	bool DismissParameterPopup() noexcept;
 	std::optional<ImVec4> PresentedParameterRect() const noexcept { return _presentedParameterRect; }
 	void OnPresentSucceeded() noexcept;
@@ -64,6 +67,7 @@ public:
 	) noexcept;
 private:
 	bool _parameterEditing = false;
+	bool _parameterPreview = false;
 	enum class PendingInputEventType : uint8_t {
 		Move,
 		Button,

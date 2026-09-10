@@ -47,6 +47,7 @@ namespace phmap { template<class K, class V> using flat_hash_map = std::unordere
 namespace fmt { template<class... T> std::string format(const char* s, T&&...) { return s; } }
 static HWND game = (HWND)1, scaling = (HWND)2, foreground = game, capture = nullptr, inputHost = nullptr;
 static POINT cursor{100,100};
+static POINT messagePoint{100,100};
 static RECT hostRect{}, clipRect{};
 static std::array<bool,256> keys{};
 static WNDPROC hostProc;
@@ -60,13 +61,13 @@ static BOOL FakeSetForeground(HWND hwnd) {
     ++focusAttempts;
     if (denyFocus) return FALSE;
     const HWND old = foreground; foreground = hwnd;
-    if (old == inputHost && old != hwnd) hostProc(old, WM_KILLFOCUS, (WPARAM)hwnd, 0);
+    if (old && old == inputHost && old != hwnd) hostProc(old, WM_KILLFOCUS, (WPARAM)hwnd, 0);
     return TRUE;
 }
 static HWND FakeCapture() { return capture; }
 static HWND FakeSetCapture(HWND hwnd) {
     HWND old = capture; capture = hwnd;
-    if (old == inputHost && old != hwnd) hostProc(old, WM_CAPTURECHANGED, 0, (LPARAM)hwnd);
+    if (old && old == inputHost && old != hwnd) hostProc(old, WM_CAPTURECHANGED, 0, (LPARAM)hwnd);
     return old;
 }
 static BOOL FakeRelease() { FakeSetCapture(nullptr); return TRUE; }
@@ -92,6 +93,7 @@ static UINT_PTR FakeTimer(HWND, UINT_PTR id, UINT, TIMERPROC) { return id; }
 static BOOL FakeKillTimer(HWND, UINT_PTR) { return TRUE; }
 static LRESULT FakeDef(HWND, UINT, WPARAM, LPARAM) { return 0; }
 static LONG FakeMessageTime() { static LONG time; return ++time; }
+static DWORD FakeMessagePos() { return DWORD(MAKELPARAM(messagePoint.x,messagePoint.y)); }
 #define GetAsyncKeyState FakeAsync
 #define GetKeyState FakeAsync
 #define GetCursorPos FakeCursor
@@ -118,6 +120,7 @@ namespace ImGui { inline void FakePosition(ImGuiWindow* w, ImVec2 p) { SetWindow
 #define KillTimer FakeKillTimer
 #define DefWindowProcW FakeDef
 #define GetMessageTime FakeMessageTime
+#define GetMessagePos FakeMessagePos
 #define IsWindow(hwnd) ((hwnd) != nullptr)
 namespace Magpie {
 struct DeviceResources {};
@@ -130,6 +133,7 @@ struct Logger {
     static Logger& Get() { static Logger l; return l; }
     template<class... T> void Error(T&&...) {}
     template<class... T> void Warn(T&&...) {}
+    template<class... T> void Info(T&&...) {}
     template<class... T> void Win32Error(T&&...) {}
 };
 struct StrHelper { template<class... T> static std::string Concat(T&&... t) { std::string s; (s.append(t),...); return s; } };
@@ -160,12 +164,21 @@ public:
     bool HasHeldParameterInput() const noexcept;
     void UpdateParameterInputHost() noexcept;
     bool HandleParameterPreviewEscape(WPARAM, const KBDLLHOOKSTRUCT&) noexcept;
-    bool MessageHandler(UINT m, WPARAM w, LPARAM l) noexcept { return _imguiImpl.MessageHandler(m,w,l) == ImGuiInputResult::Urgent; }
+    bool AnyVisibleWindow() const { return _isEffectParametersVisible || _isToolbarVisible || _isProfilerVisible; }
+    bool MessageHandler(UINT, WPARAM, LPARAM) noexcept;
 };
 static OverlayDrawer* overlay;
 class CursorManager {
 public:
     bool onOverlay=false, captured=false;
+    bool _isUnderCapture=false, _isCapturedOnForeground=false, _shouldDrawCursor=false, nativeCursorShown=false;
+    bool _UpdateParameterCursor() noexcept;
+    POINT SrcToScaling(POINT point, bool) const { return {point.x*2,point.y*2}; }
+    bool _StopCapture(POINT& point, bool) { point=SrcToScaling(point,false); _isUnderCapture=false; return true; }
+    void _RestoreClipCursor() { FakeClip(nullptr); }
+    void _ReliableSetCursorPos(POINT point) { cursor=point; }
+    void _ClearHitTestResult() {}
+    void _ShowSystemCursor(bool show) { nativeCursorShown=show; }
     void Update() { ++updates; }
     POINT CursorPos() const { return cursor; }
     bool IsCursorCapturedOnForeground() const { return false; }
@@ -176,7 +189,10 @@ struct TestRenderer {
     RECT rect{0,0,800,600};
     const RECT& DestRect() const { return rect; }
     HWND ParameterInputHandle() const { return overlay->_hwndParameterInput; }
+    bool IsEditingParameters() const { return overlay->IsEditingParameters(); }
+    bool IsParameterPreviewAt(POINT point) const { return overlay->_HasParameterForeground() && overlay->_imguiImpl.IsParameterPreviewAt(point); }
 };
+using Renderer = TestRenderer;
 struct TestSource { HWND Handle() const { return game; } bool SetFocus() const { return FakeSetForeground(game); } };
 class ScalingWindow {
 public:
@@ -208,11 +224,15 @@ public:
 
 tests = r'''
 using namespace Magpie;
-enum class ShortcutAction { EffectParameters };
+enum class ShortcutAction { EffectParameters, COUNT_OR_NONE };
+static LRESULT HotkeyNext(HHOOK, int, WPARAM, LPARAM) { return 17; }
+#define CallNextHookEx HotkeyNext
+struct ShortcutHelper { static const char* ToString(ShortcutAction) { return "EffectParameters"; } };
 struct ShortcutProbe {
-    std::array<bool,256> _parameterShortcutKeys{}; bool _keyboardHookShortcutActivated=false;
-    void Claim(int code) { auto& that=*this; auto action=ShortcutAction::EffectParameters; SHORTCUT_CLAIM }
-    int Edge(int key, WPARAM wParam) { KBDLLHOOKSTRUCT data{}; data.vkCode=key; auto* info=&data; auto& that=*this; SHORTCUT_EDGE return 0; }
+    int fires=0;
+    void _FireShortcut(ShortcutAction) { ++fires; }
+    LRESULT Hook() { auto action=ShortcutAction::EffectParameters; int nCode=HC_ACTION; WPARAM wParam=WM_KEYDOWN; LPARAM lParam=0; SHORTCUT_ROUTE return 0; }
+    LRESULT Window(UINT message, WPARAM wParam) { HOTKEY_ROUTE return 0; }
 };
 static int slider = 25;
 static bool actualParameter = false;
@@ -221,9 +241,16 @@ static float numericValue = 0.5f;
 static bool checkbox = false;
 static POINT choicePoint{}, childPoint{}, checkboxPoint{};
 static ImVec2 panelPos{20,20};
+static bool drawToolbar=false;
 static phmap::flat_hash_map<std::string,OverlayWindowOption> windows;
 static void Frame(bool present=true) {
     overlay->_imguiImpl.NewFrame(windows,0,1);
+    if (drawToolbar) {
+        ImGui::SetNextWindowPos({500,10}); ImGui::SetNextWindowSize({200,70});
+        ImGui::Begin("##toolbar",nullptr,ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize);
+        if (ImGui::Button("Parameters",{150,30})) overlay->_ToggleParameterPanel();
+        ImGui::End();
+    }
     ImGui::SetNextWindowPos(panelPos); ImGui::SetNextWindowSize({300,260});
     if (ImGui::Begin("Parameters - mode###effectParameters",nullptr,overlay->IsEditingParameters()?0:ImGuiWindowFlags_NoInputs)) {
         if (actualParameter) {
@@ -250,6 +277,7 @@ static void Frame(bool present=true) {
 static void Frames(int count=6) { for(int i=0;i<count;++i) Frame(); }
 static void Mouse(UINT msg, int x, int y) {
     cursor={x,y};
+    messagePoint=cursor;
     if(msg==WM_LBUTTONDOWN) keys[VK_LBUTTON]=true;
     if(msg==WM_LBUTTONUP) keys[VK_LBUTTON]=false;
     if (foreground==game && visibleHost && msg==WM_LBUTTONDOWN && PtInRect(&hostRect,cursor))
@@ -261,6 +289,12 @@ static void Key(UINT msg, int key) {
     keys[key]=msg==WM_KEYDOWN;
     OverlayDrawer::_ParameterInputWndProc(inputHost,msg,key,0);
 }
+static void ScalingMouse(UINT msg, POINT eventPoint, POINT currentPoint) {
+    messagePoint=eventPoint; cursor=currentPoint;
+    if(msg==WM_LBUTTONDOWN) keys[VK_LBUTTON]=true;
+    if(msg==WM_LBUTTONUP) keys[VK_LBUTTON]=false;
+    overlay->MessageHandler(msg,0,MAKELPARAM(eventPoint.x,eventPoint.y));
+}
 static bool PreviewEscape(UINT message, DWORD flags=0) {
     KBDLLHOOKSTRUCT key{}; key.vkCode=VK_ESCAPE; key.flags=flags;
     const bool claimed=overlay->HandleParameterPreviewEscape(message,key);
@@ -270,16 +304,23 @@ static bool PreviewEscape(UINT message, DWORD flags=0) {
 }
 int main() {
     ShortcutProbe shortcut;
-    keys['E']=false; shortcut.Claim('E'); assert(shortcut._parameterShortcutKeys['E']);
-    assert(shortcut.Edge('E',WM_KEYDOWN)==1 && shortcut.Edge('E',WM_KEYUP)==1);
-    assert(!shortcut._parameterShortcutKeys['E']);
-    keys['E']=true; shortcut.Claim('E'); assert(!shortcut._parameterShortcutKeys['E']);
-    assert(shortcut.Edge('E',WM_KEYUP)==0); keys['E']=false;
+    assert(shortcut.Hook()==17 && shortcut.fires==0);
+    assert(shortcut.Window(WM_HOTKEY,0)==0 && shortcut.fires==1);
     OverlayDrawer panel; overlay=&panel;
     DeviceResources resources; assert(panel._imguiImpl.Initialize(resources));
     auto& io=ImGui::GetIO(); unsigned char* pixels; int w,h;
     io.Fonts->GetTexDataAsRGBA32(&pixels,&w,&h);
     io.DisplaySize={800,600}; io.DeltaTime=1.0f/60;
+    // Open via a real ImGui toolbar Button during the production input frame.
+    drawToolbar=panel._isToolbarVisible=true; Frames();
+    ScalingMouse(WM_LBUTTONDOWN,{540,45},{540,45}); Frames();
+    ScalingMouse(WM_LBUTTONUP,{540,45},{540,45}); Frames();
+    assert(panel.IsEditingParameters() && foreground==inputHost);
+    ScalingMouse(WM_LBUTTONDOWN,{600,450},{600,450});
+    ScalingMouse(WM_LBUTTONUP,{600,450},{600,450}); Frames(); panel.UpdateParameterInputHost();
+    assert(panel._parameterPanelState==ParameterPanelState::Preview);
+    panel._SetParameterPanelState(ParameterPanelState::Closed); drawToolbar=panel._isToolbarVisible=false; Frames();
+    cursor=messagePoint={100,100};
     // One shared toolbar/shortcut action opens edit and closes visible panels.
     panel._ToggleParameterPanel(); Frames(); assert(panel.IsEditingParameters());
     panel._ToggleParameterPanel(); Frames(); panel.UpdateParameterInputHost();
@@ -340,6 +381,47 @@ int main() {
     assert(hostRect.left==20 && hostRect.top==20);
     Frame(); assert(hostRect.left==450 && hostRect.top==400 && hostRect.bottom==600);
     panelPos={20,20}; Frames(); assert(hostRect.left==20 && hostRect.bottom==280);
+    // Production cursor handoff runs before the 3D capture branch. Test the
+    // mapped visible point, native point after handoff, and leaving the panel.
+    auto& pointer=ScalingWindow::Get().CursorManager();
+    cursor={50,30}; pointer._isUnderCapture=true; pointer._shouldDrawCursor=true;
+    assert(pointer._UpdateParameterCursor());
+    assert(!pointer._isUnderCapture && cursor.x==100 && cursor.y==60 && pointer.nativeCursorShown);
+    assert(pointer._UpdateParameterCursor() && cursor.x==100 && cursor.y==60);
+    cursor={600,450}; assert(!pointer._UpdateParameterCursor());
+    foreground=(HWND)9; cursor={50,30}; pointer._isUnderCapture=true;
+    assert(!pointer._UpdateParameterCursor() && pointer._isUnderCapture);
+    foreground=game; pointer._isUnderCapture=false; cursor=messagePoint={100,100};
+    // The scaling HWND is a real second input route. Its preview press must
+    // enter editing, and its outside press must request Preview just like the host.
+    const bool scalingCheck=checkbox;
+    ScalingMouse(WM_LBUTTONDOWN,checkboxPoint,checkboxPoint); Frame();
+    assert(panel.IsEditingParameters() && foreground==inputHost);
+    ScalingMouse(WM_LBUTTONUP,checkboxPoint,checkboxPoint); Frames();
+    assert(checkbox!=scalingCheck);
+    // A cursor already moved back over the panel must not change where the DOWN happened.
+    ScalingMouse(WM_LBUTTONDOWN,{600,450},checkboxPoint); Frames();
+    assert(panel._pendingParameterPanelState==ParameterPanelState::Preview && panel.IsEditingParameters());
+    ScalingMouse(WM_LBUTTONUP,{600,450},checkboxPoint); Frames(); panel.UpdateParameterInputHost();
+    assert(panel._parameterPanelState==ParameterPanelState::Preview && gameEdges==2);
+    // Modifiers inherited at activation may release to the old game queue.
+    // No host WM_KEYUP arrives: physical release must still permit leaving edit.
+    keys[VK_MENU]=keys[VK_SHIFT]=true;
+    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    keys[VK_MENU]=keys[VK_SHIFT]=false;
+    ScalingMouse(WM_LBUTTONDOWN,{600,450},{600,450});
+    ScalingMouse(WM_LBUTTONUP,{600,450},{600,450}); Frames(); panel.UpdateParameterInputHost();
+    assert(panel._parameterPanelState==ParameterPanelState::Preview && !panel.HasHeldParameterInput());
+    assert(!io.KeyAlt && !io.KeyShift);
+    // A delayed focus/cancel notification for the scaling HWND must not
+    // cancel the newly focused input host or discard its pending control press.
+    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    Mouse(WM_LBUTTONDOWN,100,51); Frame();
+    assert(ImGui::IsAnyItemActive());
+    panel.MessageHandler(WM_KILLFOCUS,WPARAM(inputHost),0);
+    panel.MessageHandler(WM_CANCELMODE,0,0); Frames();
+    assert(panel.IsEditingParameters() && ImGui::IsAnyItemActive());
+    Mouse(WM_LBUTTONUP,100,51); Frames(); preview();
     // Preview Esc owns a complete press/repeat/release and closes only in the
     // outer update, without activating a host or forwarding a key to the game.
     const int previewFocusAttempts=focusAttempts;
@@ -468,7 +550,7 @@ int main() {
     foreground=game; panel.RestoreSessionState(editingState); Frames(); assert(panel.IsEditingParameters());
     panel._SetParameterPanelState(ParameterPanelState::Closed); Frames(); panel.UpdateParameterInputHost();
     assert(!panel._isEffectParametersVisible && !visibleHost && foreground==game);
-    std::cout << "PASS production input: three states, bounded preview/title/control/child activation, first-click pairing, last-present hit target, preview Esc pair/repeat/foreground guards, outside click pairing, drag outside, popup ownership, numeric keyboard input, Esc priority, modifier and release drain, external focus, restore guard, focus failure, deferred-stop input pairing, close\n";
+    std::cout << "PASS production input: real toolbar Button route, registered parameter hotkey route, both HWND mouse routes, event-coordinate outside click, inherited modifier release, delayed scaling focus/cancel messages, three states, first-click slider/checkbox/dropdown, last-present hit target, preview Esc guards, drag/popup/numeric input, deferred stop and restore\n";
 }
 '''
 
@@ -492,11 +574,15 @@ assert 'ImGui::Begin(title.c_str(), nullptr,' in drawer_cpp
 parameter_action = drawer_cpp.split('case OverlayAction::EffectParameters:', 1)[1].split('break;', 1)[0]
 assert '_ToggleParameterPanel();' in parameter_action
 assert 'parametersVisible != _isEffectParametersVisible) InvokeAction(OverlayAction::EffectParameters)' in drawer_cpp
-session_code = 'namespace Magpie {\n' + method(drawer_cpp, 'OverlaySessionState OverlayDrawer::CaptureSessionState()') + '\n' + method(drawer_cpp, 'void OverlayDrawer::RestoreSessionState(') + '\n}\n'
+session_code = 'namespace Magpie {\n' + method(drawer_cpp, 'OverlaySessionState OverlayDrawer::CaptureSessionState()') + '\n' + method(drawer_cpp, 'void OverlayDrawer::RestoreSessionState(') + '\n' + method(drawer_cpp, 'bool OverlayDrawer::MessageHandler(') + '\n}\n'
+cursor_cpp = (core / 'CursorManager.cpp').read_text(encoding='utf-8-sig')
+cursor_state = method(cursor_cpp, 'void CursorManager::_UpdateCursorState()')
+assert cursor_state.index('if (_UpdateParameterCursor()) return;') < cursor_state.index('if (options.Is3DGameMode())')
+cursor_code = 'namespace Magpie {\n' + method(cursor_cpp, 'bool CursorManager::_UpdateParameterCursor()') + '\n}\n'
 shortcut_cpp = (root / 'src/Magpie/ShortcutService.cpp').read_text(encoding='utf-8-sig')
-tests = tests.replace('SHORTCUT_EDGE', method(shortcut_cpp, 'if (info->vkCode < that._parameterShortcutKeys.size()'))
-claim = re.search(r'if \(action == ShortcutAction::EffectParameters &&[^\n]+\n\s+that\._parameterShortcutKeys\[code\] = true;', shortcut_cpp).group()
-tests = tests.replace('SHORTCUT_CLAIM', claim)
+route = re.search(r'if \(action == ShortcutAction::EffectParameters\)\s+return CallNextHookEx\([^;]+;', shortcut_cpp).group()
+tests = tests.replace('SHORTCUT_ROUTE', route)
+tests = tests.replace('HOTKEY_ROUTE', method(shortcut_cpp, 'if (message == WM_HOTKEY)'))
 numeric_desc = (core / 'include/EffectDesc.h').read_text(encoding='utf-8-sig')
 numeric_types = numeric_desc[numeric_desc.index('template <typename T>'):numeric_desc.index('struct EffectPassFlags')]
 numeric_code = 'namespace Magpie {\n' + numeric_types + '\n}\n' + body('include/EffectParameterValue.h') + '\nnamespace Magpie {\n' + method(drawer_cpp, 'static bool DrawEffectParameterSlider(') + '\n}\n'
@@ -504,5 +590,5 @@ stop_code = 'namespace Magpie {\n' + method(scaling_cpp, 'void ScalingWindow::St
 
 output = Path(sys.argv[1]).resolve()
 output.mkdir(parents=True, exist_ok=True)
-(output / 'parameter_input.cpp').write_text(prefix + body('ImGuiImpl.h') + fixture + body('ImGuiImpl.cpp') + body('ParameterInputHost.cpp') + stop_code + session_code + numeric_code + tests, encoding='utf-8')
+(output / 'parameter_input.cpp').write_text(prefix + body('ImGuiImpl.h') + fixture + body('ImGuiImpl.cpp') + body('ParameterInputHost.cpp') + cursor_code + stop_code + session_code + numeric_code + tests, encoding='utf-8')
 print(output / 'parameter_input.cpp')

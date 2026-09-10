@@ -494,25 +494,34 @@ static bool IsEdgeArea(int16_t area) noexcept {
 	return area >= HTSIZEFIRST && area <= HTSIZELAST;
 }
 
+bool CursorManager::_UpdateParameterCursor() noexcept {
+	const Renderer& renderer = ScalingWindow::Get().Renderer();
+	POINT point{};
+	const bool hasPoint = GetCursorPos(&point);
+	const POINT displayedPoint = _isUnderCapture ? SrcToScaling(point, false) : point;
+	if (!renderer.IsEditingParameters() && (!hasPoint || !renderer.IsParameterPreviewAt(displayedPoint)))
+		return false;
+	// Editing, and hovering the bounded preview target, both need the native
+	// cursor at the displayed point before USER32 chooses the click's window.
+	// This must precede the unconditional 3D-game confinement branch.
+	if (_isUnderCapture && hasPoint) {
+		_StopCapture(point, true);
+		ClipCursor(nullptr);
+		_ReliableSetCursorPos(point);
+	}
+	_RestoreClipCursor();
+	_isCapturedOnForeground = false;
+	_shouldDrawCursor = false;
+	_ClearHitTestResult();
+	_ShowSystemCursor(true);
+	return true;
+}
+
 void CursorManager::_UpdateCursorState() noexcept {
 	// Overlay cleanup still clears its flags, but must not initiate hit tests,
 	// cursor capture or renderer work once shutdown has begun.
 	if (_lifetime->IsStopping()) return;
-	if (ScalingWindow::Get().Renderer().IsEditingParameters()) {
-		// Input ownership overrides 3D-game confinement and coordinate mapping.
-		POINT point{};
-		if (_isUnderCapture && GetCursorPos(&point)) {
-			_StopCapture(point, true);
-			ClipCursor(nullptr);
-			_ReliableSetCursorPos(point);
-		}
-		_RestoreClipCursor();
-		_isCapturedOnForeground = false;
-		_shouldDrawCursor = false;
-		_ClearHitTestResult();
-		_ShowSystemCursor(true);
-		return;
-	}
+	if (_UpdateParameterCursor()) return;
 	if (ScalingWindow::Get().IsResizingOrMoving()) {
 		_RestoreClipCursor();
 		return;

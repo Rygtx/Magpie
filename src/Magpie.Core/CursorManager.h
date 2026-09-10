@@ -74,6 +74,7 @@ private:
 	void _ClearHitTestResult() noexcept;
 
 	void _UpdateCursorState() noexcept;
+	bool _UpdateParameterCursor() noexcept;
 
 	void _ClipCursorForMonitors(POINT cursorPos) noexcept;
 

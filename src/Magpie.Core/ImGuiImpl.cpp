@@ -137,6 +137,7 @@ bool ImGuiImpl::BuildFonts() noexcept {
 
 void ImGuiImpl::ParameterEditing(bool value) noexcept {
 	if (std::exchange(_parameterEditing, value) == value || !value) return;
+	_parameterPreview = false;
 	// NewFrame hit testing uses the previous frame's window flags. Restore
 	// input before feeding the activating click, rather than one frame later
 	// in Begin(), or that first control press is silently lost.
@@ -320,7 +321,8 @@ void ImGuiImpl::NewFrame(
 	// 调整缩放窗口大小或鼠标被前台窗口捕获时避免鼠标跳跃
 	CursorManager& cursorManager = ScalingWindow::Get().CursorManager();
 	if (!ScalingWindow::Get().IsResizingOrMoving() && !cursorManager.IsCursorCapturedOnForeground()) {
-		cursorManager.IsCursorOnOverlay(io.WantCaptureMouse);
+		cursorManager.IsCursorOnOverlay(io.WantCaptureMouse ||
+			IsParameterPreviewAt(cursorManager.CursorPos()));
 	}
 }
 
@@ -532,8 +534,8 @@ void ImGuiImpl::_StagePresentedWindowRects() noexcept {
 		}
 		_stagedPresentedWindowRects.emplace_back(
 			GetWindowIDFromName(window->Name),
-			ImVec4(window->Pos.x, window->Pos.y,
-				window->Pos.x + window->Size.x, window->Pos.y + window->Size.y));
+			ImVec4(window->OuterRectClipped.Min.x, window->OuterRectClipped.Min.y,
+				window->OuterRectClipped.Max.x, window->OuterRectClipped.Max.y));
 		// The input host needs both popup and parent panel regions. Outside those
 		// regions a game-area click is consumed as a complete return gesture.
 		if ((window->Flags & ImGuiWindowFlags_Popup) && !_parameterEditing) {
@@ -685,9 +687,21 @@ static ImGuiKey ParameterKey(WPARAM key) noexcept {
 bool ImGuiImpl::OwnsPointerAtCursor() const noexcept {
 	POINT point{};
 	GetCursorPos(&point);
+	return OwnsPointerAt(point);
+}
+
+bool ImGuiImpl::OwnsPointerAt(POINT point) const noexcept {
 	const RECT& dest = ScalingWindow::Get().Renderer().DestRect();
 	return _ownedMouseButtons ||
 		_GetPresentedHoveredWindowId({ float(point.x - dest.left), float(point.y - dest.top) });
+}
+
+bool ImGuiImpl::IsParameterPreviewAt(POINT point) const noexcept {
+	if (!_parameterPreview || !_presentedParameterRect) return false;
+	const RECT& dest = ScalingWindow::Get().Renderer().DestRect();
+	const auto& rect = *_presentedParameterRect;
+	return point.x >= dest.left + rect.x && point.y >= dest.top + rect.y &&
+		point.x < dest.left + rect.z && point.y < dest.top + rect.w;
 }
 
 bool ImGuiImpl::DismissParameterPopup() noexcept {

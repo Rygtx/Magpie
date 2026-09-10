@@ -69,6 +69,7 @@ public:
 	void InvokeOverlayAction(OverlayAction action) noexcept;
 	OverlaySessionState CaptureOverlayState() const noexcept { return _overlayDrawer.CaptureSessionState(); }
 	bool IsEditingParameters() const noexcept { return _overlayDrawer.IsEditingParameters(); }
+	bool IsParameterPreviewAt(POINT point) const noexcept { return _overlayDrawer.IsParameterPreviewAt(point); }
 	HWND ParameterInputHandle() const noexcept { return _overlayDrawer.ParameterInputHandle(); }
 	void SuspendParameterInput() noexcept { _overlayDrawer.SuspendParameterInput(); }
 	void ReleaseParameterInput() noexcept { _overlayDrawer.ReleaseParameterInput(); }

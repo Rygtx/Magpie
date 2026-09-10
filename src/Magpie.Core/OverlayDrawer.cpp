@@ -307,6 +307,8 @@ bool OverlayDrawer::AnyVisibleWindow() const noexcept {
 }
 
 bool OverlayDrawer::MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) noexcept {
+	if (const auto handled = _HandleParameterInputMessage(ScalingWindow::Get().Handle(), msg, wParam, lParam))
+		return *handled == ImGuiInputResult::Urgent;
 	if (!AnyVisibleWindow()) {
 		return false;
 	}

@@ -39,6 +39,9 @@ public:
 	bool AnyVisibleWindow() const noexcept;
 	bool IsEffectParametersVisible() const noexcept { return _isEffectParametersVisible; }
 	bool IsEditingParameters() const noexcept { return _parameterPanelState == ParameterPanelState::Edit; }
+	bool IsParameterPreviewAt(POINT point) const noexcept {
+		return _HasParameterForeground() && _imguiImpl.IsParameterPreviewAt(point);
+	}
 	HWND ParameterInputHandle() const noexcept { return _hwndParameterInput; }
 	void SuspendParameterInput() noexcept;
 	void ReleaseParameterInput() noexcept;
@@ -69,6 +72,9 @@ private:
 	bool _EnsureParameterInputHost() noexcept;
 	void _UpdateParameterPreviewHost() noexcept;
 	bool _HasParameterForeground() const noexcept;
+	void _SyncInheritedParameterKeys() noexcept;
+	std::optional<ImGuiInputResult> _HandleParameterInputMessage(
+		HWND sourceWindow, UINT message, WPARAM wParam, LPARAM lParam) noexcept;
 	bool _BeginParameterInput() noexcept;
 	void _EndParameterInput(bool returnFocus) noexcept;
 	void _FinishParameterInput() noexcept;
@@ -83,6 +89,7 @@ private:
 	bool _parameterResumeClickPending = false;
 	bool _previewEscapeOwned = false, _previewEscapeCanClose = false, _previewClosePending = false;
 	std::array<bool, 256> _parameterHeldKeys{};
+	std::array<bool, 256> _parameterInheritedKeys{};
 	uint32_t _parameterHeldButtons = 0;
 	bool _BuildFonts() noexcept;
 	SmallVector<ImWchar> _BuildFontUI(std::wstring_view language, const std::vector<uint8_t>& fontData) noexcept;
