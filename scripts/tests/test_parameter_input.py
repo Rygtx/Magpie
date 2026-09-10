@@ -41,6 +41,7 @@ prefix = r'''
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <variant>
 #include "OverlayWindowGeometry.h"
 namespace phmap { template<class K, class V> using flat_hash_map = std::unordered_map<K,V>; }
 namespace fmt { template<class... T> std::string format(const char* s, T&&...) { return s; } }
@@ -207,6 +208,9 @@ struct ShortcutProbe {
     int Edge(int key, WPARAM wParam) { KBDLLHOOKSTRUCT data{}; data.vkCode=key; auto* info=&data; auto& that=*this; SHORTCUT_EDGE return 0; }
 };
 static int slider = 25;
+static bool actualParameter = false;
+static EffectParameterDesc numericParameter;
+static float numericValue = 0.5f;
 static bool checkbox = false;
 static POINT choicePoint{}, childPoint{};
 static phmap::flat_hash_map<std::string,OverlayWindowOption> windows;
@@ -214,7 +218,12 @@ static void Frame(bool present=true) {
     overlay->_imguiImpl.NewFrame(windows,0,1);
     ImGui::SetNextWindowPos({20,20}); ImGui::SetNextWindowSize({300,260});
     if (ImGui::Begin("Parameters - mode###effectParameters",nullptr,overlay->IsEditingParameters()?0:ImGuiWindowFlags_NoInputs)) {
-        ImGui::SliderInt("Slider",&slider,0,100);
+        if (actualParameter) {
+            int tick=0, maximum=0; assert(GetEffectParameterTicks(numericParameter,numericValue,tick,maximum));
+            const auto display=std::to_string(numericValue);
+            if (DrawEffectParameterSlider("Slider",numericParameter,numericValue,tick,maximum,display.c_str()))
+                numericValue=NormalizeEffectParameterValue(numericParameter,numericValue);
+        } else ImGui::SliderInt("Slider",&slider,0,100);
         ImGui::Checkbox("Checkbox",&checkbox);
         const bool comboOpen = ImGui::BeginCombo("Choice","Current");
         if (!comboOpen) { auto r = ImGui::GetItemRectMin(); choicePoint = {LONG(r.x+100),LONG(r.y+8)}; }
@@ -303,6 +312,26 @@ int main() {
     OverlayDrawer::_ParameterInputWndProc(inputHost,WM_CHAR,'2',0); Frames();
     Key(WM_KEYDOWN,VK_RETURN); Frames(); Key(WM_KEYUP,VK_RETURN); Frames();
     assert(slider==42 && panel.IsEditingParameters() && gameEdges==2);
+    // Text entry uses real parameter units; mouse dragging still uses STEP indices.
+    actualParameter=true;
+    numericParameter.constant=EffectConstant<float>{0.5f,0.0f,2.0f,0.05f}; numericValue=0.5f; Frames();
+    auto typeParameter = [](const char* text) {
+        Key(WM_KEYDOWN,VK_CONTROL); Frames();
+        Mouse(WM_LBUTTONDOWN,100,51); Frames(); Mouse(WM_LBUTTONUP,100,51); Frames();
+        assert(ImGui::TempInputIsActive(ImGui::GetCurrentContext()->ActiveId));
+        Key(WM_KEYDOWN,'A'); Frames(); Key(WM_KEYUP,'A'); Key(WM_KEYUP,VK_CONTROL); Frames();
+        for (const char* c=text;*c;++c) OverlayDrawer::_ParameterInputWndProc(inputHost,WM_CHAR,*c,0);
+        Frames(12); Key(WM_KEYDOWN,VK_RETURN); Frames(); Key(WM_KEYUP,VK_RETURN); Frames();
+    };
+    typeParameter("0.75"); assert(std::abs(numericValue-0.75f)<1e-6f);
+    typeParameter("0.73"); assert(std::abs(numericValue-0.75f)<1e-6f);
+    typeParameter("99"); assert(numericValue==2.0f);
+    numericParameter.constant=EffectConstant<float>{0.0f,-1.0f,1.0f,0.125f}; numericValue=0.0f; Frames();
+    typeParameter("-0.375"); assert(std::abs(numericValue+0.375f)<1e-6f);
+    numericParameter.constant=EffectConstant<int>{7,1,15,2}; numericValue=7; Frames();
+    typeParameter("11"); assert(numericValue==11);
+    typeParameter("10"); assert(numericValue==11);
+    actualParameter=false; Frames();
     panel._SetParameterPanelState(ParameterPanelState::Preview); Frames(); panel.UpdateParameterInputHost();
     // Shortcut modifiers and queued releases delay a return to the game.
     keys[VK_CONTROL]=true; panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
@@ -376,9 +405,12 @@ shortcut_cpp = (root / 'src/Magpie/ShortcutService.cpp').read_text(encoding='utf
 tests = tests.replace('SHORTCUT_EDGE', method(shortcut_cpp, 'if (info->vkCode < that._parameterShortcutKeys.size()'))
 claim = re.search(r'if \(action == ShortcutAction::EffectParameters &&[^\n]+\n\s+that\._parameterShortcutKeys\[code\] = true;', shortcut_cpp).group()
 tests = tests.replace('SHORTCUT_CLAIM', claim)
+numeric_desc = (core / 'include/EffectDesc.h').read_text(encoding='utf-8-sig')
+numeric_types = numeric_desc[numeric_desc.index('template <typename T>'):numeric_desc.index('struct EffectPassFlags')]
+numeric_code = 'namespace Magpie {\n' + numeric_types + '\n}\n' + body('include/EffectParameterValue.h') + '\nnamespace Magpie {\n' + method(drawer_cpp, 'static bool DrawEffectParameterSlider(') + '\n}\n'
 stop_code = 'namespace Magpie {\n' + method(scaling_cpp, 'void ScalingWindow::Stop() noexcept') + '\n}\n'
 
 output = Path(sys.argv[1]).resolve()
 output.mkdir(parents=True, exist_ok=True)
-(output / 'parameter_input.cpp').write_text(prefix + body('ImGuiImpl.h') + fixture + body('ImGuiImpl.cpp') + body('ParameterInputHost.cpp') + stop_code + session_code + tests, encoding='utf-8')
+(output / 'parameter_input.cpp').write_text(prefix + body('ImGuiImpl.h') + fixture + body('ImGuiImpl.cpp') + body('ParameterInputHost.cpp') + stop_code + session_code + numeric_code + tests, encoding='utf-8')
 print(output / 'parameter_input.cpp')

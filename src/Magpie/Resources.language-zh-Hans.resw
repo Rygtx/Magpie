@@ -1649,7 +1649,7 @@
   <data name="Message_DuplicateScalingModeNames" xml:space="preserve"><value>旧配置中存在同名效果组，请打开“效果组”，使用铅笔按钮修改名称；全部效果组已保留。</value></data>
   <data name="Overlay_Parameters_Edit" xml:space="preserve"><value>编辑</value></data>
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>预览</value></data>
-  <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>编辑参数／返回游戏。Esc 先关闭临时界面，再返回游戏。快捷键：</value></data>
+  <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>编辑参数／返回游戏。Ctrl+单击滑条输入数值，Esc 先关闭临时界面。快捷键：</value></data>
   <data name="Overlay_Parameters_Close" xml:space="preserve"><value>关闭参数面板</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>请点击游戏窗口恢复控制</value></data>
 </root>

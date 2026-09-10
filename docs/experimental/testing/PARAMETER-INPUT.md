@@ -4,6 +4,8 @@
 
 默认 `Alt+Shift+E` 在编辑和预览之间切换，也可在首页工具栏设置中修改。工具栏参数入口可重新编辑，相邻的关闭按钮可关闭预览面板。`Esc` 先关闭下拉菜单或数值输入，再退出编辑。切到其他应用立即取消输入接管，沿用原有窗口／全屏切屏规则。
 
+`Ctrl+单击` 滑条可直接输入参数数值。输入使用实际参数单位，按声明的步长归一化并限制在范围内；普通拖动继续使用离散步数。例如步长为 0.05 时输入 0.73，会应用 0.75。
+
 ## 实现及自动验证
 
 - 使用 `WS_EX_NOREDIRECTIONBITMAP` 的可激活输入宿主覆盖渲染区域，保持原有 ImGui 绘制。原生原型验证透明像素、整窗命中、激活、解除光标限制、首击完整交接和后续游戏点击。依据：[Microsoft Windows Composition 文档](https://learn.microsoft.com/en-us/archive/msdn-magazine/2014/june/windows-with-c-high-performance-window-layering-using-the-windows-composition-engine)。

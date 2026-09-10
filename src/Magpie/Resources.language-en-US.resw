@@ -1649,7 +1649,7 @@
   <data name="Message_DuplicateScalingModeNames" xml:space="preserve"><value>Existing settings contain duplicate effect-group names. Open Effect groups and rename them using the pencil button; all groups have been retained.</value></data>
   <data name="Overlay_Parameters_Edit" xml:space="preserve"><value>Edit</value></data>
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>Preview</value></data>
-  <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Edit parameters / return to game. Esc closes a popup first, then returns to the game. Shortcut:</value></data>
+  <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Edit parameters / return to game. Ctrl+click a slider to enter its value. Esc closes temporary controls first. Shortcut:</value></data>
   <data name="Overlay_Parameters_Close" xml:space="preserve"><value>Close parameter panel</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>Click the game window to restore control</value></data>
 </root>

@@ -1294,6 +1294,29 @@ bool OverlayDrawer::_RequestEffectParameters(EffectParametersRequestKind kind) n
 	return false;
 }
 
+static bool DrawEffectParameterSlider(const char* label, const EffectParameterDesc& parameter,
+	float& value, int& currentTick, int maximumTick, const char* displayValue) noexcept {
+	const ImGuiID id = ImGui::GetID(label);
+	const ImVec2 position = ImGui::GetCursorScreenPos();
+	const ImVec2 end(position.x + ImGui::CalcItemWidth(), position.y + ImGui::GetFrameHeight());
+	const bool textInput = ImGui::TempInputIsActive(id) ||
+		(ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+			ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(position, end));
+	if (textInput) {
+		// The slider's integer is a STEP index, not the parameter's value. Use
+		// actual units for text input, then let the caller normalize to the grid.
+		const float minimum = GetEffectParameterValueFromTick(parameter, 0, maximumTick);
+		const float maximum = GetEffectParameterValueFromTick(parameter, maximumTick, maximumTick);
+		const std::string format = "%." + std::to_string(GetEffectParameterDisplayPrecision(parameter)) + "f";
+		return ImGui::SliderFloat(label, &value, minimum, maximum, format.c_str(),
+			ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+	}
+	const bool changed = ImGui::SliderInt(label, &currentTick, 0, maximumTick,
+		displayValue, ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoInput);
+	if (changed) value = GetEffectParameterValueFromTick(parameter, currentTick, maximumTick);
+	return changed;
+}
+
 bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	const ImGuiIO& resetInput = ImGui::GetIO();
 	_parameterResetGesture.Move(resetInput.MousePos.x, resetInput.MousePos.y, 4.0f * _dpiScale);
@@ -1457,7 +1480,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	int targetFps = static_cast<int>(std::lround(_draftFrameSync.frameRate));
 	const std::string targetFpsText = fmt::format("{:g} FPS", _draftFrameSync.frameRate);
 	if (ImGui::SliderInt("##targetFps", &targetFps, 15, 360, targetFpsText.c_str(),
-		ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoInput)) {
+		ImGuiSliderFlags_AlwaysClamp)) {
 		_draftFrameSync.frameRate = static_cast<float>(targetFps);
 		parameterEdited = needRedraw = true;
 	}
@@ -1632,14 +1655,9 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 								GetEffectParameterDisplayPrecision(parameter))
 							: fmt::format("{}",
 								static_cast<int>(std::lround(value)));
-					changed = ImGui::SliderInt(
-						"##value", &currentTick, 0, maximumTick,
-						displayValue.c_str(), ImGuiSliderFlags_AlwaysClamp);
 					const float previousValue = value;
-					if (changed) {
-						value = GetEffectParameterValueFromTick(
-							parameter, currentTick, maximumTick);
-					}
+					changed = DrawEffectParameterSlider("##value", parameter, value,
+						currentTick, maximumTick, displayValue.c_str());
 					if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
 						!_imguiImpl.LeftPressHasControl() && !resetInput.KeyCtrl &&
 						!ImGui::TempInputIsActive(ImGui::GetItemID())) {
