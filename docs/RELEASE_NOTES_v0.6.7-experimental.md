@@ -6,6 +6,7 @@
 
 - **全新的效果器选择器**：支持用途分类、搜索、同族折叠、入门／进阶筛选和字母定位，并提供效果说明与搭配建议。
 - **可选的参数焦点切换**：主页新增“参数调整焦点切换”开关，默认关闭，使用基于 0.6.6 的鼠标操作方式。开启后支持编辑／预览切换及 `Ctrl+单击` 输入数值，但在部分窗口上运行时可能不稳定。
+- **可选的切屏自动停用**：主页“高级”新增“切屏时自动停用生效效果组”，默认关闭。开启后，使用 `Alt+Tab`、`Win+Tab` 等切屏组合键时自动停用全屏效果组，切回来后需手动重新启用；可用于缓解部分 DLSSNR 切屏异常。
 - **新增帧同步模式**：在 Front Edge Sync 之外增加 Async 和 NVIDIA Reflex；普通效果与 DLSS FG 均可选择 Reflex 基础限帧，主页和参数面板共用同一组设置。
 - **更方便的效果组管理**：新建、复制、导入和重命名时自动检查重名；已有同名效果组保留内容，并提示修改名称。
 - **独立保存增强版配置**：与原版 Magpie 的设置分开保存，支持导入旧配置。工具栏快捷键提示及 FAQ、帮助入口同步完善。
@@ -73,6 +74,7 @@ Contributor: [TurnX-alt](https://github.com/TurnX-alt) 提供界面、预设与�
 
 - **New effect picker** with purpose categories, search, collapsible families, Beginner/Advanced filtering and alphabetical navigation, plus effect descriptions and combination advice.
 - **Optional focus switching for parameters**: Home adds Switch focus for parameter adjustment, disabled by default to use mouse interaction based on 0.6.6. Enabling it provides Edit/Preview switching and `Ctrl+click` numeric entry, but may be unstable with some windows.
+- **Optional stop on task switching**: Advanced on Home adds Disable active effects when switching tasks, disabled by default. When enabled, combinations such as `Alt+Tab` and `Win+Tab` stop fullscreen effects, which must be re-enabled manually after returning. This can help with some DLSSNR task-switching issues.
 - **Additional frame-sync modes**: Async and NVIDIA Reflex join Front Edge Sync. Ordinary effects and DLSS FG can use Reflex base pacing, with shared settings on Home and in the parameter panel.
 - **Easier effect-group management**: creating, copying, importing and renaming groups checks for duplicate names. Existing duplicates retain their contents and are marked for renaming.
 - **Separate enhanced settings** from the original Magpie, with support for importing older configurations. Shortcut tooltips, FAQ links and help access are also improved.
