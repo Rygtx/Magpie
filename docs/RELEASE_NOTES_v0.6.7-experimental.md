@@ -2,16 +2,31 @@
 
 ## 更新内容
 
-1. **新增效果器选择器**：支持用途分类、搜索、同族折叠、入门／进阶筛选和字母定位；分类支持整行点击，说明区保持固定高度，可使用 `Ctrl+滚轮` 滚动较长说明。
-2. **完善实时参数编辑与预览**：参数面板可常驻预览，点击控件即可进入编辑并执行本次操作；支持拖动滑条、下拉选择和 `Ctrl+单击` 输入实际数值。工具栏按钮与默认快捷键 `Alt+Shift+E` 统一控制开关，`Esc` 按“编辑 → 预览 → 关闭”逐级退出。
-3. **改进全屏参数交接与停止重建**：修复已确认的重复停止请求、待重建请求丢失和旧帧消费确认问题；输入未释放时保留待处理请求，短暂源窗口变化恢复后继续呈现。不同游戏的失焦、锁鼠与后台输入行为仍需分别验证。
-4. **增强配置恢复和效果组管理**：增强版配置独立保存到 `v4e`，可导入旧配置；损坏配置尽量按备份或有效条目恢复。修复配置目录缺失、便携保存及删除效果组时的问题；新建、复制、导入和重命名时避免效果组重名。
-5. **新增 Async 与 NVIDIA Reflex 帧同步模式**：普通效果和 DLSS FG 均可选择 Reflex 驱动基础限帧，统一基础目标不叠加多个限帧器；XeSS FG／MFG 仍由 XeLL 接管。Reflex 自动回退仅记简短日志，实时参数面板不显示同步、Reflex 或 FG 输出状态。
-6. **RTX Video 降噪与 VSR 改为参数化强度**：低／中／高／极高四档可实时调整，默认中档；旧分档效果自动迁移并保留对应强度。
-7. **扩展 DLSSNR 参数与输入适配**：NR 强度、局部色调强度和局部结构强度范围为 `0–2`，默认 `1`；皮肤结构强度范围为 `0–2`，默认 `0`，步进均为 `0.05`。NR 根据效果链输入自动适配 SDR／HDR。
-8. **扩展光流选择与调整默认行为**：DLSS NR、DLSS FG 和光流诊断效果支持 AMD／NVIDIA 方法及质量选择。有光流选择的效果默认关闭光流，从旧配置首次迁移时也会关闭一次，之后可自行开启并保存。
-9. **新增 HDR 组件**：提供 HDR → SDR、SDR → HDR 和 RTX Video HDR 效果，用于搭建显式转换链；完善 HDR 工作格式、亮度和效果边界处理。HDR 默认关闭，旧全局兼容开关不再作为入口。
-10. **优化运行开销与使用引导**：减少 DLSS NR 的重复复制和 DLSS FG 的重复资源准备，改进补帧输出排序、队列等待与停止处理；完善错误详情、恢复步骤、效果说明、工具栏快捷键提示和帮助链接。XeSS 补帧显示名称统一去掉 ZeroMV 后缀，保留旧效果 ID 兼容。
+### Magpie 本体
+
+- **全新的效果器选择器**：支持用途分类、搜索、同族折叠、入门／进阶筛选和字母定位，并提供效果说明与搭配建议。
+- **实时参数编辑与常驻预览**：点击预览中的控件即可调整参数，支持滑条、下拉菜单和 `Ctrl+单击` 输入数值。默认使用 `Alt+Shift+E` 打开或关闭面板，`Esc` 按“编辑 → 预览 → 关闭”逐级退出。
+- **新增帧同步模式**：在 Front Edge Sync 之外增加 Async 和 NVIDIA Reflex；普通效果与 DLSS FG 均可选择 Reflex 基础限帧，主页和参数面板共用同一组设置。
+- **更方便的效果组管理**：新建、复制、导入和重命名时自动检查重名；已有同名效果组保留内容，并提示修改名称。
+- **独立保存增强版配置**：与原版 Magpie 的设置分开保存，支持导入旧配置。工具栏快捷键提示及 FAQ、帮助入口同步完善。
+
+### 效果器
+
+- **RTX Video 降噪与 VSR**：增加低／中／高／极高四档实时强度，默认中档；旧效果组保留对应强度。
+- **DLSSNR 强度调整**：NR 强度、局部色调强度和局部结构强度扩大至 `0–2`，默认 `1`；皮肤结构强度为 `0–2`，默认 `0`，步进均为 `0.05`。
+- **DLSSNR 自动适配 SDR／HDR 输入**，减少手动设置；优化 DLSS NR 与 DLSS FG 的资源使用。
+- **更多光流选择**：DLSS NR、DLSS FG 和光流诊断效果支持 AMD／NVIDIA 光流及质量选择。光流默认关闭，从旧配置首次迁移时也会关闭一次，之后可手动开启并保存。
+- **新增 HDR 组件**：提供 HDR → SDR、SDR → HDR 和 RTX Video HDR，可按源内容与显示需要搭配使用。HDR 默认关闭，通过添加组件启用。
+- **统一 XeSS 补帧名称**：显示名称去掉 ZeroMV 后缀，已有配置保持兼容。
+
+### 错误与兼容性
+
+- 改善全屏下调整参数、切换窗口和重新启用效果组时的稳定性，修复部分场景中画面停止更新的问题。
+- 修复添加效果、删除效果组或停止缩放时可能出现的闪退。
+- 修复配置目录缺失导致无法启动、便携配置保存失败等问题；配置损坏时尝试从备份或有效条目恢复，并提示需要处理的失效效果。
+- 修复部分 HDR 内容亮度显示不正确的问题，改善 HDR 与不同效果组合的兼容性。
+- Reflex 自动回退时不弹出提示；实时参数面板不显示同步、Reflex 或 FG 输出状态。
+- 完善错误详情和解决步骤。窗口模式遇到全屏或最大化的源应用时，会提示先切换为普通窗口。
 
 ## 使用说明
 
@@ -32,20 +47,18 @@
 - **参数生效方式**：Live／实时立即生效；Restart／重启需点击“应用并重新启用”。面板位置、大小及编辑／预览状态会在重新启用时恢复。
 - **面板操作**：默认 `Alt+Shift+E` 打开或关闭参数面板，可在设置中改绑。点击预览中的控件可直接操作；点击游戏区域返回预览。`Esc` 先关闭临时输入或下拉菜单，再逐级退出面板。
 - **统一基础 FPS**：默认开启 Front Edge Sync，目标 `60 FPS`。主页支持 `0` 自动或 `1–1000 FPS`，参数面板滑条为 `15–360 FPS`、步进 `1`；已有合法值不会因打开面板而被改写。修改自动保存，重新启用缩放后生效。
-- **Front Edge／Async／Reflex**：Front Edge 保留原提交节奏；Async 在捕获前限制基础输入间隔；Reflex 将同一基础目标交给 NVIDIA 驱动。Reflex 要求支持的 NVIDIA DXGI 呈现路径，效果与呈现使用同一显卡；当前异步标记接口要求 R565+。不可用时自动回退 Async，仅记日志。关闭帧同步仍保留其他既有上限和 FG 的低延迟机制。
+- **Front Edge／Async／Reflex**：Front Edge 保留原提交节奏；Async 在捕获前限制基础输入间隔；Reflex 将同一基础目标交给 NVIDIA 驱动。Reflex 要求支持的 NVIDIA DXGI 呈现路径，效果与呈现使用同一显卡；需使用 R565 或更新的 NVIDIA 驱动。不可用时自动回退 Async，仅记日志。关闭帧同步仍保留其他既有上限和 FG 的低延迟机制。
 - **自动目标与补帧**：`0` 按显示器刷新率折算基础 FPS，有 FG 时除以倍率。例如 240 Hz 下，2×／3×／4× 分别为基础 120／80／60 FPS；手动 80 FPS 配合 2× 的名义输出为 160 FPS。源程序限帧仍需单独设置，相同数值不代表逐帧同步；源或 GPU 跟不上时实际帧率会更低。
 - **DLSSNR 残差控制**：先开启“调整输入分辨率”，即使比例为 100% 也能使用残差调整。降低比例可减轻性能压力，但会损失部分画面信息。
 - **补帧与光流搭配**：一个效果组只使用一种 FG。需要光流时手动选择方法和质量；性能压力较大时可降低质量或关闭光流对比。
 - **HDR 使用**：根据源内容和输出需要排列“HDR 组件”；HDR 输出需要相应显示环境。不要用旧全局兼容开关代替转换链配置。
-
-代码回归与实机验收分开记录。游戏焦点和锁鼠、HDR 捕获／显示组合、实际驱动限帧及显示端延迟仍需实机确认；本说明不预先承诺性能收益。
 
 ## 附件的作用与使用
 
 | 附件 | 用途与使用方法 |
 | --- | --- |
 | `Magpie-Experimental-x64.zip` | **必选主包**，包含程序、匹配的界面资源、效果与所需运行组件；按上述步骤完整解压。其余附件均为可选。 |
-| `DLSSNR-DLL-Options-310.8.0.0.zip` | 沿用 0.6.6 的 NVIDIA 官方版与 RTX 40/50 社区兼容版 DLL 选项；仅需切换 NR DLL 时下载。完全退出 Magpie，备份现有 `nvngx_dlssnr.dll`，按包内说明选择一个版本放到 `Magpie.exe` 旁。 |
+| `DLSSNR-DLL-Options-310.8.0.0.zip` | 提供 NVIDIA 官方版、RTX 40/50 社区兼容版和 SF-v2 三种 DLL 选择，附中英双语 README；仅需切换 NR DLL 时下载。完全退出 Magpie，备份现有 `nvngx_dlssnr.dll`，按包内说明选择一个版本放到 `Magpie.exe` 旁。 |
 | `NGX_OTA_Switch.bat` | 沿用 0.6.6 的可选工具，用于查看、开关 NVIDIA NGX OTA 更新及清理更新进程，常规安装无需运行。相关操作需管理员权限且影响系统级 NGX 设置；恢复时使用 **Restore default**，删除 BAT 不会撤销设置。 |
 
 Contributor: [TurnX-alt](https://github.com/TurnX-alt) 提供界面、预设与构建一致性修复；[konodiodaaaaa1](https://github.com/konodiodaaaaa1) 提供 HDR 支持。
@@ -56,16 +69,31 @@ Contributor: [TurnX-alt](https://github.com/TurnX-alt) 提供界面、预设与�
 
 ## Updates
 
-1. **Added an effect picker** with purpose categories, search, collapsible families, Beginner/Advanced filtering and alphabetical navigation. Categories support full-row activation; a fixed description area supports `Ctrl+wheel` scrolling for longer text.
-2. **Improved live editing and persistent preview**: clicking a preview control enters editing and applies that gesture. Sliders, dropdowns and actual-value entry with `Ctrl+click` are supported. The toolbar button and default `Alt+Shift+E` shortcut share one open/close action; Escape steps through Edit → Preview → Closed.
-3. **Improved fullscreen parameter handoff and shutdown/restart**: fixed identified duplicate stop requests, lost pending rebuilds and stale-frame consumption acknowledgements. Pending requests survive held input, and rendering can continue after temporary source-window changes recover. Game-specific focus, cursor confinement and background input still require testing.
-4. **Strengthened configuration recovery and group management**: enhanced settings use a separate `v4e` directory and can import older settings. Damaged configurations recover from backups or valid entries where possible. Fixes cover missing directories, portable saving and group deletion; creation, copying, importing and renaming avoid duplicate group names.
-5. **Added Async and NVIDIA Reflex frame-sync modes**: ordinary effects and DLSS FG can use Reflex driver base pacing without stacking multiple limiters for the same target. XeSS FG/MFG remains controlled by XeLL. Automatic Reflex fallback only writes a brief log; live parameters do not display synchronization, Reflex or FG output status.
-6. **Parameterized RTX Video Denoise and VSR strength**: Low/Medium/High/Ultra levels apply live, with Medium as the default. Legacy tier-specific effects migrate while retaining the corresponding strength.
-7. **Expanded DLSSNR controls and input adaptation**: NR intensity, local tone strength and local structure strength range from `0–2`, defaulting to `1`; skin structure strength ranges from `0–2`, defaulting to `0`. All four use steps of `0.05`. NR adapts to SDR/HDR based on its effect-chain input.
-8. **Extended optical-flow selection and changed defaults**: DLSS NR, DLSS FG and optical-flow diagnostics support AMD/NVIDIA methods and quality levels. Effects with an optical-flow selector default to Off; the first migration from older settings also disables it once, after which users can enable and save their choice.
-9. **Added HDR Components**: HDR to SDR, SDR to HDR and RTX Video HDR effects form explicit conversion chains. HDR working formats, luminance and effect boundaries have been improved. HDR defaults to Off; the old global compatibility switch is no longer the entry point.
-10. **Reduced recurring work and improved guidance**: reduced redundant DLSS NR copies and DLSS FG resource preparation, and improved generated-frame ordering, queue waits and shutdown handling. Error details, recovery actions, effect descriptions, shortcut tooltips and help links are improved. XeSS frame-generation display names omit ZeroMV while retaining compatible effect IDs.
+### Magpie Application
+
+- **New effect picker** with purpose categories, search, collapsible families, Beginner/Advanced filtering and alphabetical navigation, plus effect descriptions and combination advice.
+- **Live parameter editing and persistent preview**: click a preview control to adjust it, using sliders, dropdowns or `Ctrl+click` numeric entry. The default `Alt+Shift+E` shortcut opens or closes the panel; Escape steps through Edit → Preview → Closed.
+- **Additional frame-sync modes**: Async and NVIDIA Reflex join Front Edge Sync. Ordinary effects and DLSS FG can use Reflex base pacing, with shared settings on Home and in the parameter panel.
+- **Easier effect-group management**: creating, copying, importing and renaming groups checks for duplicate names. Existing duplicates retain their contents and are marked for renaming.
+- **Separate enhanced settings** from the original Magpie, with support for importing older configurations. Shortcut tooltips, FAQ links and help access are also improved.
+
+### Effects
+
+- **RTX Video Denoise and VSR** offer Low/Medium/High/Ultra strength levels that apply live, defaulting to Medium. Existing groups retain their corresponding strength.
+- **Expanded DLSSNR controls**: NR intensity, local tone strength and local structure strength now range from `0–2`, defaulting to `1`. Skin structure strength ranges from `0–2`, defaulting to `0`. All four use steps of `0.05`.
+- **DLSSNR automatically adapts to SDR/HDR input**, reducing manual setup. Resource use has been optimized for DLSS NR and DLSS FG.
+- **More optical-flow choices**: DLSS NR, DLSS FG and optical-flow diagnostics support AMD/NVIDIA methods and quality levels. Optical flow defaults to Off and is disabled once when first migrating older settings; users can then enable and save their choice.
+- **New HDR Components**: HDR to SDR, SDR to HDR and RTX Video HDR can be combined for the source content and display. HDR defaults to Off and is enabled by adding components.
+- **Consistent XeSS frame-generation naming**: display names omit ZeroMV while existing configurations remain compatible.
+
+### Errors and Compatibility
+
+- Improved stability when adjusting parameters in fullscreen, switching windows and re-enabling effect groups; fixed cases where the image could stop updating.
+- Fixed possible crashes when adding effects, deleting effect groups or stopping scaling.
+- Fixed startup failures caused by missing configuration directories and portable-setting save failures. Damaged settings can recover from backups or valid entries, with invalid effects identified for attention.
+- Fixed incorrect brightness in some HDR content and improved compatibility between HDR and different effect combinations.
+- Automatic Reflex fallback does not display a notification; live parameters do not show synchronization, Reflex or FG output status.
+- Improved error details and recovery steps. Windowed mode asks users to switch fullscreen or maximized source applications to a normal window first.
 
 ## Usage
 
@@ -86,20 +114,18 @@ Existing groups with duplicate names retain their contents and should be renamed
 - **Applying parameters**: Live takes effect immediately; Restart requires Apply and restart. Re-enabling restores panel geometry and its editing/preview state.
 - **Panel controls**: `Alt+Shift+E` opens or closes the panel by default and can be rebound in settings. Clicking a preview control operates it directly; clicking the game returns to preview. Escape dismisses temporary input or dropdowns before stepping out of the panel.
 - **Unified base FPS**: defaults remain Front Edge Sync enabled at `60 FPS`. Home supports `0` for automatic or `1–1000 FPS`; the panel slider spans `15–360 FPS` in steps of `1`. Opening the panel preserves existing valid values. Changes save automatically and apply when scaling is re-enabled.
-- **Front Edge/Async/Reflex**: Front Edge retains the existing submission pacing; Async limits base-input intervals before capture; Reflex gives the same base target to the NVIDIA driver. Reflex requires a supported NVIDIA DXGI path with effects and presentation on the same GPU; the current async marker interface requires R565+. Unavailable Reflex falls back to Async with logging only. Disabling frame sync retains other existing caps and FG low-latency handling.
+- **Front Edge/Async/Reflex**: Front Edge retains the existing submission pacing; Async limits base-input intervals before capture; Reflex gives the same base target to the NVIDIA driver. Reflex requires a supported NVIDIA DXGI path with effects and presentation on the same GPU; an R565 or newer NVIDIA driver is required. Unavailable Reflex falls back to Async with logging only. Disabling frame sync retains other existing caps and FG low-latency handling.
 - **Automatic targets and FG**: `0` derives base FPS from display refresh rate, divided by the FG multiplier. At 240 Hz, 2×/3×/4× target base rates of 120/80/60 FPS. A manual 80 FPS target with 2× FG nominally outputs 160 FPS. Source-application limiting remains separate; matching numbers do not imply frame-by-frame synchronization, and slower sources or GPUs can produce lower actual rates.
 - **DLSSNR residual controls**: enable Adjust Input Resolution first, even at 100%. Lowering the percentage can reduce processing pressure but loses some image information.
 - **Combining FG and optical flow**: use one FG effect per group. Select an optical-flow method and quality manually when needed; lower its quality or disable it for comparison when performance is constrained.
 - **HDR usage**: arrange HDR Components for the source and intended output; HDR output requires a suitable display setup. Do not substitute the old global compatibility switch for a conversion chain.
-
-Code regressions and hardware validation are recorded separately. Game focus and cursor confinement, HDR capture/display combinations, actual driver pacing and display latency still require hands-on validation; this note does not promise performance gains.
 
 ## Assets: Purpose and Instructions
 
 | Asset | Purpose and Instructions |
 | --- | --- |
 | `Magpie-Experimental-x64.zip` | **Required main package**, containing the application, matching UI resources, effects and runtime components. Extract it completely as described above. All other assets are optional. |
-| `DLSSNR-DLL-Options-310.8.0.0.zip` | Reuses the official NVIDIA and community RTX 40/50-compatible DLL choices from 0.6.6. Download only when switching NR DLLs. Fully exit Magpie, back up `nvngx_dlssnr.dll`, and follow the archive instructions to place one choice beside `Magpie.exe`. |
+| `DLSSNR-DLL-Options-310.8.0.0.zip` | Offers official NVIDIA, community RTX 40/50-compatible and SF-v2 DLL choices, with a Chinese/English README. Download only when switching NR DLLs. Fully exit Magpie, back up `nvngx_dlssnr.dll`, and follow the archive instructions to place one choice beside `Magpie.exe`. |
 | `NGX_OTA_Switch.bat` | Reuses the optional 0.6.6 tool to inspect or toggle NVIDIA NGX OTA updates and clean up update processes; normal installation does not require it. Relevant actions require administrator privileges and affect system-wide NGX settings. Use **Restore default** to undo changes; deleting the BAT does not restore settings. |
 
 Contributor: [TurnX-alt](https://github.com/TurnX-alt) contributed UI, preset and build-consistency fixes; [konodiodaaaaa1](https://github.com/konodiodaaaaa1) contributed HDR support.
