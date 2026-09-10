@@ -53,7 +53,7 @@ public:
 		if (!_initialized) ReportFailure("NvAPI_Initialize", status);
 		return _initialized;
 	}
-	int Configure(ReflexSettings settings) noexcept override {
+	ReflexConfigurationResult Configure(ReflexSettings settings) noexcept override {
 		NV_SET_SLEEP_MODE_PARAMS options{};
 		options.version = NV_SET_SLEEP_MODE_PARAMS_VER;
 		options.bLowLatencyMode = settings.lowLatency;
@@ -61,16 +61,21 @@ public:
 		options.minimumIntervalUs = settings.minimumIntervalUs;
 		// Marker-based CPU optimization needs separately validated Boost timing.
 		// Standard markers remain active without enabling this extra optimization.
-		const auto status = _setSleepMode(_device.get(), &options);
-		if (status != NVAPI_OK || !settings.lowLatency) return status;
+		ReflexConfigurationResult result;
+		result.setStatus = _setSleepMode(_device.get(), &options);
 		NV_GET_SLEEP_STATUS_PARAMS state{};
 		state.version = NV_GET_SLEEP_STATUS_PARAMS_VER;
-		const auto queryStatus = _getSleepStatus(_device.get(), &state);
-		if (queryStatus != NVAPI_OK) return queryStatus;
-		if (!state.bLowLatencyMode) return NVAPI_NOT_SUPPORTED;
-		Logger::Get().Info(fmt::format("Reflex: native low latency On, Boost={}, minimumIntervalUs={}; capture-to-present scope",
-			settings.boost, settings.minimumIntervalUs));
-		return NVAPI_OK;
+		if (result.setStatus == NVAPI_OK) {
+			result.queried = true;
+			result.queryStatus = _getSleepStatus(_device.get(), &state);
+			result.lowLatency = result.queryStatus == NVAPI_OK && state.bLowLatencyMode;
+		}
+		Logger::Get().Info(fmt::format(
+			"Reflex configuration: requestedOn={} Boost={} minimumIntervalUs={} "
+			"SetSleepMode={} queried={} GetSleepStatus={} actualOn={}; capture-to-present scope",
+			settings.lowLatency, settings.boost, settings.minimumIntervalUs, result.setStatus,
+			result.queried, result.queryStatus, result.lowLatency));
+		return result;
 	}
 	int Sleep() noexcept override { return _sleep(_device.get()); }
 	int Marker(ReflexMarker marker, uint64_t frameId) noexcept override {

@@ -27,6 +27,7 @@ public:
 	std::vector<Event> events;
 	std::vector<ReflexSettings> settings;
 	std::string failure;
+	bool actualOn = true;
 	std::function<void()> sleepHook;
 	std::function<void()> presentHook;
 	int Record(std::string name, uint64_t frame = 0, uint64_t present = 0) noexcept {
@@ -34,9 +35,11 @@ public:
 		events.push_back({ name, frame, present });
 		return failure == name ? -1 : 0;
 	}
-	int Configure(ReflexSettings value) noexcept override {
+	ReflexConfigurationResult Configure(ReflexSettings value) noexcept override {
 		{ std::scoped_lock lock(mutex); settings.push_back(value); }
-		return Record(value.lowLatency ? "on" : "off", value.minimumIntervalUs);
+		const int status = Record(value.lowLatency ? "on" : "off", value.minimumIntervalUs);
+		return { status, failure == "query" && value.lowLatency ? -2 : 0,
+			status == 0, value.lowLatency && actualOn };
 	}
 	int Sleep() noexcept override {
 		if (sleepHook) sleepHook();
@@ -123,7 +126,7 @@ static void TestPauseAndFailure() {
 	ReflexController absent;
 	absent.Initialize(nullptr);
 	Require(absent.BeginCapture() == 0 && !absent.Available(), "unsupported path must stay inactive");
-	for (const auto* failure : { "on", "sleep", "sim-start", "sim-end", "render-start", "render-end",
+	for (const auto* failure : { "on", "query", "sleep", "sim-start", "sim-end", "render-start", "render-end",
 		"queue", "fg-start", "fg-end", "front-start", "front-end", "generated-start", "real-end" }) {
 		ReflexController reflex;
 		auto fake = std::make_unique<FakeDriver>();
@@ -224,13 +227,43 @@ static void TestOrdinaryFrameLimit() {
 		"failed reconfiguration must clear all driver settings before Async fallback");
 }
 
+static void TestDriverOffIsNotFailure() {
+	for (uint32_t interval : { 0u, 16667u }) {
+		ReflexController reflex;
+		auto fake = std::make_unique<FakeDriver>();
+		auto* driver = fake.get();
+		driver->actualOn = false;
+		reflex.Initialize(std::move(fake), { .minimumIntervalUs = interval });
+		Require(reflex.State() == ReflexState::DriverOff && reflex.CanResume() && !reflex.Available(),
+			"successful Off query must remain distinct from unavailable or driver failure");
+		for (int i = 0; i < 100; ++i) {
+			reflex.SetPresentationAvailable(true);
+			reflex.SetFrameRateLimit(interval);
+			Require(reflex.BeginCapture() == 0, "inactive low latency must use Async fallback");
+		}
+		Require(driver->Count("failure") == 0 && driver->Count("on") == 1 && driver->Count("sleep") == 0,
+			"Off query must not synthesize a failure or repeatedly force driver activation");
+		Require(driver->settings.back().minimumIntervalUs == 0,
+			"inactive driver cap must be cleared before Async takes over");
+		reflex.SetPresentationAvailable(false);
+		Require(reflex.State() == ReflexState::Paused, "presentation pause must differ from driver Off");
+		driver->actualOn = true;
+		reflex.SetPresentationAvailable(true);
+		Require(reflex.State() == ReflexState::Active && driver->settings.back().minimumIntervalUs == interval,
+			"presentation recovery can re-query and restore the requested limit");
+		reflex.Stop();
+		Require(reflex.State() == ReflexState::Stopped, "explicit stop must differ from driver failure");
+	}
+}
+
 int main() {
 	try {
 		TestFrameLifecycle();
 		TestPauseAndFailure();
 		TestSleepDoesNotBlockPresentOrStop();
 		TestOrdinaryFrameLimit();
-		std::cout << "PASS: Reflex 2x/3x/4x IDs, capture retries, skipped interpolation, FIFO IDs, 13 driver failure points, concurrent Sleep/Present/Stop; ordinary frame limits, same-target deduplication and pause/resume\n";
+		TestDriverOffIsNotFailure();
+		std::cout << "PASS: Reflex 2x/3x/4x IDs, capture retries, skipped interpolation, FIFO IDs, 14 driver failure points, concurrent Sleep/Present/Stop; ordinary frame limits, same-target deduplication, Off-query distinction and pause/resume\n";
 		return 0;
 	} catch (const std::exception& error) {
 		std::cerr << error.what() << '\n';

@@ -43,6 +43,10 @@ public:
 		return _HasParameterForeground() && _imguiImpl.IsParameterPreviewAt(point);
 	}
 	HWND ParameterInputHandle() const noexcept { return _hwndParameterInput; }
+	bool IsParameterFocusSettling() const noexcept {
+		return _HasParameterForeground() && (_parameterInputTransition ||
+			std::chrono::steady_clock::now() < _parameterFocusSettlesAt);
+	}
 	void SuspendParameterInput() noexcept;
 	void ReleaseParameterInput() noexcept;
 	bool HasHeldParameterInput() const noexcept;
@@ -83,6 +87,7 @@ private:
 	ParameterPanelState _parameterPanelState = ParameterPanelState::Closed;
 	ParameterPanelState _pendingParameterPanelState = ParameterPanelState::Edit;
 	bool _parameterInputTransition = false;
+	std::chrono::steady_clock::time_point _parameterFocusSettlesAt{};
 	bool _returnClickPending = false;
 	bool _escapePending = false;
 	bool _parameterFocusFailed = false;

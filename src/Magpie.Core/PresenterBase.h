@@ -30,6 +30,7 @@ public:
 	virtual void SetReflexFrame(uint64_t, uint64_t, bool) noexcept {}
 	// Called only from the outer message pump, after BeginFrame found no capacity.
 	virtual bool WaitForFrameCapacity(DWORD) noexcept { return false; }
+	virtual bool WasFrameCapacityBusy() const noexcept { return false; }
 	std::chrono::steady_clock::time_point LastSubmissionTime() const noexcept { return _lastSubmissionTime; }
 	std::optional<uint32_t> LastPresentedFrameCount() const noexcept { return _lastPresentedFrameCount; }
 

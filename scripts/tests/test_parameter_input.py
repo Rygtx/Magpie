@@ -202,6 +202,7 @@ public:
     TestSource source;
     int toasts=0;
     bool alive=true, _stopRequested=false, _isDestroying=false;
+    uint8_t _pendingSourceTransition=0;
     HWND Handle() const { return alive ? scaling : nullptr; }
     bool HasHeldParameterInput() const { return overlay->HasHeldParameterInput(); }
     void Stop() noexcept;

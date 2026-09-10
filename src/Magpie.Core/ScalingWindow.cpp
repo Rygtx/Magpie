@@ -406,6 +406,8 @@ void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 	assert(!Handle());
 	_stopRequested = false;
 	_frontendRenderPending = false;
+	_pendingSourceTransition = 0;
+	_sourceStateCheckDeferred = false;
 	_dlssFgFrameJobs.clear();
 
 	assert(options.minFrameRate >= 0);
@@ -451,6 +453,7 @@ void ScalingWindow::Stop() noexcept {
 		return;
 	}
 	_stopRequested = false;
+	_pendingSourceTransition = 0;
 	_CancelParameterRestart();
 	Destroy();
 	// 为了简化逻辑和确保可靠清理，这里始终调用 CleanAfterSrcRepositioned
@@ -510,13 +513,27 @@ void ScalingWindow::Render() noexcept {
 
 bool ScalingWindow::_PrepareFrontendRender() noexcept {
 	FrameTrace::Scope tracePrepare(FrameTrace::Event::FrontendPrepare);
+	if (HasPendingSourceTransition()) return false;
 	bool isSrcRepositioning = false;
 	bool srcFocusedChanged = false;
 	if (!_UpdateSrcState(isSrcRepositioning, srcFocusedChanged)) {
-		Logger::Get().Info("源窗口状态改变");
+		RECT current{};
+		const HWND source = _srcTracker.Handle();
+		const bool rectValid = GetWindowRect(source, &current);
+		Logger::Get().Info(fmt::format(
+			"Source transition requested: reason={} reposition={} foreground={:#x} inputHost={:#x} "
+			"editing={} focusSettling={} visible={} iconic={} rectValid={} "
+			"before=({},{},{},{}) current=({},{},{},{})",
+			_sourceStateChangeReason, isSrcRepositioning, uintptr_t(GetForegroundWindow()),
+			uintptr_t(_renderer->ParameterInputHandle()), _renderer->IsEditingParameters(),
+			_renderer->IsParameterFocusSettling(), IsWindowVisible(source), IsIconic(source), rectValid,
+			_sourceRectBeforeCheck.left, _sourceRectBeforeCheck.top,
+			_sourceRectBeforeCheck.right, _sourceRectBeforeCheck.bottom,
+			current.left, current.top, current.right, current.bottom));
 		_DelayedStop(false, isSrcRepositioning);
 		return false;
 	}
+	if (_sourceStateCheckDeferred) return false;
 
 	if (srcFocusedChanged) {
 		_renderer->OnSourceFocusChanged();
@@ -568,13 +585,14 @@ bool ScalingWindow::RenderNextDLSSFGFrame() noexcept {
 		return false;
 	}
 	if (!_PrepareFrontendRender()) {
-		_dlssFgFrameJobs.clear();
+		// Keep jobs and their slot ownership until the outer loop commits the
+		// transition. Input release may still be pending, or focus may settle.
 		return false;
 	}
 
-	const DLSSFGFrameJob job = _dlssFgFrameJobs.front();
+	DLSSFGFrameJob& job = _dlssFgFrameJobs.front();
 	const DLSSFGFrameRenderResult result = _renderer->RenderDLSSFGFrame(
-		job.sharedTextureSlot, job.sharedTextureGeneration);
+		job.sharedTextureSlot, job.sharedTextureGeneration, job.timing);
 	if (result == DLSSFGFrameRenderResult::Retry) {
 		return false;
 	}
@@ -767,6 +785,8 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 		if (_isDestroying) return 0;
 		_isDestroying = true;
 		_stopRequested = false;
+		_pendingSourceTransition = 0;
+		_sourceStateCheckDeferred = false;
 		if (_cursorManager) _cursorManager->BeginShutdown();
 		if (_renderer) _renderer->ReleaseParameterInput();
 		if (_renderer) _renderer->BeginShutdown();
@@ -1699,6 +1719,8 @@ bool ScalingWindow::_UpdateSrcState(
 	bool& isSrcRepositioning,
 	bool& srcFocusedChanged
 ) noexcept {
+	_sourceStateCheckDeferred = false;
+	_sourceRectBeforeCheck = _srcTracker.WindowRect();
 	HWND hwndFore = GetForegroundWindow();
 	if (_renderer) _renderer->UpdateParameterInputHost();
 	hwndFore = GetForegroundWindow();
@@ -1713,7 +1735,19 @@ bool ScalingWindow::_UpdateSrcState(
 
 	// 在 3D 游戏模式下需检测前台窗口变化
 	if (_options.Is3DGameMode() && !_CheckForegroundFor3DGameMode(hwndFore)) {
+		_sourceStateChangeReason = "foreground rejected by 3D policy";
 		return false;
+	}
+	// Activating/deactivating the parameter host may temporarily change the
+	// source's placement. Do not mutate the tracker's baseline until this
+	// bounded handoff has settled; a real source destruction is never delayed.
+	if (_renderer && _renderer->IsParameterFocusSettling() && IsWindow(_srcTracker.Handle())) {
+		RECT current{};
+		if (!IsWindowVisible(_srcTracker.Handle()) || IsIconic(_srcTracker.Handle()) ||
+			(GetWindowRect(_srcTracker.Handle(), &current) && current != _sourceRectBeforeCheck)) {
+			_sourceStateCheckDeferred = true;
+			return true;
+		}
 	}
 
 	bool isSrcInvisibleOrMinimized = false;
@@ -1722,10 +1756,13 @@ bool ScalingWindow::_UpdateSrcState(
 	bool srcMovingChanged = false;
 	if (!_srcTracker.UpdateState(hwndFore, _options.IsWindowedMode(), _isResizingOrMoving,
 		isSrcInvisibleOrMinimized, srcFocusedChanged, srcRectChanged, srcSizeChanged, srcMovingChanged)) {
+		_sourceStateChangeReason = "source tracker rejected window";
 		return false;
 	}
 
 	if (isSrcInvisibleOrMinimized || srcSizeChanged || (!_options.IsWindowedMode() && srcRectChanged)) {
+		_sourceStateChangeReason = isSrcInvisibleOrMinimized ? "source hidden or minimized" :
+			srcSizeChanged ? "source size changed" : "fullscreen source moved";
 		// 不要立刻设置 _isSrcSizing，销毁窗口是异步的
 		isSrcRepositioning = true;
 
@@ -1781,7 +1818,8 @@ bool ScalingWindow::_UpdateSrcState(
 
 // 返回真表示应继续缩放
 bool ScalingWindow::_CheckForegroundFor3DGameMode(HWND hwndFore) const noexcept {
-	if (!hwndFore || hwndFore == _srcTracker.Handle() || IsParameterInputWindow(hwndFore)) {
+	if (!hwndFore || hwndFore == _srcTracker.Handle() || IsParameterInputWindow(hwndFore) ||
+		(hwndFore == Handle() && _renderer && _renderer->IsParameterFocusSettling())) {
 		return true;
 	}
 
@@ -2569,6 +2607,9 @@ void ScalingWindow::_UpdateWindowRectFromWindowPos(const WINDOWPOS& windowPos) n
 }
 
 void ScalingWindow::_DelayedStop(bool onSrcHung, bool onSrcRepositioning) const noexcept {
+	const uint8_t requested = onSrcRepositioning ? 1 : 2;
+	if (_pendingSourceTransition >= requested) return;
+	_pendingSourceTransition = requested;
 	if (!onSrcHung) {
 		const HWND hwndSrc = _srcTracker.Handle();
 		if (IsTopmostWindow(Handle()) && !(IsWindow(hwndSrc) && Win32Helper::IsWindowHung(hwndSrc))) {
@@ -2578,21 +2619,21 @@ void ScalingWindow::_DelayedStop(bool onSrcHung, bool onSrcRepositioning) const 
 		}
 	}
 
-	// 延迟销毁可以避免中间状态
-	_dispatcher.TryEnqueue([runId(RunId()), onSrcRepositioning]() {
-		if (runId == RunId()) {
-			if (onSrcRepositioning) {
-				if (ScalingWindow::Get().HasHeldParameterInput()) return;
-				if (auto renderer = ScalingWindow::Get().TryGetRenderer()) {
-					ScalingWindow::Get()._repositionOverlayState = renderer->CaptureOverlayState();
-				}
-				ScalingWindow::Get()._isSrcRepositioning = true;
-				ScalingWindow::Get().Destroy();
-			} else {
-				ScalingWindow::Get().Stop();
-			}
-		}
-	});
+	// The outer loop owns teardown. Keep the request while a parameter press
+	// is held instead of repeatedly enqueueing callbacks which abandon it.
+}
+
+bool ScalingWindow::ProcessPendingSourceTransition() noexcept {
+	if (!HasPendingSourceTransition() || HasHeldParameterInput()) return false;
+	const uint8_t transition = std::exchange(_pendingSourceTransition, uint8_t{});
+	if (transition == 1) {
+		if (_renderer) _repositionOverlayState = _renderer->CaptureOverlayState();
+		_isSrcRepositioning = true;
+		Destroy();
+	} else {
+		Stop();
+	}
+	return true;
 }
 
 }

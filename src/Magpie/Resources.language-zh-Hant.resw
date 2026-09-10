@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -1539,7 +1539,7 @@
   <data name="FrameSync_Mode_Async.Content" xml:space="preserve"><value>Async</value></data>
   <data name="FrameSync_Mode_Reflex.Content" xml:space="preserve"><value>NVIDIA Reflex</value></data>
   <data name="Home_FrameSync_Mode.Header" xml:space="preserve"><value>同步模式</value></data>
-  <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge 穩定提交；Async 嚴格間隔；Reflex 驅動限幀。</value></data>
+  <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge：穩定提交；Async：擷取前間隔；Reflex：驅動程式限幀（DLSS FG 使用 Async 並獨立請求低延遲）。</value></data>
   <data name="Overlay_FrameSync_Enable" xml:space="preserve"><value>啟用幀同步</value></data>
   <data name="Overlay_FrameSync_ActiveOff" xml:space="preserve"><value>目前：幀同步關閉。設定與效果器的既有上限仍生效。</value></data>
   <data name="Overlay_FrameSync_ActiveFrontEdge" xml:space="preserve"><value>目前：Front Edge Sync。</value></data>
@@ -1547,8 +1547,8 @@
   <data name="Overlay_FrameSync_ActiveReflex" xml:space="preserve"><value>目前：Reflex 驅動程式限幀，低延遲開啟，Boost 關閉。</value></data>
   <data name="Overlay_FrameSync_ActiveXeLL" xml:space="preserve"><value>目前：XeLL 接管 XeSS 補幀的限幀與低延遲，使用統一目標。</value></data>
   <data name="Overlay_FrameSync_ReflexFallback" xml:space="preserve"><value>Reflex 暫時無法使用，已使用 Async 保持相同目標。請讓效果與顯示使用同一 NVIDIA 顯示卡，允許 DirectFlip，更新驅動程式後重新啟用縮放以重試。</value></data>
-  <data name="Overlay_FrameSync_DlssReflexDeferred" xml:space="preserve"><value>目前：DLSS FG 使用 Front Edge 節奏。FG 的 Reflex 驅動程式限幀待驗證，低延遲狀態獨立保留。</value></data>
-  <data name="Overlay_FrameSync_DlssLowLatencyOn" xml:space="preserve"><value>Reflex 低延遲：開啟；Boost：關閉。幀率跟隨幀同步設定。</value></data>
+  <data name="Overlay_FrameSync_DlssReflexDeferred" xml:space="preserve"><value>目前：DLSS FG 在擷取前使用 Async 基礎限幀。Reflex 低延遲獨立請求，額外驅動程式限幀間隔為 0。</value></data>
+  <data name="Overlay_FrameSync_DlssLowLatencyOn" xml:space="preserve"><value>Reflex 已請求開啟、Boost 關閉；驅動程式回報低延遲開啟。基礎 FPS 由影格同步控制。</value></data>
   <data name="Overlay_FrameSync_DlssLowLatencyUnavailable" xml:space="preserve"><value>Reflex 低延遲暫時無法使用。請使用支援的 NVIDIA DXGI 呈現路徑並重新啟用縮放。FG 保留目前輸出節奏。</value></data>
   <data name="Overlay_FrameSync_Unsupported" xml:space="preserve"><value>此呈現路徑不支援 Front Edge Sync。請選擇 Async 並重新啟用縮放，以啟用輸入限幀。</value></data>
   <data name="Overlay_FrameSync_ReflexPaused" xml:space="preserve"><value>視窗調整期間暫用 Async；恢復 DXGI 呈現後自動恢復 Reflex。</value></data>
@@ -1618,4 +1618,10 @@
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>預覽</value></data>
   <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Ctrl+點擊滑桿輸入數值。Esc：編輯→預覽→關閉；點擊預覽面板繼續編輯。面板開關快捷鍵：</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>請點擊遊戲視窗恢復控制</value></data>
+  <data name="Overlay_FrameSync_ReflexDriverOff" xml:space="preserve"><value>Reflex 已請求開啟，但驅動程式回報關閉。Async 保持基礎目標，驅動程式限幀已清除。</value></data>
+  <data name="Overlay_Reflex_DriverOff" xml:space="preserve"><value>Reflex 已請求開啟、Boost 關閉；驅動程式回報低延遲關閉。驅動程式或控制台原則可能與請求不同。</value></data>
+  <data name="Overlay_Reflex_Paused" xml:space="preserve"><value>DXGI 呈現暫不可用，Reflex 請求已暫停。</value></data>
+  <data name="Overlay_Reflex_Faulted" xml:space="preserve"><value>本次工作階段 Reflex 呼叫失敗，低延遲未生效；重新啟動縮放可重試。</value></data>
+  <data name="Overlay_Reflex_Stopped" xml:space="preserve"><value>本次工作階段 Reflex 已停止。</value></data>
+  <data name="Overlay_FrameSync_DlssOutput" xml:space="preserve"><value>FG 輸出：生成影格之後呈現真實影格，使用獨立輸出節奏與有界容量。</value></data>
 </root>

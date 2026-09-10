@@ -111,7 +111,7 @@ int main() {
     renderer._UpdateFrameRateLimits();
     assert(renderer._appliedFrameSyncBackend==FrameSyncBackend::Async && renderer._stepTimer.limit==60);
     assert(renderer._reflexFallbackNotified);
-    // DLSS keeps a zero Reflex target. Its failed FG fallback must still cap.
+    // DLSS compatibility path retains Front Edge. Its failed FG fallback must still cap.
     Renderer dlss;
     dlss._frameSyncUsesSharedSlot=false;
     dlss._runtimeEffectOptions={{"DLSSFG",{}}};
@@ -119,6 +119,14 @@ int main() {
     dlss._dlssFrameGenerator=std::make_unique<FG>();
     dlss._UpdateFrameRateLimits();
     assert(!dlss._stepTimer.limit && dlss._reflex.interval==0);
+    for (unsigned multiplier=2;multiplier<=4;++multiplier) {
+        dlss._configuredFrameGenerationMultiplier=multiplier;
+        dlss._frameSyncBackend=ResolveFrameSyncBackend({true,80,FrameSyncMode::Reflex},true,false,true,false);
+        dlss._UpdateFrameRateLimits();
+        assert(dlss._stepTimer.limit==60 && dlss._stepTimer.strict && dlss._reflex.interval==0);
+    }
+    dlss._configuredFrameGenerationMultiplier=2;
+    dlss._frameSyncBackend=FrameSyncBackend::FrontEdge;
     dlss._dlssFrameGenerator.reset();
     dlss._UpdateFrameRateLimits();
     assert(dlss._stepTimer.limit==60 && dlss._reflex.interval==0);

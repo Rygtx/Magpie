@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -1572,7 +1572,7 @@
   <data name="FrameSync_Mode_Async.Content" xml:space="preserve"><value>Async</value></data>
   <data name="FrameSync_Mode_Reflex.Content" xml:space="preserve"><value>NVIDIA Reflex</value></data>
   <data name="Home_FrameSync_Mode.Header" xml:space="preserve"><value>Pacing mode</value></data>
-  <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge: steady submissions; Async: strict intervals; Reflex: driver pacing.</value></data>
+  <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge: steady submissions; Async: capture intervals; Reflex: driver pacing (DLSS FG uses Async plus a low-latency request).</value></data>
   <data name="Overlay_FrameSync_Enable" xml:space="preserve"><value>Enable frame synchronization</value></data>
   <data name="Overlay_FrameSync_ActiveOff" xml:space="preserve"><value>Current: frame synchronization off. Existing profile and effect limits still apply.</value></data>
   <data name="Overlay_FrameSync_ActiveFrontEdge" xml:space="preserve"><value>Current: Front Edge Sync.</value></data>
@@ -1580,8 +1580,8 @@
   <data name="Overlay_FrameSync_ActiveReflex" xml:space="preserve"><value>Current: Reflex driver pacing; low latency On, Boost Off.</value></data>
   <data name="Overlay_FrameSync_ActiveXeLL" xml:space="preserve"><value>Current: XeLL controls XeSS FG pacing and low latency using the shared target.</value></data>
   <data name="Overlay_FrameSync_ReflexFallback" xml:space="preserve"><value>Reflex is unavailable; Async keeps the same target. Use the same NVIDIA GPU for effects and display, allow DirectFlip, update the driver and restart scaling to retry.</value></data>
-  <data name="Overlay_FrameSync_DlssReflexDeferred" xml:space="preserve"><value>Current: DLSS FG uses Front Edge pacing. Reflex driver limiting for FG is pending validation; the low-latency setting is separate.</value></data>
-  <data name="Overlay_FrameSync_DlssLowLatencyOn" xml:space="preserve"><value>Reflex low latency: On; Boost: Off. FPS follows frame synchronization.</value></data>
+  <data name="Overlay_FrameSync_DlssReflexDeferred" xml:space="preserve"><value>Current: DLSS FG uses Async base pacing before capture. Reflex low latency is requested separately; its extra driver frame limit is zero.</value></data>
+  <data name="Overlay_FrameSync_DlssLowLatencyOn" xml:space="preserve"><value>Reflex requested On, Boost Off; driver reports low latency On. Base FPS follows frame synchronization.</value></data>
   <data name="Overlay_FrameSync_DlssLowLatencyUnavailable" xml:space="preserve"><value>Reflex low latency is unavailable. Use a supported NVIDIA DXGI path and restart scaling to retry. FG retains its current output pacing.</value></data>
   <data name="Overlay_FrameSync_Unsupported" xml:space="preserve"><value>This presentation path does not support Front Edge Sync. Select Async and restart scaling to enable input pacing.</value></data>
   <data name="Overlay_FrameSync_ReflexPaused" xml:space="preserve"><value>Temporarily using Async while the window changes. Reflex resumes automatically when DXGI presentation returns.</value></data>
@@ -1651,4 +1651,10 @@
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>Preview</value></data>
   <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Ctrl+click a slider to enter its value. Esc: Edit → Preview → Closed. Click the preview panel to edit. Open / close shortcut:</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>Click the game window to restore control</value></data>
+  <data name="Overlay_FrameSync_ReflexDriverOff" xml:space="preserve"><value>Reflex requested On, but the driver reports Off. Async keeps the base target; the driver frame limit has been cleared.</value></data>
+  <data name="Overlay_Reflex_DriverOff" xml:space="preserve"><value>Reflex requested On, Boost Off; driver reports Off. Driver or control-panel policy may differ from the request.</value></data>
+  <data name="Overlay_Reflex_Paused" xml:space="preserve"><value>Reflex request is paused while DXGI presentation is unavailable.</value></data>
+  <data name="Overlay_Reflex_Faulted" xml:space="preserve"><value>Reflex call failed for this session. Low latency is inactive; restart scaling to retry.</value></data>
+  <data name="Overlay_Reflex_Stopped" xml:space="preserve"><value>Reflex has stopped for this session.</value></data>
+  <data name="Overlay_FrameSync_DlssOutput" xml:space="preserve"><value>FG output: generated frames followed by the real frame, with separate output scheduling and bounded capacity.</value></data>
 </root>

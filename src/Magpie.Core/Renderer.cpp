@@ -271,6 +271,7 @@ void Renderer::BeginShutdown() noexcept {
 	// the frontend thread is destroying this Renderer. Stop issuing new
 	// synchronous sends before waiting for the backend thread to exit.
 	_synchronousFramePresentationEnabled.store(false, std::memory_order_release);
+	if (_frameSyncConsumedEvent) SetEvent(_frameSyncConsumedEvent.get());
 }
 
 Renderer::~Renderer() noexcept {
@@ -482,7 +483,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 		frameGeneration.first == FrameGenerationEffectKind::DLSS, _isXeSSFrameGenerationActive,
 		frontEdgeSupported, pacingOptions.IsBenchmarkMode());
 	_frameSyncEnabled = _frameSyncBackend != FrameSyncBackend::None;
-	if (_frameSyncEnabled) {
+	if (_frameSyncEnabled || frameGeneration.first == FrameGenerationEffectKind::DLSS) {
 		_frameSyncConsumedEvent.reset(CreateEventW(nullptr, FALSE, FALSE, nullptr));
 		if (!_frameSyncConsumedEvent) {
 			Logger::Get().Win32Error("Create frame pacing event failed");
@@ -998,6 +999,7 @@ bool Renderer::_FrontendRender(
 	if (!traceBegan) {
 		if (timings) {
 			timings->beginFrame = std::chrono::steady_clock::now() - beginFrameStart;
+			timings->capacityBusy = _presenter->WasFrameCapacityBusy();
 		}
 		return false;
 	}
@@ -1289,13 +1291,26 @@ const wchar_t* Renderer::FrameSyncStatusResource() const noexcept {
 	switch (ActiveFrameSyncBackend()) {
 	case FrameSyncBackend::None: return ScalingWindow::Get().Options().isFrontEdgeSyncEnabled &&
 		!ScalingWindow::Get().Options().IsBenchmarkMode() ? L"Overlay_FrameSync_Unsupported" : L"Overlay_FrameSync_ActiveOff";
-	case FrameSyncBackend::Async: return _frameSyncBackend == FrameSyncBackend::Reflex
-		? (_reflex.CanResume() ? L"Overlay_FrameSync_ReflexPaused" : L"Overlay_FrameSync_ReflexFallback")
-		: L"Overlay_FrameSync_ActiveAsync";
+	case FrameSyncBackend::Async:
+		if (_frameSyncBackend == FrameSyncBackend::Reflex)
+			return _reflex.State() == ReflexState::DriverOff ? L"Overlay_FrameSync_ReflexDriverOff" :
+				(_reflex.State() == ReflexState::Paused ? L"Overlay_FrameSync_ReflexPaused" : L"Overlay_FrameSync_ReflexFallback");
+		return _hasFrameGeneration && ScalingWindow::Get().Options().frameSyncMode == FrameSyncMode::Reflex
+			? L"Overlay_FrameSync_DlssReflexDeferred" : L"Overlay_FrameSync_ActiveAsync";
 	case FrameSyncBackend::Reflex: return L"Overlay_FrameSync_ActiveReflex";
 	case FrameSyncBackend::XeLL: return L"Overlay_FrameSync_ActiveXeLL";
-	default: return ScalingWindow::Get().Options().frameSyncMode == FrameSyncMode::Reflex
-		? L"Overlay_FrameSync_DlssReflexDeferred" : L"Overlay_FrameSync_ActiveFrontEdge";
+	default: return L"Overlay_FrameSync_ActiveFrontEdge";
+	}
+}
+
+const wchar_t* Renderer::ReflexStatusResource() const noexcept {
+	switch (_reflex.State()) {
+	case ReflexState::Active: return L"Overlay_FrameSync_DlssLowLatencyOn";
+	case ReflexState::DriverOff: return L"Overlay_Reflex_DriverOff";
+	case ReflexState::Paused: return L"Overlay_Reflex_Paused";
+	case ReflexState::Faulted: return L"Overlay_Reflex_Faulted";
+	case ReflexState::Stopped: return L"Overlay_Reflex_Stopped";
+	default: return L"Overlay_FrameSync_DlssLowLatencyUnavailable";
 	}
 }
 
@@ -1322,8 +1337,8 @@ void Renderer::WaitForFrontendWork(std::chrono::nanoseconds maximumWait) noexcep
 
 void Renderer::_RecordDLSSFGFrontendTimings(
 	bool usesFrameLatencyWaitableObject,
-	std::chrono::nanoseconds pacingWait,
-	const FrontendRenderTimings& timings
+	const PresentationJobTiming& timings,
+	bool dropped
 ) noexcept {
 	if (!_dlssFgFrontendTimingModeInitialized ||
 		_dlssFgFrontendTimingUsesWaitableObject != usesFrameLatencyWaitableObject) {
@@ -1331,6 +1346,9 @@ void Renderer::_RecordDLSSFGFrontendTimings(
 		_dlssFgFrontendTimingUsesWaitableObject = usesFrameLatencyWaitableObject;
 		_dlssFgFrontendTimingFrames = 0;
 		_dlssFgFrontendPacingWait = {};
+		_dlssFgFrontendCapacityWait = _dlssFgFrontendResourceWait = {};
+		_dlssFgFrontendCpu = _dlssFgFrontendQueueAge = {};
+		_dlssFgFrontendDropped = 0;
 		_dlssFgFrontendBeginFrame = {};
 		_dlssFgFrontendDraw = {};
 		_dlssFgFrontendEndFrame = {};
@@ -1339,7 +1357,12 @@ void Renderer::_RecordDLSSFGFrontendTimings(
 	}
 
 	++_dlssFgFrontendTimingFrames;
-	_dlssFgFrontendPacingWait += pacingWait;
+	_dlssFgFrontendPacingWait += timings.deadline;
+	_dlssFgFrontendCapacityWait += timings.capacity;
+	_dlssFgFrontendResourceWait += timings.resource;
+	_dlssFgFrontendCpu += timings.cpu;
+	_dlssFgFrontendQueueAge += std::chrono::steady_clock::now() - timings.enqueued;
+	_dlssFgFrontendDropped += dropped ? 1 : 0;
 	_dlssFgFrontendBeginFrame += timings.beginFrame;
 	_dlssFgFrontendDraw += timings.draw;
 	_dlssFgFrontendEndFrame += timings.endFrame;
@@ -1358,12 +1381,18 @@ void Renderer::_RecordDLSSFGFrontendTimings(
 	const double averageRingWaitMilliseconds = ringWaitSamples ?
 		double(ringWaitNanoseconds) / 1'000'000.0 / ringWaitSamples : 0.0;
 	Logger::Get().Info(fmt::format(
-		"DLSSFG frontend timing: mode={} frames={} paceWait={:.3f} ms "
+		"DLSSFG frontend timing: mode={} completed={} dropped={} paceWait={:.3f} ms "
+		"capacityRetry={:.3f} ms resourceRetry={:.3f} ms cpuWall={:.3f} ms fifoAge={:.3f} ms "
 		"beginFrame={:.3f} ms draw={:.3f} ms endFrame={:.3f} ms "
 		"ringWait={:.3f} ms",
 		usesFrameLatencyWaitableObject ? "deadline+DXGI" : "DWM",
 		_dlssFgFrontendTimingFrames,
+		_dlssFgFrontendDropped,
 		averageMilliseconds(_dlssFgFrontendPacingWait),
+		averageMilliseconds(_dlssFgFrontendCapacityWait),
+		averageMilliseconds(_dlssFgFrontendResourceWait),
+		averageMilliseconds(_dlssFgFrontendCpu),
+		averageMilliseconds(_dlssFgFrontendQueueAge),
 		averageMilliseconds(_dlssFgFrontendBeginFrame),
 		averageMilliseconds(_dlssFgFrontendDraw),
 		averageMilliseconds(_dlssFgFrontendEndFrame),
@@ -1371,6 +1400,9 @@ void Renderer::_RecordDLSSFGFrontendTimings(
 
 	_dlssFgFrontendTimingFrames = 0;
 	_dlssFgFrontendPacingWait = {};
+	_dlssFgFrontendCapacityWait = _dlssFgFrontendResourceWait = {};
+	_dlssFgFrontendCpu = _dlssFgFrontendQueueAge = {};
+	_dlssFgFrontendDropped = 0;
 	_dlssFgFrontendBeginFrame = {};
 	_dlssFgFrontendDraw = {};
 	_dlssFgFrontendEndFrame = {};
@@ -1378,13 +1410,38 @@ void Renderer::_RecordDLSSFGFrontendTimings(
 
 DLSSFGFrameRenderResult Renderer::RenderDLSSFGFrame(
 	uint32_t sharedTextureSlot,
-	uint32_t sharedTextureGeneration
+	uint32_t sharedTextureGeneration,
+	PresentationJobTiming& jobTiming
 ) noexcept {
+	const auto attemptStart = std::chrono::steady_clock::now();
+	_frontendPacingDeadline.reset();
+	jobTiming.Resume(attemptStart);
+	++jobTiming.attempts;
+	bool retry = false;
+	bool dropped = true;
+	const uint64_t traceFrameId = FrameTrace::Enabled() && sharedTextureSlot < _sharedTextureSlotCount &&
+		sharedTextureGeneration == _sharedTextureGeneration.load(std::memory_order_acquire)
+		? _sharedTextureFrameIds[sharedTextureSlot].load(std::memory_order_acquire) : 0;
+	auto waitReason = PresentationJobTiming::Wait::Resource;
+	const auto finishAttempt = wil::scope_exit([&] {
+		const auto now = std::chrono::steady_clock::now();
+		jobTiming.cpu += now - attemptStart;
+		if (retry) jobTiming.Retry(waitReason, now);
+		else {
+			_RecordDLSSFGFrontendTimings(_presenter->UsesFrameLatencyWaitableObject(), jobTiming, dropped);
+			if (FrameTrace::Enabled()) {
+				const auto tick = FrameTrace::Tick();
+				FrameTrace::Record(FrameTrace::Event::FgDequeued, tick, tick, traceFrameId,
+					sharedTextureSlot, sharedTextureGeneration);
+			}
+		}
+	});
 	auto consumePendingFrame = [this]() noexcept {
 		uint32_t pending = _pendingDLSSFGFrontendFrames.load(std::memory_order_acquire);
 		while (pending > 0 && !_pendingDLSSFGFrontendFrames.compare_exchange_weak(
 			pending, pending - 1, std::memory_order_acq_rel)) {
 		}
+		if (_frameSyncConsumedEvent) SetEvent(_frameSyncConsumedEvent.get());
 	};
 	if (sharedTextureGeneration != _sharedTextureGeneration.load(std::memory_order_acquire)) {
 		// An old notification must never release a slot or decrement a count
@@ -1403,8 +1460,6 @@ DLSSFGFrameRenderResult Renderer::RenderDLSSFGFrame(
 		return DLSSFGFrameRenderResult::Dropped;
 	}
 
-	const bool usesFrameLatencyWaitableObject =
-		_presenter->UsesFrameLatencyWaitableObject();
 	const auto pacingStart = std::chrono::steady_clock::now();
 	const std::chrono::nanoseconds presentInterval(
 		_sharedPresentIntervalNs[sharedTextureSlot].load(std::memory_order_acquire));
@@ -1412,14 +1467,19 @@ DLSSFGFrameRenderResult Renderer::RenderDLSSFGFrame(
 	if (presentInterval.count() > 0 && pacingStart < targetTime) {
 		// The scheduler will wake on either input or the next short deadline. Do
 		// not sleep in a FIFO job and make already queued input wait behind it.
+		retry = true;
+		waitReason = PresentationJobTiming::Wait::Deadline;
+		_frontendPacingDeadline = targetTime;
 		return DLSSFGFrameRenderResult::Retry;
 	}
-	const auto pacingEnd = pacingStart;
 
 	FrontendRenderTimings timings;
 	bool droppedFrame = false;
 	const bool presented = _FrontendRender(
 		false, sharedTextureSlot, &timings, false, &droppedFrame);
+	jobTiming.beginFrame += timings.beginFrame;
+	jobTiming.draw += timings.draw;
+	jobTiming.endFrame += timings.endFrame;
 	if (droppedFrame) {
 		consumePendingFrame();
 		if (_sharedTextureAvailableEvents[sharedTextureSlot]) {
@@ -1428,6 +1488,8 @@ DLSSFGFrameRenderResult Renderer::RenderDLSSFGFrame(
 		return DLSSFGFrameRenderResult::Dropped;
 	}
 	if (!presented) {
+		retry = true;
+		waitReason = timings.capacityBusy ? PresentationJobTiming::Wait::Capacity : PresentationJobTiming::Wait::Resource;
 		return DLSSFGFrameRenderResult::Retry;
 	}
 	const auto presentEnd = std::chrono::steady_clock::now();
@@ -1436,8 +1498,7 @@ DLSSFGFrameRenderResult Renderer::RenderDLSSFGFrame(
 	if (_sharedTextureAvailableEvents[sharedTextureSlot]) {
 		SetEvent(_sharedTextureAvailableEvents[sharedTextureSlot].get());
 	}
-	_RecordDLSSFGFrontendTimings(
-		usesFrameLatencyWaitableObject, pacingEnd - pacingStart, timings);
+	dropped = false;
 	return DLSSFGFrameRenderResult::Presented;
 }
 
@@ -2809,7 +2870,16 @@ void Renderer::_BackendThreadProc() noexcept {
 		if (ActiveFrameSyncBackend() != _appliedFrameSyncBackend) _UpdateFrameRateLimits();
 		bool waitedForContent = false;
 		FrameTrace::Scope traceWait(FrameTrace::Event::BackendWait);
-		if (_pendingFrameGenerationInput) {
+		if (_IsDLSSFGQueueFull()) {
+			// Apply existing output backpressure before accepting/processing the
+			// next base image. Slot events still own the eventual publication.
+			waitedForContent = true;
+			const auto waitStart = std::chrono::steady_clock::now();
+			FrameTrace::Scope tracePressure(FrameTrace::Event::InputBackpressure);
+			HANDLE consumed = _frameSyncConsumedEvent.get();
+			MsgWaitForMultipleObjectsEx(1, &consumed, 50, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+			_captureCadenceQueueWait += std::chrono::steady_clock::now() - waitStart;
+		} else if (_pendingFrameGenerationInput) {
 			_fgInputClock.SetInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(
 				std::chrono::duration<double>(1.0 / _FrameSyncFrameRate())));
 			const auto now = std::chrono::steady_clock::now();
@@ -3776,6 +3846,7 @@ bool Renderer::_PublishBackendTexture(
 
 	if (queuedPresentation) {
 		_pendingDLSSFGFrontendFrames.fetch_add(1, std::memory_order_release);
+		const auto enqueueTick = FrameTrace::Enabled() ? FrameTrace::Tick() : 0;
 		if (!PostMessage(
 			ScalingWindow::Get().Handle(),
 			CommonSharedConstants::WM_FRONTEND_RENDER_DLSSFG,
@@ -3799,6 +3870,9 @@ bool Renderer::_PublishBackendTexture(
 			return false;
 		}
 		slotReserved = false;
+		if (FrameTrace::Enabled()) FrameTrace::Record(FrameTrace::Event::FgQueued,
+			enqueueTick, enqueueTick, _capturedFrameId, sharedTextureSlot,
+			_sharedTextureGeneration.load(std::memory_order_acquire));
 		++_dlssFgPresentedFrameCount;
 		if (generatedFrame) {
 			++_dlssFgGeneratedPublishSuccess;

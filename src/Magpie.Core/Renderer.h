@@ -48,7 +48,8 @@ public:
 	PresentationRateSnapshot PresentationRate() const noexcept { return _presentationRate.Get(); }
 	DLSSFGFrameRenderResult RenderDLSSFGFrame(
 		uint32_t sharedTextureSlot,
-		uint32_t sharedTextureGeneration
+		uint32_t sharedTextureGeneration,
+		PresentationJobTiming& jobTiming
 	) noexcept;
 	bool HasPendingOverlayInput() const noexcept;
 	bool HasUrgentOverlayInput() const noexcept;
@@ -71,6 +72,7 @@ public:
 	bool IsEditingParameters() const noexcept { return _overlayDrawer.IsEditingParameters(); }
 	bool IsParameterPreviewAt(POINT point) const noexcept { return _overlayDrawer.IsParameterPreviewAt(point); }
 	HWND ParameterInputHandle() const noexcept { return _overlayDrawer.ParameterInputHandle(); }
+	bool IsParameterFocusSettling() const noexcept { return _overlayDrawer.IsParameterFocusSettling(); }
 	void SuspendParameterInput() noexcept { _overlayDrawer.SuspendParameterInput(); }
 	void ReleaseParameterInput() noexcept { _overlayDrawer.ReleaseParameterInput(); }
 	bool HasHeldParameterInput() const noexcept { return _overlayDrawer.HasHeldParameterInput(); }
@@ -109,6 +111,7 @@ public:
 	}
 	const wchar_t* FrameSyncStatusResource() const noexcept;
 	bool IsReflexActive() const noexcept { return _reflex.Available(); }
+	const wchar_t* ReflexStatusResource() const noexcept;
 
 	const std::vector<const EffectDesc*>& ActiveEffectDescs() const noexcept {
 		return _activeEffectDescs;
@@ -193,6 +196,7 @@ private:
 		std::chrono::nanoseconds beginFrame{};
 		std::chrono::nanoseconds draw{};
 		std::chrono::nanoseconds endFrame{};
+		bool capacityBusy = false;
 	};
 
 	bool _FrontendRender(
@@ -211,11 +215,15 @@ private:
 		ID3D11RenderTargetView* rtv, POINT drawOffset) noexcept;
 	void _RecordDLSSFGFrontendTimings(
 		bool usesFrameLatencyWaitableObject,
-		std::chrono::nanoseconds pacingWait,
-		const FrontendRenderTimings& timings
+		const PresentationJobTiming& timings,
+		bool dropped
 	) noexcept;
 
 	void _BackendThreadProc() noexcept;
+	bool _IsDLSSFGQueueFull() const noexcept {
+		return _dlssFrameGenerator && _synchronousFramePresentationEnabled.load(std::memory_order_acquire) &&
+			_pendingDLSSFGFrontendFrames.load(std::memory_order_acquire) >= _sharedTextureSlotCount;
+	}
 
 	HANDLE _InitBackend() noexcept;
 
@@ -432,6 +440,9 @@ private:
 	bool _dlssFgFrontendTimingModeInitialized = false;
 	bool _dlssFgFrontendTimingUsesWaitableObject = false;
 	std::chrono::nanoseconds _dlssFgFrontendPacingWait{};
+	std::chrono::nanoseconds _dlssFgFrontendCapacityWait{}, _dlssFgFrontendResourceWait{};
+	std::chrono::nanoseconds _dlssFgFrontendCpu{}, _dlssFgFrontendQueueAge{};
+	uint32_t _dlssFgFrontendDropped = 0;
 	std::chrono::nanoseconds _dlssFgFrontendBeginFrame{};
 	std::chrono::nanoseconds _dlssFgFrontendDraw{};
 	std::chrono::nanoseconds _dlssFgFrontendEndFrame{};

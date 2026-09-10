@@ -58,6 +58,7 @@ bool OverlayDrawer::_BeginParameterInput() noexcept {
 	}
 	auto& scaling = ScalingWindow::Get();
 	_parameterPanelState = ParameterPanelState::Edit;
+	_parameterFocusSettlesAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
 	_pendingParameterPanelState = ParameterPanelState::Edit;
 	_parameterHeldButtons = 0;
 	_returnClickPending = _escapePending = _parameterResumeClickPending = false;
@@ -117,6 +118,7 @@ void OverlayDrawer::_EndParameterInput(bool returnFocus) noexcept {
 	_parameterInheritedKeys.fill(false);
 	_returnClickPending = _escapePending = _parameterResumeClickPending = false;
 	_parameterInputTransition = false;
+	_parameterFocusSettlesAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
 }
 
 void OverlayDrawer::_UpdateParameterPreviewHost() noexcept {

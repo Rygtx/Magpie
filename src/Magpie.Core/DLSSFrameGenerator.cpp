@@ -6,6 +6,7 @@
 #include "Logger.h"
 #include "NgxD3D12Core.h"
 #include "NativeBackendTiming.h"
+#include "FrameTrace.h"
 #include "ReflexController.h"
 
 #ifdef MP_ENABLE_DLSS_FRAME_GENERATION
@@ -57,6 +58,8 @@ struct DLSSFrameGenerator::Impl {
 	std::array<uint32_t, 4> diagnosticInterpolationReadbackFailure{};
 	uint32_t diagnosticGeneratedPublishSuccess = 0;
 	uint32_t diagnosticGeneratedPublishFailure = 0;
+	std::array<double, 4> generationFenceTotalMs{}, generationFenceMaxMs{};
+	std::array<uint32_t, 4> generationFenceSamples{};
 	DLSSFrameGenerationSettings settings{};
 	FrameGuidanceFrameId lastGuidanceResetFrameId =
 		std::numeric_limits<FrameGuidanceFrameId>::max();
@@ -869,7 +872,16 @@ bool DLSSFrameGenerator::Draw(
 		}
 		// The flag is part of the SDK output, not optional telemetry. Also wait
 		// on reset/disabled frames before reusing the allocator and output buffer.
+		FrameTrace::Scope traceGenerationFence(FrameTrace::Event::GenerationFence, frameIndex, outputReady);
+		const auto generationWaitStart = NativeBackendTiming::Now();
 		if (!WaitForFence(impl, outputReady)) return false;
+		traceGenerationFence.End();
+		if constexpr (NativeBackendTiming::Enabled) {
+			const double elapsed = NativeBackendTiming::ElapsedMilliseconds(generationWaitStart);
+			impl.generationFenceTotalMs[frameIndex] += elapsed;
+			impl.generationFenceMaxMs[frameIndex] = std::max(impl.generationFenceMaxMs[frameIndex], elapsed);
+			++impl.generationFenceSamples[frameIndex];
+		}
 		const auto disabled = ReadInterpolationDisabled(impl, frameIndex);
 		if (!disabled) return false;
 		if (!resetThisFrame && !*disabled) {
@@ -886,6 +898,15 @@ bool DLSSFrameGenerator::Draw(
 	if (guidanceReset) impl.lastGuidanceResetFrameId = frameId;
 	if constexpr (NativeBackendTiming::Enabled) {
 		if (++impl.diagnosticRealFrames >= 120) {
+			for (uint32_t index = 1; index < impl.multiplier; ++index) {
+				const auto samples = impl.generationFenceSamples[index];
+				Logger::Get().Info(fmt::format(
+					"DLSSFG generation fence CPU wait: index={} samples={} avgMs={:.3f} maxMs={:.3f}",
+					index, samples, samples ? impl.generationFenceTotalMs[index] / samples : 0.0,
+					impl.generationFenceMaxMs[index]));
+			}
+			impl.generationFenceTotalMs = impl.generationFenceMaxMs = {};
+			impl.generationFenceSamples = {};
 			Logger::Get().Info(fmt::format(
 				"DLSSFG 120-real-frame diagnostics: multiplier={}x "
 				"evaluate[index1={}/{} index2={}/{} index3={}/{}] "

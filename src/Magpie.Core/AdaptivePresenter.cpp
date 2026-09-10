@@ -144,6 +144,7 @@ bool AdaptivePresenter::BeginFrame(
 	winrt::com_ptr<ID3D11RenderTargetView>& frameRtv,
 	POINT& drawOffset
 ) noexcept {
+	_frameCapacityBusy = false;
 	if (_reflex) _reflex->SetPresentationAvailable(!_isDCompPresenting && !!_dxgiSwapChain);
 	if (_isDCompPresenting) {
 		HRESULT hr = _dcompSurface->BeginDraw(nullptr, IID_PPV_ARGS(&frameTex), &drawOffset);
@@ -164,6 +165,7 @@ bool AdaptivePresenter::BeginFrame(
 		{
 			const DWORD waitResult = _frameLatencyGate.TryAcquire(_frameLatencyWaitableObject.get());
 			if (waitResult == WAIT_TIMEOUT) {
+				_frameCapacityBusy = true;
 				FrameTrace::Mark(FrameTrace::Event::CapacityBusy);
 				return false;
 			} else if (waitResult == WAIT_FAILED) {

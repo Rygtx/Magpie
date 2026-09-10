@@ -1521,8 +1521,9 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		ImGui::SeparatorText(
 			std::string(GetEffectDisplayName(description)).c_str());
 		if (ClassifyFrameGenerationEffect(description.name) == FrameGenerationEffectKind::DLSS) {
-			ImGui::TextWrapped("%s", _GetResourceString(ScalingWindow::Get().Renderer().IsReflexActive()
-				? L"Overlay_FrameSync_DlssLowLatencyOn" : L"Overlay_FrameSync_DlssLowLatencyUnavailable").c_str());
+			ImGui::TextWrapped("%s", _GetResourceString(
+				ScalingWindow::Get().Renderer().ReflexStatusResource()).c_str());
+			ImGui::TextWrapped("%s", _GetResourceString(L"Overlay_FrameSync_DlssOutput").c_str());
 		}
 
 		std::string_view currentGroup;

@@ -54,9 +54,10 @@ inline FrameSyncBackend ResolveFrameSyncBackend(FrameSyncSettings settings,
 	if (!settings.enabled || benchmark) return FrameSyncBackend::None;
 	if (xessFG) return FrameSyncBackend::XeLL;
 	if (settings.mode == FrameSyncMode::Async) return FrameSyncBackend::Async;
-	if (settings.mode == FrameSyncMode::Reflex && !dlssFG) return FrameSyncBackend::Reflex;
-	// DLSS FG driver frame-limit units need separate validation. Keep its
-	// existing pacing, low-latency On and zero extra Reflex limit for now.
+	// DLSS FG uses one base limiter before capture. Reflex is a separate
+	// low-latency request with zero extra driver limit until FG units are tested.
+	if (settings.mode == FrameSyncMode::Reflex)
+		return dlssFG ? FrameSyncBackend::Async : FrameSyncBackend::Reflex;
 	return dlssFG || frontEdgeSupported ? FrameSyncBackend::FrontEdge : FrameSyncBackend::None;
 }
 

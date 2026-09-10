@@ -370,6 +370,16 @@ void ScalingRuntime::_ScalingThreadProc() noexcept {
 			_State(ScalingState::Idle);
 			continue;
 		}
+		if (scalingWindow.ProcessPendingSourceTransition()) {
+			_State(scalingWindow.IsSrcRepositioning() ? ScalingState::Starting : ScalingState::Idle);
+			continue;
+		}
+		if (scalingWindow.HasPendingSourceTransition()) {
+			// Service releases/cancellation while waiting for the input owner.
+			// Do not retry rendering or rely on an already-signalled DXGI gate.
+			MsgWaitForMultipleObjectsEx(0, nullptr, 8, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+			continue;
+		}
 		const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);
 		if (parameterRestartGeneration && *parameterRestartGeneration != generation) {
 			if (scalingWindow.IsWaitingForParameterRestart()) scalingWindow.Stop();
@@ -428,6 +438,10 @@ void ScalingRuntime::_ScalingThreadProc() noexcept {
 			// Rendering may have stopped the window. Do not dereference its
 			// Renderer or sleep on a deadline belonging to the old session.
 			if (!scalingWindow) continue;
+			if (scalingWindow.HasPendingSourceTransition() || scalingWindow.IsSourceStateCheckDeferred()) {
+				MsgWaitForMultipleObjectsEx(0, nullptr, 8, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+				continue;
+			}
 			rest = timeout - (steady_clock::now() - lastRenderTime);
 
 			// 值为 1000000
