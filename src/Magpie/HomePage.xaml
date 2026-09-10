@@ -302,6 +302,11 @@
 				              Severity="Warning" />
 			</local:SettingsGroup>
 			<local:SettingsGroup x:Uid="Home_Advanced">
+				<local:SettingsCard x:Uid="Home_Advanced_StopEffectsOnTaskSwitch" IsWrapEnabled="True">
+					<local:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE8B9;" /></local:SettingsCard.HeaderIcon>
+					<ToggleSwitch x:Uid="ToggleSwitch"
+					              IsOn="{x:Bind ViewModel.IsStopEffectsOnTaskSwitchEnabled, Mode=TwoWay}" />
+				</local:SettingsCard>
 				<local:SettingsCard x:Uid="Home_Advanced_AllowScalingMaximized">
 					<local:SettingsCard.HeaderIcon>
 						<FontIcon Glyph="&#xEECA;"

@@ -28,6 +28,16 @@ if (!$rapid) { throw 'Restore rapidjson before running setting tests.' }
 if ($LASTEXITCODE) { throw 'Compile parameter focus setting failed' }
 & "$output/parameter_focus_settings.exe"
 if ($LASTEXITCODE) { throw 'Parameter focus setting failed' }
+& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 "/I$($rapid.FullName)/p/include" "$output/task_switch_settings.cpp" "/Fe:$output/task_switch_settings.exe" "/Fo:$output/task_switch_settings.obj"
+if ($LASTEXITCODE) { throw 'Compile task-switch setting failed' }
+& "$output/task_switch_settings.exe"
+if ($LASTEXITCODE) { throw 'Task-switch setting failed' }
+& python (Join-Path $repo 'scripts/tests/test_task_switch_option.py') $output
+if ($LASTEXITCODE) { throw 'Extract task-switch routing failed' }
+& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 "$output/task_switch_option.cpp" "/Fe:$output/task_switch_option.exe" "/Fo:$output/task_switch_option.obj"
+if ($LASTEXITCODE) { throw 'Compile task-switch routing failed' }
+& "$output/task_switch_option.exe"
+if ($LASTEXITCODE) { throw 'Task-switch routing failed' }
 if ($NativePrototype) {
     # Creates two small test-owned windows, tests real input routing and restores
     # the previous cursor/focus. No game or Magpie configuration is modified.

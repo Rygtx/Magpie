@@ -497,6 +497,17 @@ bool HomeViewModel::IsParameterFocusSwitchingEnabled() const noexcept {
 	return AppSettings::Get().IsParameterFocusSwitchingEnabled();
 }
 
+bool HomeViewModel::IsStopEffectsOnTaskSwitchEnabled() const noexcept {
+	return AppSettings::Get().IsStopEffectsOnTaskSwitchEnabled();
+}
+
+void HomeViewModel::IsStopEffectsOnTaskSwitchEnabled(bool value) {
+	auto& settings = AppSettings::Get();
+	if (settings.IsStopEffectsOnTaskSwitchEnabled() == value) return;
+	settings.IsStopEffectsOnTaskSwitchEnabled(value);
+	RaisePropertyChanged(L"IsStopEffectsOnTaskSwitchEnabled");
+}
+
 void HomeViewModel::IsParameterFocusSwitchingEnabled(bool value) {
 	auto& settings = AppSettings::Get();
 	if (settings.IsParameterFocusSwitchingEnabled() == value) return;

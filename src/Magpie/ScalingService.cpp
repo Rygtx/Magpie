@@ -139,6 +139,7 @@ void ScalingService::CheckForeground() {
 }
 
 void ScalingService::OnTaskSwitch() {
+	if (!AppSettings::Get().IsStopEffectsOnTaskSwitchEnabled()) return;
 	if (!_scalingRuntime || !_scalingRuntime->StopForTaskSwitch()) return;
 	_isAutoScaleSuspended = true;
 	StopTimer();

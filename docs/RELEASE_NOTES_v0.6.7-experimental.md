@@ -55,11 +55,11 @@
 
 ## 附件的作用与使用
 
-| 附件 | 用途与使用方法 |
-| --- | --- |
-| `Magpie-Experimental-x64.zip` | **必选主包**，包含程序、匹配的界面资源、效果与所需运行组件；按上述步骤完整解压。其余附件均为可选。 |
+| 附件                               | 用途与使用方法                                                                                                                                                                                        |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Magpie-Experimental-x64.zip`      | **必选主包**，包含程序、匹配的界面资源、效果与所需运行组件；按上述步骤完整解压。其余附件均为可选。                                                                                                    |
 | `DLSSNR-DLL-Options-310.8.0.0.zip` | 提供 NVIDIA 官方版、RTX 40/50 社区兼容版和 SF-v2 三种 DLL 选择，附中英双语 README；仅需切换 NR DLL 时下载。完全退出 Magpie，备份现有 `nvngx_dlssnr.dll`，按包内说明选择一个版本放到 `Magpie.exe` 旁。 |
-| `NGX_OTA_Switch.bat` | 沿用 0.6.6 的可选工具，用于查看、开关 NVIDIA NGX OTA 更新及清理更新进程，常规安装无需运行。相关操作需管理员权限且影响系统级 NGX 设置；恢复时使用 **Restore default**，删除 BAT 不会撤销设置。 |
+| `NGX_OTA_Switch.bat`               | 沿用 0.6.6 的可选工具，用于查看、开关 NVIDIA NGX OTA 更新及清理更新进程，常规安装无需运行。相关操作需管理员权限且影响系统级 NGX 设置；恢复时使用 **Restore default**，删除 BAT 不会撤销设置。         |
 
 Contributor: [TurnX-alt](https://github.com/TurnX-alt) 提供界面、预设与构建一致性修复；[konodiodaaaaa1](https://github.com/konodiodaaaaa1) 提供 HDR 支持。
 
@@ -122,10 +122,10 @@ Existing groups with duplicate names retain their contents and should be renamed
 
 ## Assets: Purpose and Instructions
 
-| Asset | Purpose and Instructions |
-| --- | --- |
-| `Magpie-Experimental-x64.zip` | **Required main package**, containing the application, matching UI resources, effects and runtime components. Extract it completely as described above. All other assets are optional. |
-| `DLSSNR-DLL-Options-310.8.0.0.zip` | Offers official NVIDIA, community RTX 40/50-compatible and SF-v2 DLL choices, with a Chinese/English README. Download only when switching NR DLLs. Fully exit Magpie, back up `nvngx_dlssnr.dll`, and follow the archive instructions to place one choice beside `Magpie.exe`. |
-| `NGX_OTA_Switch.bat` | Reuses the optional 0.6.6 tool to inspect or toggle NVIDIA NGX OTA updates and clean up update processes; normal installation does not require it. Relevant actions require administrator privileges and affect system-wide NGX settings. Use **Restore default** to undo changes; deleting the BAT does not restore settings. |
+| Asset                              | Purpose and Instructions                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Magpie-Experimental-x64.zip`      | **Required main package**, containing the application, matching UI resources, effects and runtime components. Extract it completely as described above. All other assets are optional.                                                                                                                                         |
+| `DLSSNR-DLL-Options-310.8.0.0.zip` | Offers official NVIDIA, community RTX 40/50-compatible and SF-v2 DLL choices, with a Chinese/English README. Download only when switching NR DLLs. Fully exit Magpie, back up `nvngx_dlssnr.dll`, and follow the archive instructions to place one choice beside `Magpie.exe`.                                                 |
+| `NGX_OTA_Switch.bat`               | Reuses the optional 0.6.6 tool to inspect or toggle NVIDIA NGX OTA updates and clean up update processes; normal installation does not require it. Relevant actions require administrator privileges and affect system-wide NGX settings. Use **Restore default** to undo changes; deleting the BAT does not restore settings. |
 
 Contributor: [TurnX-alt](https://github.com/TurnX-alt) contributed UI, preset and build-consistency fixes; [konodiodaaaaa1](https://github.com/konodiodaaaaa1) contributed HDR support.

@@ -58,5 +58,13 @@ int main() {
 }
 '''
 output = Path(sys.argv[1]) / 'parameter_focus_settings.cpp'
-output.write_text(harness.replace('READER', reader).replace('FIELD', field).replace('LOAD', load).replace('SAVE', save), encoding='utf-8')
-print(output)
+first = harness.replace('READER', reader).replace('FIELD', field).replace('LOAD', load).replace('SAVE', save)
+field2 = re.search(r'bool _isStopEffectsOnTaskSwitchEnabled = [^;]+;', header).group()
+load2 = re.search(r'_isStopEffectsOnTaskSwitchEnabled = false;\s+JsonHelper::ReadBool\(root, "stopEffectsOnTaskSwitch", _isStopEffectsOnTaskSwitchEnabled\);', settings).group()
+save2 = re.search(r'writer.Key\("stopEffectsOnTaskSwitch"\);\s+writer.Bool\(data._isStopEffectsOnTaskSwitchEnabled\);', settings).group()
+second = harness.replace('READER', reader).replace('FIELD', field2).replace('LOAD', load2).replace('SAVE', save2)
+second = second.replace('_isParameterFocusSwitchingEnabled', '_isStopEffectsOnTaskSwitchEnabled').replace('parameterFocusSwitching', 'stopEffectsOnTaskSwitch').replace('parameter focus setting', 'task-switch setting')
+output.write_text(first, encoding='utf-8')
+other = Path(sys.argv[1]) / 'task_switch_settings.cpp'
+other.write_text(second, encoding='utf-8')
+print(output, other)
