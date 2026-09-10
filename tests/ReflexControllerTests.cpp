@@ -325,6 +325,19 @@ static void TestPauseDuringSleepAndClearQueryFailure() {
 	Require(driver->Count("failure") == 1, "clear query failure must still be reported");
 }
 
+static void TestUnsupportedZeroCapCanFallback() {
+	ReflexController reflex;
+	auto fake = std::make_unique<FakeDriver>();
+	auto* driver = fake.get();
+	driver->failure = "on";
+	driver->failClear = true;
+	reflex.Initialize(std::move(fake));
+	Require(reflex.State() == ReflexState::Faulted && !reflex.CanResume(), "unsupported API must disable this session");
+	Require(reflex.CanUseAsync() && !reflex.CaptureBlocked(), "never-requested application cap cannot block Async fallback");
+	Require(std::ranges::all_of(driver->settings, [](ReflexSettings settings) { return settings.minimumIntervalUs == 0; }),
+		"this fallback is only safe because no nonzero interval was requested");
+}
+
 int main() {
 	try {
 		TestFrameLifecycle();
@@ -335,6 +348,7 @@ int main() {
 		TestClearBeforeFallback();
 		TestCandidateAcrossPause();
 		TestPauseDuringSleepAndClearQueryFailure();
+		TestUnsupportedZeroCapCanFallback();
 		std::cout << "PASS: Reflex 2x/3x/4x IDs, capture retries, skipped interpolation, FIFO IDs, 14 driver failure points, concurrent Sleep/Present/Stop; ordinary frame limits, same-target deduplication, Off-query distinction and pause/resume\n";
 		return 0;
 	} catch (const std::exception& error) {

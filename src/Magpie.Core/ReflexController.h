@@ -14,8 +14,8 @@ enum class ReflexMarker { SimulationStart, SimulationEnd, RenderStart, RenderEnd
 
 enum class ReflexState { Unavailable, Active, DriverOff, Paused, Faulted, Stopped };
 
-// Clear is published only after SetSleepMode accepts interval=0. During a
-// transition or failed cleanup the renderer must not start an Async limiter.
+// Clear means no nonzero interval was requested, or SetSleepMode accepted zero.
+// During a transition or failed cap cleanup the renderer cannot start Async.
 enum class ReflexPacingState { Clear, Configuring, Active, CleanupFailed };
 
 struct ReflexConfigurationResult {
@@ -148,7 +148,11 @@ private:
 	void _ConfigureLocked(ReflexSettings settings) noexcept {
 		_pacingState.store(ReflexPacingState::Configuring);
 		++_configurationRevision;
+		// Even a failed nonzero request may have partially changed driver state.
+		// A session that has only requested zero never installed an application cap.
+		if (settings.minimumIntervalUs) _capMayBeSet = true;
 		const auto result = _driver->Configure(settings);
+		if (!result.setStatus && !settings.minimumIntervalUs) _capMayBeSet = false;
 		if (result.setStatus || (result.queried && result.queryStatus)) {
 			_StopLocked(result.setStatus ? "SetSleepMode" : "GetSleepStatus",
 				result.setStatus ? result.setStatus : result.queryStatus);
@@ -184,10 +188,12 @@ private:
 			_driver->ReportFailure("query restored SleepMode", reset.queryStatus);
 		// GetSleepStatus reports low latency, not the interval. Set success is
 		// the cleanup contract; a failed query cannot make a cleared cap unsafe.
-		_pacingState.store(reset.setStatus ? ReflexPacingState::CleanupFailed : ReflexPacingState::Clear);
+		if (!reset.setStatus) _capMayBeSet = false;
+		_pacingState.store(_capMayBeSet ? ReflexPacingState::CleanupFailed : ReflexPacingState::Clear);
 	}
 	std::unique_ptr<ReflexDriver> _driver;
 	ReflexSettings _settings;
+	bool _capMayBeSet = false; // Protected by _configurationMutex.
 	std::mutex _configurationMutex;
 	std::atomic<ReflexState> _state = ReflexState::Unavailable;
 	std::atomic<ReflexPacingState> _pacingState = ReflexPacingState::Clear;
