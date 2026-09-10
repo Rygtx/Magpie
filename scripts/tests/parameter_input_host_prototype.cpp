@@ -16,10 +16,19 @@
 static HWND game, host;
 static int gameDown, gameUp, hostDown, hostUp;
 static bool injectedLeftDown = false;
+static bool previewMode = false, resumeGesture = false;
 static LRESULT CALLBACK Proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_NCHITTEST) return HTCLIENT;
+    if (msg == WM_MOUSEACTIVATE) return MA_ACTIVATE;
     if (msg == WM_LBUTTONDOWN) {
-        if (hwnd == host) { ++hostDown; SetCapture(host); }
+        if (hwnd == host) {
+            if (previewMode) {
+                previewMode=false; resumeGesture=true;
+                SetWindowPos(host,HWND_TOPMOST,80,80,320,240,SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                SetForegroundWindow(host); SetFocus(host);
+            }
+            ++hostDown; SetCapture(host);
+        }
         else ++gameDown;
         return 0;
     }
@@ -28,6 +37,7 @@ static LRESULT CALLBACK Proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             if (hostDown == hostUp) return 0;
             ++hostUp;
             ReleaseCapture();
+            if (resumeGesture) { resumeGesture=false; return 0; }
             SetForegroundWindow(game);
             ShowWindow(host, SW_HIDE);
         } else ++gameUp;
@@ -111,10 +121,22 @@ static int RunTest() {
     assert(WindowFromPoint({200, 160}) == game && GetCapture() == nullptr);
     Edge(MOUSEEVENTF_LEFTDOWN); Edge(MOUSEEVENTF_LEFTUP);
     assert(gameDown == 1 && gameUp == 1);
+    // Reuse the transparent host as a bounded, nonactivating preview target.
+    // Outside it, real USER32 hit testing still reaches the game. An actual
+    // first click activates and expands the host without leaking either edge.
+    previewMode=true;
+    hostDown=hostUp=gameDown=gameUp=0;
+    SetWindowPos(host,HWND_TOPMOST,120,100,100,90,SWP_NOACTIVATE | SWP_SHOWWINDOW); Pump();
+    assert(GetForegroundWindow()==game && WindowFromPoint({200,160})==host);
+    assert(WindowFromPoint({300,260})==game);
+    Edge(MOUSEEVENTF_LEFTDOWN);
+    assert(GetForegroundWindow()==host && hostDown==1 && gameDown==0 && GetCapture()==host);
+    Edge(MOUSEEVENTF_LEFTUP);
+    assert(GetForegroundWindow()==host && hostUp==1 && gameDown==0 && gameUp==0 && !GetCapture());
     DestroyWindow(host); DestroyWindow(game);
     SetCursorPos(priorCursor.x, priorCursor.y);
     if (prior && IsWindow(prior)) SetForegroundWindow(prior);
-    std::cout << "PASS: transparent pixels, rectangular hit test, activation, clip release, paired first click, subsequent game click\n";
+    std::cout << "PASS: transparent pixels, rectangular hit test, activation, clip release, paired first click, subsequent game click, bounded preview without activation, preview first-click activation without game edges\n";
     return 0;
 }
 

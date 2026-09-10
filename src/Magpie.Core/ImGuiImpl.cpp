@@ -495,7 +495,18 @@ void ImGuiImpl::_FlushPendingInput() noexcept {
 
 void ImGuiImpl::_StagePresentedWindowRects() noexcept {
 	_stagedPresentedWindowRects.clear();
+	_stagedParameterRect.reset();
 	_stagedHasOpenPopup = !ImGui::GetCurrentContext()->OpenPopupStack.empty();
+	// Preview remains read-only in ImGui. A native hit target covers only the
+	// last successfully presented panel, including its title and child region.
+	for (ImGuiWindow* window : ImGui::GetCurrentContext()->Windows) {
+		if (window->Active && !window->Hidden &&
+			std::string_view(GetWindowIDFromName(window->Name)) == "effectParameters") {
+			_stagedParameterRect = ImVec4(window->Pos.x, window->Pos.y,
+				window->Pos.x + window->Size.x, window->Pos.y + window->Size.y);
+			break;
+		}
+	}
 	for (ImGuiWindow* window : ImGui::GetCurrentContext()->Windows | std::views::reverse) {
 		if (!window->Active || window->Hidden ||
 			(!_parameterEditing && std::string_view(GetWindowIDFromName(window->RootWindow->Name)) == "effectParameters") ||
@@ -544,6 +555,7 @@ void ImGuiImpl::OnPresentSucceeded() noexcept {
 	_pendingInput.presentedSerial = std::max(
 		_pendingInput.presentedSerial, _frameConsumedSerial);
 	_presentedWindowRects = _stagedPresentedWindowRects;
+	_presentedParameterRect = _stagedParameterRect;
 	_presentedHasOpenPopup = _stagedHasOpenPopup;
 
 	const auto now = std::chrono::steady_clock::now();

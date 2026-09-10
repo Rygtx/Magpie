@@ -83,6 +83,8 @@ static BOOL FakePosition(HWND, HWND, int x, int y, int w, int h, UINT flags) {
 }
 static BOOL FakeRect(HWND, RECT* r) { *r = hostRect; return TRUE; }
 static BOOL FakeShow(HWND, int command) { visibleHost = command != SW_HIDE; return TRUE; }
+static BOOL FakeVisible(HWND) { return visibleHost; }
+static BOOL FakePost(HWND, UINT, WPARAM, LPARAM) { return TRUE; }
 static BOOL FakeDestroy(HWND hwnd) { hostProc(hwnd,WM_NCDESTROY,0,0); inputHost=nullptr; visibleHost=false; return TRUE; }
 static HWND FakeFocus(HWND hwnd) { return hwnd; }
 static UINT_PTR FakeTimer(HWND, UINT_PTR id, UINT, TIMERPROC) { return id; }
@@ -106,6 +108,8 @@ namespace ImGui { inline void FakePosition(ImGuiWindow* w, ImVec2 p) { SetWindow
 #define SetWindowPos FakePosition
 #define GetWindowRect FakeRect
 #define ShowWindow FakeShow
+#define IsWindowVisible FakeVisible
+#define PostMessageW FakePost
 #define DestroyWindow FakeDestroy
 #define SetFocus FakeFocus
 #define SetTimer FakeTimer
@@ -153,6 +157,7 @@ public:
     void ReleaseParameterInput() noexcept;
     bool HasHeldParameterInput() const noexcept;
     void UpdateParameterInputHost() noexcept;
+    bool HandleParameterPreviewEscape(WPARAM, const KBDLLHOOKSTRUCT&) noexcept;
     bool MessageHandler(UINT m, WPARAM w, LPARAM l) noexcept { return _imguiImpl.MessageHandler(m,w,l) == ImGuiInputResult::Urgent; }
 };
 static OverlayDrawer* overlay;
@@ -213,10 +218,11 @@ static EffectParameterDesc numericParameter;
 static float numericValue = 0.5f;
 static bool checkbox = false;
 static POINT choicePoint{}, childPoint{};
+static ImVec2 panelPos{20,20};
 static phmap::flat_hash_map<std::string,OverlayWindowOption> windows;
 static void Frame(bool present=true) {
     overlay->_imguiImpl.NewFrame(windows,0,1);
-    ImGui::SetNextWindowPos({20,20}); ImGui::SetNextWindowSize({300,260});
+    ImGui::SetNextWindowPos(panelPos); ImGui::SetNextWindowSize({300,260});
     if (ImGui::Begin("Parameters - mode###effectParameters",nullptr,overlay->IsEditingParameters()?0:ImGuiWindowFlags_NoInputs)) {
         if (actualParameter) {
             int tick=0, maximum=0; assert(GetEffectParameterTicks(numericParameter,numericValue,tick,maximum));
@@ -236,19 +242,28 @@ static void Frame(bool present=true) {
     }
     ImGui::End();
     overlay->_imguiImpl.Draw({});
-    if (present) overlay->_imguiImpl.OnPresentSucceeded();
+    if (present) { overlay->_imguiImpl.OnPresentSucceeded(); overlay->_UpdateParameterPreviewHost(); }
 }
 static void Frames(int count=6) { for(int i=0;i<count;++i) Frame(); }
 static void Mouse(UINT msg, int x, int y) {
     cursor={x,y};
     if(msg==WM_LBUTTONDOWN) keys[VK_LBUTTON]=true;
     if(msg==WM_LBUTTONUP) keys[VK_LBUTTON]=false;
+    if (foreground==game && visibleHost && msg==WM_LBUTTONDOWN && PtInRect(&hostRect,cursor))
+        FakeSetForeground(inputHost); // Native WM_MOUSEACTIVATE activates before delivering DOWN.
     if (foreground==game) { if (msg==WM_LBUTTONDOWN || msg==WM_LBUTTONUP) ++gameEdges; return; }
     OverlayDrawer::_ParameterInputWndProc(inputHost,msg,0,0);
 }
 static void Key(UINT msg, int key) {
     keys[key]=msg==WM_KEYDOWN;
     OverlayDrawer::_ParameterInputWndProc(inputHost,msg,key,0);
+}
+static bool PreviewEscape(UINT message, DWORD flags=0) {
+    KBDLLHOOKSTRUCT key{}; key.vkCode=VK_ESCAPE; key.flags=flags;
+    const bool claimed=overlay->HandleParameterPreviewEscape(message,key);
+    // Low-level hooks see the asynchronous state from before this edge.
+    if (!claimed) keys[VK_ESCAPE]=message==WM_KEYDOWN || message==WM_SYSKEYDOWN;
+    return claimed;
 }
 int main() {
     ShortcutProbe shortcut;
@@ -287,11 +302,56 @@ int main() {
     assert(!panel.IsEditingParameters()); Frames();
     Mouse(WM_MOUSEMOVE,610,455);
     panel.UpdateParameterInputHost();
-    assert(panel._parameterPanelState==ParameterPanelState::Preview && !visibleHost && foreground==game && gameEdges==0);
-    // Preview, including child windows, must not claim ImGui mouse input.
+    assert(panel._parameterPanelState==ParameterPanelState::Preview && visibleHost && foreground==game && gameEdges==0);
+    assert(hostRect.left==20 && hostRect.top==20 && hostRect.right==320 && hostRect.bottom==280);
+    // Preview remains read-only in ImGui; only its native panel rectangle claims activation.
     cursor={100,80}; Frames(); assert(!io.WantCaptureMouse);
     cursor=childPoint; Frames(); assert(!io.WantCaptureMouse && !panel._imguiImpl.OwnsPointerAtCursor());
     Mouse(WM_LBUTTONDOWN,600,450); Mouse(WM_LBUTTONUP,600,450); assert(gameEdges==2);
+    // Title, control and child areas all resume editing. The first complete
+    // gesture changes neither the slider nor the game, even when released outside.
+    for (POINT point : {POINT{40,28}, POINT{100,51}, childPoint}) {
+        const int before=slider;
+        Mouse(WM_LBUTTONDOWN,point.x,point.y); Frames();
+        assert(panel.IsEditingParameters() && foreground==inputHost && capture==inputHost);
+        assert(panel._parameterResumeClickPending && !ImGui::IsAnyItemActive());
+        Mouse(WM_MOUSEMOVE,600,450); Frames(); Mouse(WM_LBUTTONUP,600,450); Frames();
+        assert(panel.IsEditingParameters() && !capture && !panel._parameterResumeClickPending);
+        assert(slider==before && gameEdges==2);
+        Key(WM_KEYDOWN,VK_ESCAPE); Key(WM_KEYUP,VK_ESCAPE); Frames(); panel.UpdateParameterInputHost();
+        assert(panel._parameterPanelState==ParameterPanelState::Preview && foreground==game);
+    }
+    // A failed Present must not move the native hit target ahead of the visible panel.
+    panelPos={450,400}; Frame(false); panel.UpdateParameterInputHost();
+    assert(hostRect.left==20 && hostRect.top==20);
+    Frame(); assert(hostRect.left==450 && hostRect.top==400 && hostRect.bottom==600);
+    panelPos={20,20}; Frames(); assert(hostRect.left==20 && hostRect.bottom==280);
+    // Preview Esc owns a complete press/repeat/release and closes only in the
+    // outer update, without activating a host or forwarding a key to the game.
+    const int previewFocusAttempts=focusAttempts;
+    assert(PreviewEscape(WM_KEYDOWN)); assert(panel.HasHeldParameterInput());
+    assert(PreviewEscape(WM_KEYDOWN)); panel.UpdateParameterInputHost();
+    assert(panel._parameterPanelState==ParameterPanelState::Preview);
+    assert(PreviewEscape(WM_KEYUP)); assert(!panel.HasHeldParameterInput());
+    assert(panel._parameterPanelState==ParameterPanelState::Preview);
+    panel.UpdateParameterInputHost();
+    assert(panel._parameterPanelState==ParameterPanelState::Closed && !visibleHost && foreground==game);
+    assert(focusAttempts==previewFocusAttempts);
+    assert(!PreviewEscape(WM_KEYDOWN)); assert(!PreviewEscape(WM_KEYUP));
+    panel._SetParameterPanelState(ParameterPanelState::Preview); Frames();
+    keys[VK_ESCAPE]=true; assert(!PreviewEscape(WM_KEYDOWN)); assert(!PreviewEscape(WM_KEYUP));
+    keys[VK_MENU]=true; assert(!PreviewEscape(WM_SYSKEYDOWN,LLKHF_ALTDOWN)); assert(!PreviewEscape(WM_SYSKEYUP)); keys[VK_MENU]=false;
+    assert(panel._parameterPanelState==ParameterPanelState::Preview);
+    // Other apps keep their keys; losing foreground invalidates a pending close.
+    foreground=(HWND)9; panel.UpdateParameterInputHost(); assert(!visibleHost);
+    assert(!PreviewEscape(WM_KEYDOWN)); assert(!PreviewEscape(WM_KEYUP));
+    foreground=game; panel.UpdateParameterInputHost(); assert(visibleHost);
+    assert(PreviewEscape(WM_KEYDOWN)); foreground=(HWND)9; panel.UpdateParameterInputHost();
+    foreground=game; assert(PreviewEscape(WM_KEYUP)); panel.UpdateParameterInputHost();
+    assert(panel._parameterPanelState==ParameterPanelState::Preview);
+    assert(PreviewEscape(WM_KEYDOWN)); panel._SetParameterPanelState(ParameterPanelState::Closed);
+    panel._SetParameterPanelState(ParameterPanelState::Preview); assert(PreviewEscape(WM_KEYUP)); panel.UpdateParameterInputHost();
+    assert(panel._parameterPanelState==ParameterPanelState::Preview);
     // A drag that starts on the panel stays captured after leaving the panel.
     panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
     Mouse(WM_LBUTTONDOWN,100,51); Frames();
@@ -367,7 +427,7 @@ int main() {
     assert(!panel.IsEditingParameters() && foreground==(HWND)9 && focusAttempts==attempts+1);
     // Focus failure makes one attempt, then leaves a visible preview and no capture.
     foreground=game; denyFocus=true; panel._SetParameterPanelState(ParameterPanelState::Edit);
-    assert(!panel.IsEditingParameters() && panel._parameterFocusFailed && !visibleHost && !capture);
+    assert(!panel.IsEditingParameters() && panel._parameterFocusFailed && visibleHost && !capture);
     const int failedAttempts=focusAttempts; panel.UpdateParameterInputHost(); panel.UpdateParameterInputHost();
     assert(focusAttempts==failedAttempts); denyFocus=false;
     // Stopping while a panel press is down defers HWND destruction until its up.
@@ -394,7 +454,7 @@ int main() {
     foreground=game; panel.RestoreSessionState(editingState); Frames(); assert(panel.IsEditingParameters());
     panel._SetParameterPanelState(ParameterPanelState::Closed); Frames(); panel.UpdateParameterInputHost();
     assert(!panel._isEffectParametersVisible && !visibleHost && foreground==game);
-    std::cout << "PASS production input: three states, preview hit test, outside click pairing, drag outside, popup ownership, numeric keyboard input, Esc priority, modifier and release drain, external focus, restore guard, focus failure, deferred-stop input pairing, close\n";
+    std::cout << "PASS production input: three states, bounded preview/title/control/child activation, first-click pairing, last-present hit target, preview Esc pair/repeat/foreground guards, outside click pairing, drag outside, popup ownership, numeric keyboard input, Esc priority, modifier and release drain, external focus, restore guard, focus failure, deferred-stop input pairing, close\n";
 }
 '''
 

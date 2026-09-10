@@ -45,6 +45,7 @@ public:
 	bool HasHeldParameterInput() const noexcept;
 	bool AllowAutomaticSourceFocus() const noexcept { return !IsEditingParameters() && !_parameterFocusFailed; }
 	void UpdateParameterInputHost() noexcept;
+	bool HandleParameterPreviewEscape(WPARAM message, const KBDLLHOOKSTRUCT& key) noexcept;
 	bool IsEffectParameterInputActive() const noexcept {
 		return _isEffectParametersVisible && _isEffectParameterInputActive;
 	}
@@ -65,6 +66,9 @@ public:
 private:
 	void _SetParameterPanelState(ParameterPanelState state, bool returnFocus = true) noexcept;
 	void _ToggleParameterPanel() noexcept;
+	bool _EnsureParameterInputHost() noexcept;
+	void _UpdateParameterPreviewHost() noexcept;
+	bool _HasParameterForeground() const noexcept;
 	bool _BeginParameterInput() noexcept;
 	void _EndParameterInput(bool returnFocus) noexcept;
 	void _FinishParameterInput() noexcept;
@@ -76,6 +80,8 @@ private:
 	bool _returnClickPending = false;
 	bool _escapePending = false;
 	bool _parameterFocusFailed = false;
+	bool _parameterResumeClickPending = false;
+	bool _previewEscapeOwned = false, _previewEscapeCanClose = false, _previewClosePending = false;
 	std::array<bool, 256> _parameterHeldKeys{};
 	uint32_t _parameterHeldButtons = 0;
 	bool _BuildFonts() noexcept;

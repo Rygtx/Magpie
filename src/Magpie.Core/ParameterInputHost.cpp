@@ -13,13 +13,14 @@ OverlayDrawer::~OverlayDrawer() noexcept {
 	if (_hwndParameterInput) DestroyWindow(_hwndParameterInput);
 }
 
-bool OverlayDrawer::_BeginParameterInput() noexcept {
+bool OverlayDrawer::_HasParameterForeground() const noexcept {
 	auto& scaling = ScalingWindow::Get();
 	const HWND foreground = GetForegroundWindow();
-	// An asynchronous restart must never activate over an unrelated application.
-	if (foreground != scaling.SrcTracker().Handle() && foreground != scaling.Handle() &&
-		foreground != _hwndParameterInput) return false;
-	_parameterInputTransition = true;
+	return foreground && (foreground == scaling.SrcTracker().Handle() || foreground == scaling.Handle() ||
+		foreground == _hwndParameterInput);
+}
+
+bool OverlayDrawer::_EnsureParameterInputHost() noexcept {
 	if (!_hwndParameterInput) {
 		static const ATOM windowClass = [] {
 			WNDCLASSEXW wc{ sizeof(wc) };
@@ -34,18 +35,29 @@ bool OverlayDrawer::_BeginParameterInput() noexcept {
 			// hit testing. Alpha-zero layered windows would pass the first click through.
 			_hwndParameterInput = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOREDIRECTIONBITMAP,
 				MAKEINTATOM(windowClass), L"Magpie parameters", WS_POPUP,
-				0, 0, 1, 1, scaling.Handle(), nullptr, GetModuleHandle(nullptr), this);
+				0, 0, 1, 1, ScalingWindow::Get().Handle(), nullptr, GetModuleHandle(nullptr), this);
 		}
 	}
 	if (!_hwndParameterInput) {
-		_parameterInputTransition = false;
 		Logger::Get().Win32Error("Create parameter input host failed");
 		return false;
 	}
+	return true;
+}
+
+bool OverlayDrawer::_BeginParameterInput() noexcept {
+	// An asynchronous restart must never activate over an unrelated application.
+	if (!_HasParameterForeground()) return false;
+	_parameterInputTransition = true;
+	if (!_EnsureParameterInputHost()) {
+		_parameterInputTransition = false;
+		return false;
+	}
+	auto& scaling = ScalingWindow::Get();
 	_parameterPanelState = ParameterPanelState::Edit;
 	_pendingParameterPanelState = ParameterPanelState::Edit;
 	_parameterHeldButtons = 0;
-	_returnClickPending = _escapePending = false;
+	_returnClickPending = _escapePending = _parameterResumeClickPending = false;
 	_parameterHeldKeys.fill(false);
 	const RECT& rect = scaling.RendererRect();
 	SetWindowPos(_hwndParameterInput, HWND_TOPMOST, rect.left, rect.top,
@@ -93,8 +105,67 @@ void OverlayDrawer::_EndParameterInput(bool returnFocus) noexcept {
 	}
 	_parameterHeldButtons = 0;
 	_parameterHeldKeys.fill(false);
-	_returnClickPending = _escapePending = false;
+	_returnClickPending = _escapePending = _parameterResumeClickPending = false;
 	_parameterInputTransition = false;
+}
+
+void OverlayDrawer::_UpdateParameterPreviewHost() noexcept {
+	if (_parameterInputTransition || IsEditingParameters() || _parameterResumeClickPending) return;
+	const auto rect = _imguiImpl.PresentedParameterRect();
+	if (_parameterPanelState != ParameterPanelState::Preview || !_isEffectParametersVisible ||
+		!_HasParameterForeground() || !rect) {
+		if (_hwndParameterInput) ShowWindow(_hwndParameterInput, SW_HIDE);
+		if (!_HasParameterForeground()) _previewEscapeCanClose = _previewClosePending = false;
+		return;
+	}
+	auto& scaling = ScalingWindow::Get();
+	const RECT& dest = scaling.Renderer().DestRect();
+	const RECT& render = scaling.RendererRect();
+	const RECT target{
+		std::max(render.left, dest.left + LONG(std::floor(rect->x))),
+		std::max(render.top, dest.top + LONG(std::floor(rect->y))),
+		std::min(render.right, dest.left + LONG(std::ceil(rect->z))),
+		std::min(render.bottom, dest.top + LONG(std::ceil(rect->w)))
+	};
+	if (target.left >= target.right || target.top >= target.bottom) {
+		if (_hwndParameterInput) ShowWindow(_hwndParameterInput, SW_HIDE);
+		return;
+	}
+	if (!_EnsureParameterInputHost()) return;
+	RECT current{};
+	GetWindowRect(_hwndParameterInput, &current);
+	if (!EqualRect(&current, &target) || !IsWindowVisible(_hwndParameterInput)) {
+		// Do not activate during preview. Only a user click may activate this
+		// bounded window; game-area input stays outside its native hit region.
+		SetWindowPos(_hwndParameterInput, HWND_TOPMOST, target.left, target.top,
+			target.right - target.left, target.bottom - target.top, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+	}
+}
+
+bool OverlayDrawer::HandleParameterPreviewEscape(WPARAM message, const KBDLLHOOKSTRUCT& key) noexcept {
+	if (key.vkCode != VK_ESCAPE) return false;
+	const bool down = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
+	const bool up = message == WM_KEYUP || message == WM_SYSKEYUP;
+	if (!down && !up) return false;
+	if (_previewEscapeOwned) {
+		if (up) {
+			_previewEscapeOwned = false;
+			_previewClosePending = std::exchange(_previewEscapeCanClose, false) &&
+				_parameterPanelState == ParameterPanelState::Preview && _HasParameterForeground();
+			if (_previewClosePending) {
+				_overlayDirty = true;
+				PostMessage(ScalingWindow::Get().Handle(), WM_NULL, 0, 0);
+			}
+		}
+		return true; // Own repeats and release only after owning the initial press.
+	}
+	if (!down || _parameterPanelState != ParameterPanelState::Preview ||
+		!_isEffectParametersVisible || !_HasParameterForeground() || (key.flags & LLKHF_ALTDOWN)) return false;
+	for (int vk : { VK_ESCAPE, VK_CONTROL, VK_SHIFT, VK_MENU, VK_LWIN, VK_RWIN }) {
+		if (GetAsyncKeyState(vk) & 0x8000) return false;
+	}
+	_previewEscapeOwned = _previewEscapeCanClose = true;
+	return true;
 }
 
 void OverlayDrawer::_ToggleParameterPanel() noexcept {
@@ -102,6 +173,7 @@ void OverlayDrawer::_ToggleParameterPanel() noexcept {
 }
 
 void OverlayDrawer::_SetParameterPanelState(ParameterPanelState state, bool returnFocus) noexcept {
+	_previewEscapeCanClose = _previewClosePending = false;
 	if (state == ParameterPanelState::Edit) {
 		_isEffectParametersVisible = true;
 		if (!IsEditingParameters()) {
@@ -119,6 +191,7 @@ void OverlayDrawer::_SetParameterPanelState(ParameterPanelState state, bool retu
 		_isEffectParametersVisible = state != ParameterPanelState::Closed;
 	}
 	_overlayDirty = true;
+	_UpdateParameterPreviewHost();
 }
 
 void OverlayDrawer::_FinishParameterInput() noexcept {
@@ -131,9 +204,11 @@ void OverlayDrawer::_FinishParameterInput() noexcept {
 	_EndParameterInput(true);
 	_parameterPanelState = _pendingParameterPanelState;
 	_isEffectParametersVisible = _parameterPanelState != ParameterPanelState::Closed;
+	_UpdateParameterPreviewHost();
 }
 
 bool OverlayDrawer::HasHeldParameterInput() const noexcept {
+	if (_previewEscapeOwned || _parameterResumeClickPending) return true;
 	if (!IsEditingParameters()) return false;
 	if (_parameterHeldButtons || std::ranges::any_of(_parameterHeldKeys, [](bool held) { return held; })) return true;
 	// Shortcut callbacks can arrive before the invoking modifier messages.
@@ -144,9 +219,10 @@ bool OverlayDrawer::HasHeldParameterInput() const noexcept {
 }
 
 void OverlayDrawer::ReleaseParameterInput() noexcept {
-	if (!IsEditingParameters()) return;
+	_previewEscapeCanClose = _previewClosePending = false;
+	const bool editing = IsEditingParameters();
 	_EndParameterInput(true);
-	_parameterPanelState = ParameterPanelState::Preview;
+	if (editing) _parameterPanelState = ParameterPanelState::Preview;
 }
 
 void OverlayDrawer::SuspendParameterInput() noexcept {
@@ -155,6 +231,10 @@ void OverlayDrawer::SuspendParameterInput() noexcept {
 }
 
 void OverlayDrawer::UpdateParameterInputHost() noexcept {
+	if (std::exchange(_previewClosePending, false) &&
+		_parameterPanelState == ParameterPanelState::Preview && _HasParameterForeground())
+		_SetParameterPanelState(ParameterPanelState::Closed, false);
+	_UpdateParameterPreviewHost();
 	if (!IsEditingParameters() || _parameterInputTransition) return;
 	if (GetForegroundWindow() != _hwndParameterInput) {
 		SuspendParameterInput();
@@ -186,20 +266,7 @@ LRESULT CALLBACK OverlayDrawer::_ParameterInputWndProc(HWND hwnd, UINT msg, WPAR
 	if (msg == WM_ERASEBKGND) return 1;
 	if (msg == WM_PAINT) { PAINTSTRUCT ps{}; BeginPaint(hwnd, &ps); EndPaint(hwnd, &ps); return 0; }
 	if (msg == WM_SETCURSOR) { SetCursor(LoadCursor(nullptr, IDC_ARROW)); return TRUE; }
-	if (self->_parameterInputTransition || !self->IsEditingParameters()) return DefWindowProc(hwnd, msg, wParam, lParam);
-	if (msg == WM_KILLFOCUS || (msg == WM_ACTIVATEAPP && !wParam)) {
-		self->SuspendParameterInput();
-		return 0;
-	}
-	if (msg == WM_TIMER) {
-		self->UpdateParameterInputHost();
-		// Rendering remains in the outer scaling loop, never in WndProc.
-		return 0;
-	}
-	if (msg == WM_CLOSE) { self->_SetParameterPanelState(ParameterPanelState::Closed); return 0; }
-	if (msg == WM_CAPTURECHANGED && reinterpret_cast<HWND>(lParam) != hwnd) {
-		self->_parameterHeldButtons = 0;
-	}
+	if (self->_parameterInputTransition) return DefWindowProc(hwnd, msg, wParam, lParam);
 	int button = -1;
 	bool down = false;
 	switch (msg) {
@@ -212,6 +279,45 @@ LRESULT CALLBACK OverlayDrawer::_ParameterInputWndProc(HWND hwnd, UINT msg, WPAR
 	case WM_XBUTTONDOWN: down = true; [[fallthrough]];
 	case WM_XBUTTONUP: button = GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? 3 : 4; break;
 	}
+	if (button >= 0 && down && self->_parameterPanelState == ParameterPanelState::Preview &&
+		!self->_parameterResumeClickPending) {
+		// WM_MOUSEACTIVATE has already activated the bounded preview window.
+		// The complete first gesture enters editing without changing a control
+		// or delivering an unmatched mouse edge to the game.
+		self->_SetParameterPanelState(ParameterPanelState::Edit);
+		self->_parameterResumeClickPending = true;
+		self->_parameterHeldButtons = 1u << button;
+		SetCapture(hwnd);
+		return msg == WM_XBUTTONDOWN ? TRUE : 0;
+	}
+	if (self->_parameterResumeClickPending && button >= 0) {
+		if (down) self->_parameterHeldButtons |= 1u << button;
+		else self->_parameterHeldButtons &= ~(1u << button);
+		if (!self->_parameterHeldButtons) {
+			self->_parameterResumeClickPending = false;
+			if (GetCapture() == hwnd) ReleaseCapture();
+			self->_FinishParameterInput();
+			self->_UpdateParameterPreviewHost();
+		}
+		return msg == WM_XBUTTONDOWN || msg == WM_XBUTTONUP ? TRUE : 0;
+	}
+	if (msg == WM_CAPTURECHANGED && reinterpret_cast<HWND>(lParam) != hwnd) {
+		self->_parameterHeldButtons = 0;
+		self->_parameterResumeClickPending = false;
+	}
+	if (!self->IsEditingParameters()) return DefWindowProc(hwnd, msg, wParam, lParam);
+	if (msg == WM_KILLFOCUS || (msg == WM_ACTIVATEAPP && !wParam)) {
+		self->SuspendParameterInput();
+		return 0;
+	}
+	if (msg == WM_TIMER) {
+		self->UpdateParameterInputHost();
+		// Rendering remains in the outer scaling loop, never in WndProc.
+		return 0;
+	}
+	if (msg == WM_CLOSE) { self->_SetParameterPanelState(ParameterPanelState::Closed); return 0; }
+	if (self->_parameterResumeClickPending &&
+		(msg == WM_MOUSEMOVE || msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL)) return 0;
 	if (button >= 0) {
 		if (down) {
 			if (!self->_parameterHeldButtons && !self->_imguiImpl.OwnsPointerAtCursor()) {

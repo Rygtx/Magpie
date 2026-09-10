@@ -220,6 +220,7 @@ void OverlayDrawer::ClearStates() noexcept {
 
 void OverlayDrawer::OnPresentSucceeded() noexcept {
 	_imguiImpl.OnPresentSucceeded();
+	_UpdateParameterPreviewHost();
 }
 
 void OverlayDrawer::OnPresentFailed() noexcept {

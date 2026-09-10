@@ -38,6 +38,7 @@ public:
 	void ParameterEditing(bool value) noexcept { _parameterEditing = value; }
 	bool OwnsPointerAtCursor() const noexcept;
 	bool DismissParameterPopup() noexcept;
+	std::optional<ImVec4> PresentedParameterRect() const noexcept { return _presentedParameterRect; }
 	void OnPresentSucceeded() noexcept;
 
 	ImGuiInputResult MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
@@ -119,6 +120,7 @@ private:
 	phmap::flat_hash_map<std::string, ImVec4> _windowRects;
 	std::vector<std::pair<std::string, ImVec4>> _stagedPresentedWindowRects;
 	std::vector<std::pair<std::string, ImVec4>> _presentedWindowRects;
+	std::optional<ImVec4> _stagedParameterRect, _presentedParameterRect;
 	bool _stagedHasOpenPopup = false;
 	bool _presentedHasOpenPopup = false;
 	PendingInputBuffer _pendingInput;

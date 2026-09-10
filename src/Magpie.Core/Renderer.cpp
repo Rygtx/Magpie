@@ -4058,14 +4058,18 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 	co_return true;
 }
 
-// 监听 PrintScreen 实现截屏时隐藏光标
+// Preview Escape and PrintScreen are handled on the scaling thread. The hook
+// only records/posts work; focus changes and ImGui operations run in the loop.
 LRESULT CALLBACK Renderer::_LowLevelKeyboardHook(int nCode, WPARAM wParam, LPARAM lParam) {
-	if (nCode != HC_ACTION ||
-		(wParam != WM_KEYDOWN && wParam != WM_SYSKEYDOWN)) {
+	if (nCode != HC_ACTION) {
 		return CallNextHookEx(NULL, nCode, wParam, lParam);
 	}
 
 	KBDLLHOOKSTRUCT* info = (KBDLLHOOKSTRUCT*)lParam;
+	if (Renderer* renderer = ScalingWindow::Get().TryGetRenderer(); renderer &&
+		renderer->_overlayDrawer.HandleParameterPreviewEscape(wParam, *info)) return 1;
+	if (wParam != WM_KEYDOWN && wParam != WM_SYSKEYDOWN)
+		return CallNextHookEx(NULL, nCode, wParam, lParam);
 	if (info->vkCode == VK_LWIN || info->vkCode == VK_RWIN ||
 		(info->flags & LLKHF_ALTDOWN)) {
 		// System UI/focus transitions terminate an Overlay drag as one ordered
