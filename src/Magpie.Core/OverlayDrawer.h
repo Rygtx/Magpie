@@ -38,7 +38,7 @@ public:
 
 	bool AnyVisibleWindow() const noexcept;
 	bool IsEffectParametersVisible() const noexcept { return _isEffectParametersVisible; }
-	bool IsEditingParameters() const noexcept { return _parameterPanelState == ParameterPanelState::Edit; }
+	bool IsEditingParameters() const noexcept { return _parameterFocusSwitchingEnabled && _parameterPanelState == ParameterPanelState::Edit; }
 	bool IsParameterPreviewAt(POINT point) const noexcept {
 		return _HasParameterForeground() && _imguiImpl.IsParameterPreviewAt(point);
 	}
@@ -71,6 +71,7 @@ public:
 	}
 
 private:
+	bool _parameterFocusSwitchingEnabled = false;
 	void _SetParameterPanelState(ParameterPanelState state, bool returnFocus = true) noexcept;
 	void _ToggleParameterPanel() noexcept;
 	bool _EnsureParameterInputHost() noexcept;

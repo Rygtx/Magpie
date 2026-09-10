@@ -493,6 +493,17 @@ bool HomeViewModel::IsFrontEdgeSyncEnabled() const noexcept {
 	return AppSettings::Get().IsFrontEdgeSyncEnabled();
 }
 
+bool HomeViewModel::IsParameterFocusSwitchingEnabled() const noexcept {
+	return AppSettings::Get().IsParameterFocusSwitchingEnabled();
+}
+
+void HomeViewModel::IsParameterFocusSwitchingEnabled(bool value) {
+	auto& settings = AppSettings::Get();
+	if (settings.IsParameterFocusSwitchingEnabled() == value) return;
+	settings.IsParameterFocusSwitchingEnabled(value);
+	RaisePropertyChanged(L"IsParameterFocusSwitchingEnabled");
+}
+
 void HomeViewModel::IsFrontEdgeSyncEnabled(bool value) {
 	auto& settings = AppSettings::Get();
 	if (settings.IsFrontEdgeSyncEnabled() == value) return;

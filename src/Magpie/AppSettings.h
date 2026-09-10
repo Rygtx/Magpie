@@ -59,6 +59,7 @@ struct _AppSettingsData {
 
 	float _minFrameRate = 10.0f;
 	bool _isFrontEdgeSyncEnabled = true;
+	bool _isParameterFocusSwitchingEnabled = false;
 	bool _isVRREnabled = false;
 	float _frontEdgeSyncFrameRate = 60.0f;
 	FrameSyncMode _frameSyncMode = FrameSyncMode::FrontEdge;
@@ -340,6 +341,12 @@ public:
 	}
 
 
+	bool IsParameterFocusSwitchingEnabled() const noexcept { return _isParameterFocusSwitchingEnabled; }
+	void IsParameterFocusSwitchingEnabled(bool value) noexcept {
+		if (_isParameterFocusSwitchingEnabled == value) return;
+		_isParameterFocusSwitchingEnabled = value;
+		SaveAsync();
+	}
 	bool IsFrontEdgeSyncEnabled() const noexcept { return _isFrontEdgeSyncEnabled; }
 	void IsFrontEdgeSyncEnabled(bool value) noexcept {
 		if (_isFrontEdgeSyncEnabled == value) return;

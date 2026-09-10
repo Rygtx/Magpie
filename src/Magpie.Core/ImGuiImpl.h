@@ -36,6 +36,7 @@ public:
 
 	void ClearStates() noexcept;
 	void ParameterEditing(bool value) noexcept;
+	void ParameterFocusSwitchingEnabled(bool value) noexcept { _parameterFocusSwitchingEnabled = value; }
 	void ParameterPreview(bool value) noexcept { _parameterPreview = value; }
 	bool IsParameterPreviewAt(POINT screenPoint) const noexcept;
 	bool OwnsPointerAtCursor() const noexcept;
@@ -66,6 +67,7 @@ public:
 		float maxWidth = -1.0f
 	) noexcept;
 private:
+	bool _parameterFocusSwitchingEnabled = false;
 	bool _parameterEditing = false;
 	bool _parameterPreview = false;
 	enum class PendingInputEventType : uint8_t {

@@ -5,7 +5,7 @@
 ### Magpie 本体
 
 - **全新的效果器选择器**：支持用途分类、搜索、同族折叠、入门／进阶筛选和字母定位，并提供效果说明与搭配建议。
-- **实时参数编辑与常驻预览**：打开面板不会主动切换游戏焦点；首次点击预览仅激活编辑，再次点击即可调整参数，支持滑条、下拉菜单和 `Ctrl+单击` 输入数值。默认使用 `Alt+Shift+E` 打开或关闭面板，`Esc` 按“编辑 → 预览 → 关闭”逐级退出。
+- **可选的参数焦点切换**：主页新增“参数调整焦点切换”开关，默认关闭，使用基于 0.6.6 的鼠标操作方式。开启后支持编辑／预览切换及 `Ctrl+单击` 输入数值，但在部分窗口上运行时可能不稳定。
 - **新增帧同步模式**：在 Front Edge Sync 之外增加 Async 和 NVIDIA Reflex；普通效果与 DLSS FG 均可选择 Reflex 基础限帧，主页和参数面板共用同一组设置。
 - **更方便的效果组管理**：新建、复制、导入和重命名时自动检查重名；已有同名效果组保留内容，并提示修改名称。
 - **独立保存增强版配置**：与原版 Magpie 的设置分开保存，支持导入旧配置。工具栏快捷键提示及 FAQ、帮助入口同步完善。
@@ -44,8 +44,8 @@
 
 ### 参数与帧率设置
 
-- **参数生效方式**：Live／实时立即生效；Restart／重启需点击“应用并重新启用”。重新启用时恢复面板位置和大小；已打开的面板以预览状态恢复，不主动切换焦点。
-- **面板操作**：默认 `Alt+Shift+E` 打开或关闭参数面板，可在设置中改绑。打开面板保留游戏焦点，首次点击预览只激活编辑，后续点击操作控件；点击游戏区域返回预览。`Esc` 先关闭临时输入或下拉菜单，再逐级退出面板。
+- **参数生效方式**：Live／实时立即生效；Restart／重启需点击“应用并重新启用”。重新启用时恢复面板位置和大小；关闭焦点切换时恢复显示状态，开启时恢复编辑／预览状态。
+- **面板操作**：默认 `Alt+Shift+E` 打开或关闭参数面板，可在设置中改绑。“参数调整焦点切换”需在停用缩放时设置，默认关闭；此时面板显示后即可用鼠标操作，点击游戏区域保持面板显示，可用标题栏关闭按钮关闭。开启后会切换焦点，点击预览中的控件可直接操作，点击游戏区域返回预览；`Esc` 先关闭临时输入或下拉菜单，再按“编辑 → 预览 → 关闭”退出。
 - **统一基础 FPS**：默认开启 Front Edge Sync，目标 `60 FPS`。主页支持 `0` 自动或 `1–1000 FPS`，参数面板滑条为 `15–360 FPS`、步进 `1`；已有合法值不会因打开面板而被改写。修改自动保存，重新启用缩放后生效。
 - **Front Edge／Async／Reflex**：Front Edge 保留原提交节奏；Async 在捕获前限制基础输入间隔；Reflex 将同一基础目标交给 NVIDIA 驱动。Reflex 要求支持的 NVIDIA DXGI 呈现路径，效果与呈现使用同一显卡；需使用 R565 或更新的 NVIDIA 驱动。不可用时自动回退 Async，仅记日志。关闭帧同步仍保留其他既有上限和 FG 的低延迟机制。
 - **自动目标与补帧**：`0` 按显示器刷新率折算基础 FPS，有 FG 时除以倍率。例如 240 Hz 下，2×／3×／4× 分别为基础 120／80／60 FPS；手动 80 FPS 配合 2× 的名义输出为 160 FPS。源程序限帧仍需单独设置，相同数值不代表逐帧同步；源或 GPU 跟不上时实际帧率会更低。
@@ -72,7 +72,7 @@ Contributor: [TurnX-alt](https://github.com/TurnX-alt) 提供界面、预设与�
 ### Magpie Application
 
 - **New effect picker** with purpose categories, search, collapsible families, Beginner/Advanced filtering and alphabetical navigation, plus effect descriptions and combination advice.
-- **Live parameter editing and persistent preview**: opening the panel does not take focus from the game. The first preview click only activates editing; subsequent clicks operate sliders, dropdowns or `Ctrl+click` numeric entry. The default `Alt+Shift+E` shortcut opens or closes the panel; Escape steps through Edit → Preview → Closed.
+- **Optional focus switching for parameters**: Home adds Switch focus for parameter adjustment, disabled by default to use mouse interaction based on 0.6.6. Enabling it provides Edit/Preview switching and `Ctrl+click` numeric entry, but may be unstable with some windows.
 - **Additional frame-sync modes**: Async and NVIDIA Reflex join Front Edge Sync. Ordinary effects and DLSS FG can use Reflex base pacing, with shared settings on Home and in the parameter panel.
 - **Easier effect-group management**: creating, copying, importing and renaming groups checks for duplicate names. Existing duplicates retain their contents and are marked for renaming.
 - **Separate enhanced settings** from the original Magpie, with support for importing older configurations. Shortcut tooltips, FAQ links and help access are also improved.
@@ -111,8 +111,8 @@ Existing groups with duplicate names retain their contents and should be renamed
 
 ### Parameters and Frame Rates
 
-- **Applying parameters**: Live takes effect immediately; Restart requires Apply and restart. Re-enabling restores panel geometry; a previously open panel returns in Preview without taking focus.
-- **Panel controls**: `Alt+Shift+E` opens or closes the panel by default and can be rebound in settings. Opening preserves game focus; the first preview click activates editing and subsequent clicks operate controls; clicking the game returns to preview. Escape dismisses temporary input or dropdowns before stepping out of the panel.
+- **Applying parameters**: Live takes effect immediately; Restart requires Apply and restart. Re-enabling restores panel geometry and visibility with focus switching off, or its Edit/Preview state with focus switching on.
+- **Panel controls**: `Alt+Shift+E` opens or closes the panel by default and can be rebound in settings. Set Switch focus for parameter adjustment while scaling is stopped. It defaults to Off: the visible panel responds directly to mouse input, game-area clicks leave it visible, and its title-bar button closes it. When On, the panel switches focus; clicking preview controls operates them directly, game-area clicks return to Preview, and Escape dismisses temporary input or dropdowns before stepping through Edit → Preview → Closed.
 - **Unified base FPS**: defaults remain Front Edge Sync enabled at `60 FPS`. Home supports `0` for automatic or `1–1000 FPS`; the panel slider spans `15–360 FPS` in steps of `1`. Opening the panel preserves existing valid values. Changes save automatically and apply when scaling is re-enabled.
 - **Front Edge/Async/Reflex**: Front Edge retains the existing submission pacing; Async limits base-input intervals before capture; Reflex gives the same base target to the NVIDIA driver. Reflex requires a supported NVIDIA DXGI path with effects and presentation on the same GPU; an R565 or newer NVIDIA driver is required. Unavailable Reflex falls back to Async with logging only. Disabling frame sync retains other existing caps and FG low-latency handling.
 - **Automatic targets and FG**: `0` derives base FPS from display refresh rate, divided by the FG multiplier. At 240 Hz, 2×/3×/4× target base rates of 120/80/60 FPS. A manual 80 FPS target with 2× FG nominally outputs 160 FPS. Source-application limiting remains separate; matching numbers do not imply frame-by-frame synchronization, and slower sources or GPUs can produce lower actual rates.

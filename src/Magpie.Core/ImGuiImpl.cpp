@@ -161,7 +161,7 @@ void ImGuiImpl::NewFrame(
 	ImGuiIO& io = ImGui::GetIO();
 	_fittsLawAdjustment = fittsLawAdjustment;
 	_resetDragTolerance = 4.0f * dpiScale;
-	if (!_parameterEditing) {
+	if (_parameterFocusSwitchingEnabled && !_parameterEditing) {
 		for (ImGuiWindow* window : ImGui::GetCurrentContext()->Windows) {
 			if (std::string_view(GetWindowIDFromName(window->RootWindow->Name)) == "effectParameters")
 				window->Flags |= ImGuiWindowFlags_NoInputs;
@@ -513,6 +513,25 @@ void ImGuiImpl::_FlushPendingInput() noexcept {
 }
 
 void ImGuiImpl::_StagePresentedWindowRects() noexcept {
+	if (!_parameterFocusSwitchingEnabled) {
+		_stagedPresentedWindowRects.clear();
+		_stagedHasOpenPopup = !ImGui::GetCurrentContext()->OpenPopupStack.empty();
+		for (ImGuiWindow* window : ImGui::GetCurrentContext()->Windows | std::views::reverse) {
+			if (!window->WasActive || window->Hidden ||
+				(window->Flags & ImGuiWindowFlags_NoMouseInputs)) {
+				continue;
+			}
+			_stagedPresentedWindowRects.emplace_back(
+				GetWindowIDFromName(window->Name),
+				ImVec4(window->Pos.x, window->Pos.y,
+					window->Pos.x + window->Size.x, window->Pos.y + window->Size.y));
+			if (window->Flags & ImGuiWindowFlags_Popup) {
+				break;
+			}
+		}
+		return;
+	}
+
 	_stagedPresentedWindowRects.clear();
 	_stagedParameterRect.reset();
 	_stagedHasOpenPopup = !ImGui::GetCurrentContext()->OpenPopupStack.empty();
@@ -887,7 +906,7 @@ const char* ImGuiImpl::_GetHoveredWindowId(ImVec2 mousePos) const noexcept {
 		if (window->Flags & ImGuiWindowFlags_NoMouseInputs) {
 			continue;
 		}
-		if (!_parameterEditing && std::string_view(GetWindowIDFromName(window->RootWindow->Name)) == "effectParameters") {
+		if (_parameterFocusSwitchingEnabled && !_parameterEditing && std::string_view(GetWindowIDFromName(window->RootWindow->Name)) == "effectParameters") {
 			continue;
 		}
 

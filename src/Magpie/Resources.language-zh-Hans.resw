@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -1640,4 +1640,6 @@
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>预览</value></data>
   <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Ctrl+单击滑条输入数值。Esc：编辑→预览→关闭；点击预览面板继续编辑。面板开关快捷键：</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>请点击游戏窗口恢复控制</value></data>
+  <data name="Home_ParameterFocusSwitching.Header" xml:space="preserve"><value>参数调整焦点切换</value></data>
+  <data name="Home_ParameterFocusSwitching.Description" xml:space="preserve"><value>参数实时调整时启用焦点切换，但在部分窗口上运行时可能不稳定。</value></data>
 </root>

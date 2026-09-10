@@ -815,6 +815,8 @@ std::string AppSettings::_Serialize(const _AppSettingsData& data) {
 	writer.Bool(data._isStatisticsForDynamicDetectionEnabled);
 	writer.Key("frontEdgeSync");
 	writer.Bool(data._isFrontEdgeSyncEnabled);
+	writer.Key("parameterFocusSwitching");
+	writer.Bool(data._isParameterFocusSwitchingEnabled);
 	writer.Key("vrr");
 	writer.Bool(data._isVRREnabled);
 	writer.Key("frontEdgeSyncFrameRate");
@@ -1066,6 +1068,9 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 	JsonHelper::ReadBool(root, "enableStatisticsForDynamicDetection", _isStatisticsForDynamicDetectionEnabled);
 	JsonHelper::ReadFloat(root, "minFrameRate", _minFrameRate);
 	JsonHelper::ReadBool(root, "frontEdgeSync", _isFrontEdgeSyncEnabled);
+	// Existing configurations stay on the 0.6.6 input path unless explicitly enabled.
+	_isParameterFocusSwitchingEnabled = false;
+	JsonHelper::ReadBool(root, "parameterFocusSwitching", _isParameterFocusSwitchingEnabled);
 	JsonHelper::ReadBool(root, "vrr", _isVRREnabled);
 	JsonHelper::ReadFloat(root, "frontEdgeSyncFrameRate", _frontEdgeSyncFrameRate);
 	_frontEdgeSyncFrameRate = SanitizePresentationFrameRate(_frontEdgeSyncFrameRate);

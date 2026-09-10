@@ -19,6 +19,15 @@ foreach ($test in @('parameter_input', 'overlay_window_layout')) {
     & "$output/$test.exe"
     if ($LASTEXITCODE) { throw "$test failed" }
 }
+& python (Join-Path $repo 'scripts/tests/test_parameter_focus_settings.py') $output
+if ($LASTEXITCODE) { throw 'Extract parameter focus setting failed' }
+$rapid = Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.conan2/p') -Directory -Filter 'rapid*' |
+    Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'p/include/rapidjson/document.h') } | Select-Object -First 1
+if (!$rapid) { throw 'Restore rapidjson before running setting tests.' }
+& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 "/I$($rapid.FullName)/p/include" "$output/parameter_focus_settings.cpp" "/Fe:$output/parameter_focus_settings.exe" "/Fo:$output/parameter_focus_settings.obj"
+if ($LASTEXITCODE) { throw 'Compile parameter focus setting failed' }
+& "$output/parameter_focus_settings.exe"
+if ($LASTEXITCODE) { throw 'Parameter focus setting failed' }
 if ($NativePrototype) {
     # Creates two small test-owned windows, tests real input routing and restores
     # the previous cursor/focus. No game or Magpie configuration is modified.

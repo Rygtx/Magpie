@@ -224,6 +224,12 @@
 						</local:SettingsCard>
 					</local:SettingsExpander.Items>
 				</local:SettingsExpander>
+				<local:SettingsCard x:Uid="Home_ParameterFocusSwitching" IsWrapEnabled="True">
+					<local:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE9E9;" /></local:SettingsCard.HeaderIcon>
+					<ToggleSwitch x:Uid="ToggleSwitch"
+					              IsEnabled="{x:Bind ViewModel.IsNotRunning, Mode=OneWay}"
+					              IsOn="{x:Bind ViewModel.IsParameterFocusSwitchingEnabled, Mode=TwoWay}" />
+				</local:SettingsCard>
 				<local:SettingsExpander x:Uid="Home_Toolbar_InitialState">
 					<local:SettingsExpander.HeaderIcon>
 						<FontIcon Glyph="&#xE890;" />

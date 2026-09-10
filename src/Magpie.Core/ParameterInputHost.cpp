@@ -14,6 +14,7 @@ OverlayDrawer::~OverlayDrawer() noexcept {
 }
 
 bool OverlayDrawer::_HasParameterForeground() const noexcept {
+	if (!_parameterFocusSwitchingEnabled) return false;
 	auto& scaling = ScalingWindow::Get();
 	const HWND foreground = GetForegroundWindow();
 	return foreground && (foreground == scaling.SrcTracker().Handle() || foreground == scaling.Handle() ||
@@ -21,6 +22,7 @@ bool OverlayDrawer::_HasParameterForeground() const noexcept {
 }
 
 bool OverlayDrawer::_EnsureParameterInputHost() noexcept {
+	if (!_parameterFocusSwitchingEnabled) return false;
 	if (!_hwndParameterInput) {
 		static const ATOM windowClass = [] {
 			WNDCLASSEXW wc{ sizeof(wc) };
@@ -46,9 +48,9 @@ bool OverlayDrawer::_EnsureParameterInputHost() noexcept {
 }
 
 bool OverlayDrawer::_BeginParameterInput() noexcept {
-	// USER32 must already have activated the host through an actual panel click.
-	// Opening or restoring the panel must never take foreground from the game.
-	if (!_hwndParameterInput || GetForegroundWindow() != _hwndParameterInput) {
+	// An asynchronous restart must never activate over an unrelated application.
+	if (!_HasParameterForeground()) {
+		Logger::Get().Info("Parameter editing activation skipped: foreground is outside the scaling session");
 		return false;
 	}
 	_parameterInputTransition = true;
@@ -68,8 +70,12 @@ bool OverlayDrawer::_BeginParameterInput() noexcept {
 	const RECT& rect = scaling.RendererRect();
 	SetWindowPos(_hwndParameterInput, HWND_TOPMOST, rect.left, rect.top,
 		rect.right - rect.left, rect.bottom - rect.top, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+	const HWND currentForeground = GetForegroundWindow();
+	if (currentForeground == scaling.SrcTracker().Handle() || currentForeground == scaling.Handle() ||
+		currentForeground == _hwndParameterInput) SetForegroundWindow(_hwndParameterInput);
 	const bool activated = GetForegroundWindow() == _hwndParameterInput;
 	if (activated) {
+		SetFocus(_hwndParameterInput);
 		ClipCursor(nullptr);
 		_imguiImpl.ParameterEditing(true);
 		for (int key : { VK_CONTROL, VK_SHIFT, VK_MENU, VK_LWIN, VK_RWIN }) {
@@ -93,6 +99,7 @@ bool OverlayDrawer::_BeginParameterInput() noexcept {
 }
 
 void OverlayDrawer::_EndParameterInput(bool returnFocus) noexcept {
+	if (!_parameterFocusSwitchingEnabled) return;
 	_parameterInputTransition = true;
 	const bool ownedFocus = _hwndParameterInput && GetForegroundWindow() == _hwndParameterInput;
 	_imguiImpl.ParameterEditing(false);
@@ -118,6 +125,7 @@ void OverlayDrawer::_EndParameterInput(bool returnFocus) noexcept {
 }
 
 void OverlayDrawer::_UpdateParameterPreviewHost() noexcept {
+	if (!_parameterFocusSwitchingEnabled) return;
 	_imguiImpl.ParameterPreview(_isEffectParametersVisible && _parameterPanelState == ParameterPanelState::Preview);
 	if (_parameterInputTransition || IsEditingParameters() || _parameterResumeClickPending) return;
 	const auto rect = _imguiImpl.PresentedParameterRect();
@@ -152,6 +160,7 @@ void OverlayDrawer::_UpdateParameterPreviewHost() noexcept {
 }
 
 bool OverlayDrawer::HandleParameterPreviewEscape(WPARAM message, const KBDLLHOOKSTRUCT& key) noexcept {
+	if (!_parameterFocusSwitchingEnabled) return false;
 	if (key.vkCode != VK_ESCAPE) return false;
 	const bool down = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
 	const bool up = message == WM_KEYUP || message == WM_SYSKEYUP;
@@ -178,14 +187,17 @@ bool OverlayDrawer::HandleParameterPreviewEscape(WPARAM message, const KBDLLHOOK
 }
 
 void OverlayDrawer::_ToggleParameterPanel() noexcept {
-	_SetParameterPanelState(_isEffectParametersVisible ? ParameterPanelState::Closed : ParameterPanelState::Preview);
+	_SetParameterPanelState(_isEffectParametersVisible ? ParameterPanelState::Closed : ParameterPanelState::Edit);
 }
 
 void OverlayDrawer::_SetParameterPanelState(ParameterPanelState state, bool returnFocus) noexcept {
+	if (!_parameterFocusSwitchingEnabled) {
+		_isEffectParametersVisible = state != ParameterPanelState::Closed;
+		_overlayDirty = true;
+		_ClearStatesIfNoVisibleWindow();
+		return;
+	}
 	_previewEscapeCanClose = _previewClosePending = false;
-	if (state == ParameterPanelState::Edit &&
-		(!_hwndParameterInput || GetForegroundWindow() != _hwndParameterInput))
-		state = ParameterPanelState::Preview;
 	if (state == ParameterPanelState::Edit) {
 		_isEffectParametersVisible = true;
 		if (!IsEditingParameters()) {
@@ -222,6 +234,7 @@ void OverlayDrawer::_FinishParameterInput() noexcept {
 }
 
 bool OverlayDrawer::HasHeldParameterInput() const noexcept {
+	if (!_parameterFocusSwitchingEnabled) return false;
 	if (_previewEscapeOwned || _parameterResumeClickPending) return true;
 	if (!IsEditingParameters()) return false;
 	if (_parameterHeldButtons || std::ranges::any_of(_parameterHeldKeys, [](bool held) { return held; })) return true;
@@ -244,6 +257,7 @@ void OverlayDrawer::_SyncInheritedParameterKeys() noexcept {
 }
 
 void OverlayDrawer::ReleaseParameterInput() noexcept {
+	if (!_parameterFocusSwitchingEnabled) return;
 	_previewEscapeCanClose = _previewClosePending = false;
 	const bool editing = IsEditingParameters();
 	_EndParameterInput(true);
@@ -257,6 +271,7 @@ void OverlayDrawer::SuspendParameterInput() noexcept {
 }
 
 void OverlayDrawer::UpdateParameterInputHost() noexcept {
+	if (!_parameterFocusSwitchingEnabled) return;
 	if (std::exchange(_previewClosePending, false) &&
 		_parameterPanelState == ParameterPanelState::Preview && _HasParameterForeground())
 		_SetParameterPanelState(ParameterPanelState::Closed, false);
@@ -278,6 +293,7 @@ void OverlayDrawer::UpdateParameterInputHost() noexcept {
 
 std::optional<ImGuiInputResult> OverlayDrawer::_HandleParameterInputMessage(
 	HWND sourceWindow, UINT msg, WPARAM wParam, LPARAM lParam) noexcept {
+	if (!_parameterFocusSwitchingEnabled) return std::nullopt;
 	if (_parameterInputTransition) return std::nullopt;
 	const bool fromHost = sourceWindow && sourceWindow == _hwndParameterInput;
 	auto queue = [&](std::optional<POINT> point = std::nullopt) {
@@ -302,14 +318,14 @@ std::optional<ImGuiInputResult> OverlayDrawer::_HandleParameterInputMessage(
 		// while messages waited for rendering. Both HWND routes use screen coordinates.
 		const DWORD position = GetMessagePos();
 		const POINT point{ GET_X_LPARAM(position), GET_Y_LPARAM(position) };
-		if (fromHost && down && _parameterPanelState == ParameterPanelState::Preview &&
+		if (down && _parameterPanelState == ParameterPanelState::Preview &&
 			!_parameterResumeClickPending && _HasParameterForeground() &&
 			_imguiImpl.IsParameterPreviewAt(point)) {
 			_SetParameterPanelState(ParameterPanelState::Edit);
-			// Activation consumes the entire first click, including an outside release.
-			_parameterResumeClickPending = true;
+			_parameterResumeClickPending = !IsEditingParameters();
 			_parameterHeldButtons = 1u << button;
 			SetCapture(_hwndParameterInput);
+			if (IsEditingParameters()) queue(point);
 			return ImGuiInputResult::Urgent;
 		}
 		if (_parameterResumeClickPending) {

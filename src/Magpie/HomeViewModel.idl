@@ -39,6 +39,7 @@ namespace Magpie {
 		Boolean IsSimulateExclusiveFullscreen;
 		Boolean IsInlineParams;
 		Boolean IsFrontEdgeSyncEnabled;
+		Boolean IsParameterFocusSwitchingEnabled;
 		Boolean IsVRREnabled;
 		Double FrontEdgeSyncFrameRate;
 		Int32 FrameSyncModeIndex;

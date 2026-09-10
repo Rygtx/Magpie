@@ -475,6 +475,7 @@ struct ScalingOptions {
 	float minFrameRate = 0.0f;
 	std::optional<float> maxFrameRate;
 	bool isFrontEdgeSyncEnabled = true;
+	bool isParameterFocusSwitchingEnabled = false;
 	bool isVRREnabled = false;
 	// 0 targets the display refresh rate, divided by FG multiplier for base FPS.
 	float frontEdgeSyncFrameRate = 60.0f;

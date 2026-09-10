@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -1640,4 +1640,6 @@
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>Preview</value></data>
   <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Ctrl+click a slider to enter its value. Esc: Edit → Preview → Closed. Click the preview panel to edit. Open / close shortcut:</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>Click the game window to restore control</value></data>
+  <data name="Home_ParameterFocusSwitching.Header" xml:space="preserve"><value>Switch focus for parameter adjustment</value></data>
+  <data name="Home_ParameterFocusSwitching.Description" xml:space="preserve"><value>Enable focus switching during live parameter adjustment. This may be unstable with some windows.</value></data>
 </root>

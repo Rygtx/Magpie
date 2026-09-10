@@ -58,6 +58,8 @@ static void SetDefaultWindowOptions(
 
 bool OverlayDrawer::Initialize(DeviceResources& deviceResources, OverlayOptions& overlayOptions) noexcept {
 	_overlayOptions = &overlayOptions;
+	_parameterFocusSwitchingEnabled = ScalingWindow::Get().Options().isParameterFocusSwitchingEnabled;
+	_imguiImpl.ParameterFocusSwitchingEnabled(_parameterFocusSwitchingEnabled);
 	SetDefaultWindowOptions(overlayOptions.windows);
 
 	if (!_imguiImpl.Initialize(deviceResources)) {
@@ -255,6 +257,8 @@ void OverlayDrawer::ToolbarState(Magpie::ToolbarState value) noexcept {
 }
 
 OverlaySessionState OverlayDrawer::CaptureSessionState() const noexcept {
+	if (!_parameterFocusSwitchingEnabled)
+		return { _isToolbarVisible, _isToolbarPinned, _isProfilerVisible, _isEffectParametersVisible };
 	const auto state = IsEditingParameters() ? _pendingParameterPanelState : _parameterPanelState;
 	return { _isToolbarVisible, _isToolbarPinned, _isProfilerVisible, state != ParameterPanelState::Closed, state };
 }
@@ -262,8 +266,8 @@ OverlaySessionState OverlayDrawer::CaptureSessionState() const noexcept {
 void OverlayDrawer::RestoreSessionState(const OverlaySessionState& state) noexcept {
 	_isToolbarVisible = state.toolbarVisible;
 	_isToolbarPinned = state.toolbarPinned;
-	_SetParameterPanelState(state.effectParametersVisible
-		? ParameterPanelState::Preview : ParameterPanelState::Closed, false);
+	_SetParameterPanelState(state.parameterPanelState == ParameterPanelState::Closed && state.effectParametersVisible
+		? ParameterPanelState::Preview : state.parameterPanelState, false);
 	if (_isProfilerVisible != state.profilerVisible) InvokeAction(OverlayAction::Profiler);
 	_overlayDirty = true;
 	_ClearStatesIfNoVisibleWindow();
@@ -1385,7 +1389,9 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		_effectParametersViewport = displaySize;
 	}
 
-	const std::string title = StrHelper::Concat(
+	const std::string title = !_parameterFocusSwitchingEnabled
+		? StrHelper::Concat(_GetResourceString(L"Overlay_EffectParameters"), "##", EFFECT_PARAMETERS_WINDOW_ID)
+		: StrHelper::Concat(
 		_GetResourceString(L"Overlay_EffectParameters"),
 		" - ", _GetResourceString(IsEditingParameters() ? L"Overlay_Parameters_Edit" : L"Overlay_Parameters_Preview"),
 		"###", EFFECT_PARAMETERS_WINDOW_ID);
@@ -1395,8 +1401,8 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		ImGuiCol_ResizeGripHovered, ImVec4(0.35f, 0.67f, 0.95f, 0.72f));
 	ImGui::PushStyleColor(
 		ImGuiCol_ResizeGripActive, ImVec4(0.35f, 0.67f, 0.95f, 1.0f));
-	const bool expanded = ImGui::Begin(title.c_str(), nullptr,
-		IsEditingParameters() ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+	const bool expanded = ImGui::Begin(title.c_str(), _parameterFocusSwitchingEnabled ? nullptr : &_isEffectParametersVisible,
+		(!_parameterFocusSwitchingEnabled || IsEditingParameters()) ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	if (IsEditingParameters() && window->TitleBarRect().Contains(ImGui::GetIO().MousePos)) {
 		const std::string hint = StrHelper::Concat(_GetResourceString(L"Overlay_Parameters_InputHint"),
@@ -1447,7 +1453,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	ImGui::BeginChild(
 		"##effectParametersContent", ImVec2(0.0f, contentHeight),
 		ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar |
-		(IsEditingParameters() ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs));
+		(!_parameterFocusSwitchingEnabled || IsEditingParameters() ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs));
 
 	bool needRedraw = false;
 	bool queueFailure = false;
@@ -1484,7 +1490,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	int targetFps = static_cast<int>(std::lround(_draftFrameSync.frameRate));
 	const std::string targetFpsText = fmt::format("{:g} FPS", _draftFrameSync.frameRate);
 	if (ImGui::SliderInt("##targetFps", &targetFps, 15, 360, targetFpsText.c_str(),
-		ImGuiSliderFlags_AlwaysClamp)) {
+		ImGuiSliderFlags_AlwaysClamp | (_parameterFocusSwitchingEnabled ? ImGuiSliderFlags_None : ImGuiSliderFlags_NoInput))) {
 		_draftFrameSync.frameRate = static_cast<float>(targetFps);
 		parameterEdited = needRedraw = true;
 	}
@@ -1656,8 +1662,14 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 							: fmt::format("{}",
 								static_cast<int>(std::lround(value)));
 					const float previousValue = value;
-					changed = DrawEffectParameterSlider("##value", parameter, value,
-						currentTick, maximumTick, displayValue.c_str());
+					if (_parameterFocusSwitchingEnabled) {
+						changed = DrawEffectParameterSlider("##value", parameter, value,
+							currentTick, maximumTick, displayValue.c_str());
+					} else {
+						changed = ImGui::SliderInt("##value", &currentTick, 0, maximumTick,
+							displayValue.c_str(), ImGuiSliderFlags_AlwaysClamp);
+						if (changed) value = GetEffectParameterValueFromTick(parameter, currentTick, maximumTick);
+					}
 					if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
 						!_imguiImpl.LeftPressHasControl() && !resetInput.KeyCtrl &&
 						!ImGui::TempInputIsActive(ImGui::GetItemID())) {
@@ -1846,7 +1858,8 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		"##effectParametersStatus",
 		ImVec2(-ImGui::GetFrameHeight(), statusHeight),
 		ImGuiChildFlags_None,
-		IsEditingParameters() ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs);
+		!_parameterFocusSwitchingEnabled ? ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+		: IsEditingParameters() ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs);
 	ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 	ImGui::TextWrapped("%s", status.c_str());
 	ImGui::PopStyleColor();

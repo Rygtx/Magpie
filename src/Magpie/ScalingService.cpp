@@ -519,6 +519,7 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	options.IsInlineParams(settings.IsInlineParams());
 	options.IsFP16Disabled(settings.IsFP16Disabled());
 	options.isFrontEdgeSyncEnabled = settings.IsFrontEdgeSyncEnabled();
+	options.isParameterFocusSwitchingEnabled = settings.IsParameterFocusSwitchingEnabled();
 	// VRR is deferred while its settings card is hidden. Ignore an older
 	// saved true value so no session silently enables tearing.
 	options.isVRREnabled = false;

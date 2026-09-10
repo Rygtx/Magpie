@@ -31,6 +31,7 @@ struct Input { bool FrameInputCanceled() { return false; } void Tooltip(const ch
 struct ScalingWindow { static ScalingWindow& Get() { static ScalingWindow s; return s; } struct Data { struct { std::string parameters; } toolbarShortcutLabels; } data; const Data& Options() const { return data; } };
 struct StrHelper { template<class... T> static std::string Concat(T&&... t) { std::string s; (s.append(t),...); return s; } };
 struct Panel {
+    bool _parameterFocusSwitchingEnabled = false;
     bool IsEditingParameters() const { return true; }
     std::string _GetResourceString(const wchar_t*) { return "hint"; }
     Options options{{{"effectParameters", {0, 1, 60, 0.5f}}}};
