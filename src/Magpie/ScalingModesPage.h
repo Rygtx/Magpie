@@ -122,11 +122,11 @@ private:
 	struct PickerCategoryRow {
 		std::wstring category, subcategory, name, description;
 		Border container{ nullptr };
-		Button button{ nullptr }, toggle{ nullptr };
+		Button button{ nullptr };
 		::Magpie::EffectPickerToggleIcon icon;
 		FrameworkElement selectionMark{ nullptr };
 		int parent = -1;
-		bool expanded = false;
+		bool hasChildren = false, expanded = false;
 	};
 	std::vector<PickerCategoryRow> _pickerCategories;
 	Border _pickerCategoryPane{ nullptr }, _pickerListPane{ nullptr }, _pickerDetailPane{ nullptr };

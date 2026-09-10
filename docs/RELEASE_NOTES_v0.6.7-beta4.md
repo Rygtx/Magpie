@@ -2,6 +2,7 @@
 
 保留 Beta 3 的全部功能，本次更新：
 
+- 效果器选择左侧分类改为整行点击：图标、名称、数量和空白区域统一选中分类并切换展开／收起，悬停、按下和键盘焦点反馈覆盖整行。
 - 修复旧帧被拒收后消费确认未推进、可能阻塞后续帧的问题；DLSS 插帧队列也会正确完成丢弃任务，避免重放旧画面。
 - DLSSNR 皮肤结构强度范围调整为 `0–2`，默认值为 `0`；旧配置中的负值按 `0` 使用。
 
@@ -23,6 +24,7 @@
 
 Includes all Beta 3 features, with the following updates:
 
+- Effect-picker categories now use one full-row button: the icon, name, count and padding select the category and toggle expansion together, with shared hover, press and keyboard focus feedback.
 - Fixed missing consumption acknowledgement after rejecting a stale frame, which could block subsequent frames. DLSS frame-generation queues also complete dropped jobs without replaying an old image.
 - DLSSNR Skin Structure Strength now ranges from `0–2`, with a default of `0`. Negative values in existing configurations are clamped to `0`.
 

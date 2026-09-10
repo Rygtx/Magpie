@@ -144,21 +144,16 @@ void ScalingModesPage::_BuildEffectPicker() {
 		row.subcategory = subcategory;
 		row.description = description;
 		row.parent = parent;
+		row.hasChildren = hasChildren;
+		row.button = _EffectPickerButton(nullptr);
+		row.button.Padding({0, 8, 6, 8});
 		Grid layout;
 		Column(layout, hasChildren ? 28 : 16, GridUnitType::Pixel);
 		Column(layout, 1, GridUnitType::Star);
 
 		if (hasChildren) {
-			row.toggle = _EffectPickerButton(nullptr);
-			row.icon = MakeEffectPickerToggleIcon(row.toggle);
-			row.toggle.Content(row.icon.root);
-			row.toggle.Padding({8, 4, 8, 4});
-			AutomationProperties::SetName(row.toggle, L"展开" + name);
-			row.toggle.Click([weak, index](auto const &, auto const &) {
-				if (auto page = weak.get())
-					page->_SetEffectCategoryExpanded(index, !page->_pickerCategories[index].expanded);
-			});
-			layout.Children().Append(row.toggle);
+			row.icon = MakeEffectPickerToggleIcon(row.button);
+			layout.Children().Append(row.icon.root);
 		}
 		Grid label;
 		Column(label, 1, GridUnitType::Star);
@@ -173,14 +168,18 @@ void ScalingModesPage::_BuildEffectPicker() {
 		number.VerticalAlignment(VerticalAlignment::Center);
 		Grid::SetColumn(number, 1);
 		label.Children().Append(number);
-		row.button = _EffectPickerButton(label);
-		row.button.Padding({4, 8, 6, 8});
+		label.Margin({4, 0, 0, 0});
+		Grid::SetColumn(label, 1);
+		layout.Children().Append(label);
+		// One button owns the icon, label, count and padding, including all
+		// pointer, keyboard and accessibility activation feedback.
+		row.button.Content(layout);
 		AutomationProperties::SetName(row.button, name + L"，" + std::to_wstring(count) + L" 个效果器");
 		AutomationProperties::SetHelpText(row.button, description);
 		row.button.Click([weak, index](auto const &, auto const &) {
 			if (auto page = weak.get()) {
 				const auto &item = page->_pickerCategories[index];
-				page->_SetEffectCategoryExpanded(index, true);
+				page->_SetEffectCategoryExpanded(index, !item.expanded);
 				page->_ChooseEffectCategory(item.category, item.subcategory, item.description);
 			}
 		});
@@ -200,14 +199,14 @@ void ScalingModesPage::_BuildEffectPicker() {
 			auto &rows = page->_pickerCategories;
 			auto &item = rows[index];
 			const auto key = args.Key();
-			if (key == VirtualKey::Right && item.toggle) {
+			if (key == VirtualKey::Right && item.hasChildren) {
 				if (!item.expanded)
 					page->_SetEffectCategoryExpanded(index, true);
 				else if (index + 1 < rows.size())
 					rows[index + 1].button.Focus(FocusState::Keyboard);
 				args.Handled(true);
 			} else if (key == VirtualKey::Left) {
-				if (item.toggle && item.expanded)
+				if (item.hasChildren && item.expanded)
 					page->_SetEffectCategoryExpanded(index, false);
 				else if (item.parent >= 0)
 					rows[item.parent].button.Focus(FocusState::Keyboard);
@@ -222,16 +221,15 @@ void ScalingModesPage::_BuildEffectPicker() {
 				args.Handled(true);
 			}
 		});
-		Grid::SetColumn(row.button, 1);
-		layout.Children().Append(row.button);
+		Grid rowLayout;
+		rowLayout.Children().Append(row.button);
 		row.container = Border();
 		row.container.Style(Resources().Lookup(box_value(L"EffectPickerCategoryStyle")).as<Windows::UI::Xaml::Style>());
 		SetEffectPickerRowMargin(row.container);
 		row.selectionMark = Resources().Lookup(box_value(L"EffectPickerSelectionMark")).as<DataTemplate>().LoadContent().as<FrameworkElement>();
 		row.selectionMark.IsHitTestVisible(false);
-		Grid::SetColumnSpan(row.selectionMark, 2);
-		layout.Children().Append(row.selectionMark);
-		row.container.Child(layout);
+		rowLayout.Children().Append(row.selectionMark);
+		row.container.Child(rowLayout);
 		if (parent >= 0) {
 			SetEffectPickerRowMargin(row.container, 13);
 			row.container.BorderThickness({1, 0, 0, 0});
@@ -345,7 +343,7 @@ void ScalingModesPage::_BuildEffectPicker() {
 	});
 }
 void ScalingModesPage::_SetEffectCategoryExpanded(size_t index, bool expanded) {
-	if (index >= _pickerCategories.size() || !_pickerCategories[index].toggle)
+	if (index >= _pickerCategories.size() || !_pickerCategories[index].hasChildren)
 		return;
 	auto &item = _pickerCategories[index];
 	const double anchorTop = item.container.TransformToVisual(_pickerCategoryScroll).TransformPoint({0, 0}).Y;
@@ -353,8 +351,6 @@ void ScalingModesPage::_SetEffectCategoryExpanded(size_t index, bool expanded) {
 	bool focusHidden = false;
 	item.expanded = expanded;
 	item.icon.Expanded(expanded);
-	AutomationProperties::SetItemStatus(item.toggle, expanded ? L"已展开" : L"已收起");
-	AutomationProperties::SetName(item.toggle, (expanded ? L"收起" : L"展开") + item.name);
 	for (auto &child : _pickerCategories) {
 		if (child.parent == int(index)) {
 			focusHidden |= !expanded && focused && XamlHelper::ContainsControl(child.container, focused);
@@ -371,12 +367,17 @@ void ScalingModesPage::_UpdateEffectPickerColors() {
 	const bool searching = _pickerSearch && !NormalizeEffectSearch(_pickerSearch.Text()).empty();
 	for (auto& item : _pickerCategories) {
 		const bool selected = !searching && item.category == _pickerCategory && item.subcategory == _pickerSubcategory;
-		const bool hiddenSelection = !searching && item.toggle && !item.expanded &&
+		const bool hiddenSelection = !searching && item.hasChildren && !item.expanded &&
 			item.category == _pickerCategory && !_pickerSubcategory.empty();
 		item.container.Style(Resources().Lookup(box_value(selected || hiddenSelection
 			? L"EffectPickerSelectedCategoryStyle" : L"EffectPickerCategoryStyle")).as<Windows::UI::Xaml::Style>());
 		item.selectionMark.Visibility(selected || hiddenSelection ? Visibility::Visible : Visibility::Collapsed);
-		AutomationProperties::SetItemStatus(item.button, selected ? L"已选中" : hiddenSelection ? L"已选中其子分组" : L"");
+		std::wstring status = selected ? L"已选中" : hiddenSelection ? L"已选中其子分组" : L"";
+		if (item.hasChildren) {
+			if (!status.empty()) status += L"，";
+			status += item.expanded ? L"已展开" : L"已收起";
+		}
+		AutomationProperties::SetItemStatus(item.button, status);
 	}
 }
 void ScalingModesPage::_ChooseEffectCategory(std::wstring category, std::wstring subcategory,
