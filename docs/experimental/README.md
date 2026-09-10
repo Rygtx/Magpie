@@ -1,12 +1,12 @@
-﻿# Magpie 实验分支文档索引
+# Magpie 实验分支文档索引
 
-帧同步当前状态：保留 Front Edge 默认，新增 Async 与普通效果的 Reflex 驱动限帧；DLSS FG 保持独立低延迟与现有输出调度，XeSS FG 继续由 XeLL 接管。见 [使用指南](../FRAME_SYNC_GUIDE.md) 与 [实施记录](reviews/20260909-v0.6.7-frame-sync-modes.md)。
+帧同步当前状态：保留 Front Edge 默认，普通效果与 DLSS FG 支持 Async／Reflex 驱动基础限帧，XeSS FG 由 XeLL 接管；自动回退仅记简短日志，实时参数面板不显示运行状态。见 [使用指南](../FRAME_SYNC_GUIDE.md) 与 [实施记录](reviews/20260909-v0.6.7-frame-sync-modes.md)。
 
 HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关保持关闭；效果器选择器新增「HDR 组件」分类，仅显式转换链按节点启用 HDR 捕获／输出。见 [HDR 组件实施记录](reviews/20260908-v0.6.7-hdr-conversion-effects-plan.md)。
 
-当前本地工作为 `0.6.7` 分支的 `067 local`，持续覆盖同一运行目录。当前入口：[067 r2 TODO](todos/20260908-v0.6.7-r2-TODO.md)、[DLSS FG 原生 Reflex 接入](reviews/20260908-v0.6.7-r2-native-reflex.md)、[首批源码减负与 XeSS FG 对照](reviews/20260908-v0.6.7-r2-source-cost-and-xess-comparison.md)、[原始 DLSS 管线调查](reviews/20260908-v0.6.7-r2-dlss-pipeline-review.md)。NR 复制、FG 事件/映射和默认详细计时减负已完成；后续增加默认 On 的原生 Reflex 低延迟接入。自动检查与真实 GPU 验收分开，用户负责实际操作和性能测试。此前入口：[r1 fix1 执行清单](todos/20260908-v0.6.7-r1-fix1-TODO.md)、[效果器选择器与参数测试](testing/EFFECT-PICKER.md)、[本地构建约定](GIT-WORKFLOW.md)。下面的 0.6.6 与更早发布条目保留历史。
+当前 `0.6.7` 分支已合并到 `experimental` 开发主线，正在准备 [0.6.7 正式分发说明](../RELEASE_NOTES_v0.6.7-experimental.md)。主包、DLSSNR DLL 可选包和 NGX OTA 工具沿用 0.6.6 的附件结构；本地准备不包含上传或发布。见 [分发准备记录](reviews/20260910-v0.6.7-release-preparation.md)。
 
-当前本地测试候选：[0.6.7 Beta 6 更新说明](../RELEASE_NOTES_v0.6.7-beta6.md)，版本标识为 `0.6.7-beta6`，独立目录为 `release/v0.6.7-beta6/`。见 [Beta 6 TODO](todos/20260910-v0.6.7-beta6-TODO.md)、[实现与验证](reviews/20260910-beta6-implementation.md) 和 [Streamline 评估](reviews/20260910-beta6-streamline-assessment.md)。此前 [Beta 1 功能变化](../RELEASE_NOTES_v0.6.7-beta1.md)、[0.6.6](../RELEASE_NOTES_v0.6.6-experimental.md) 与 [0.6.5](../RELEASE_NOTES_v0.6.5-experimental.md) 的发布说明保留历史。
+当前功能已包含 Beta 1–6 的全部迭代，见 [Beta 6 TODO](todos/20260910-v0.6.7-beta6-TODO.md)、[Reflex 驱动限帧](reviews/20260910-beta6-reflex-pacing.md)、[HDR 组件](reviews/20260908-v0.6.7-hdr-conversion-effects-plan.md) 与 [参数输入验证](testing/PARAMETER-INPUT.md)。历史 [Beta 6 说明](../RELEASE_NOTES_v0.6.7-beta6.md)、[Beta 1 说明](../RELEASE_NOTES_v0.6.7-beta1.md)、[0.6.6 说明](../RELEASE_NOTES_v0.6.6-experimental.md) 保留。
 
 - [0.6.6 参数交互与本地验证](reviews/20260906-v0.6.6-parameter-interaction.md)
 - [0.6.6 停止缩放后的过期回调保护](reviews/20260906-v0.6.6-capture-shutdown.md)
