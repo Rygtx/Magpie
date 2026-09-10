@@ -1640,8 +1640,8 @@
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>Preview</value></data>
   <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Ctrl+click a slider to enter its value. Esc: Edit → Preview → Closed. Click the preview panel to edit. Open / close shortcut:</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>Click the game window to restore control</value></data>
-  <data name="Home_ParameterFocusSwitching.Header" xml:space="preserve"><value>Switch focus for parameter adjustment</value></data>
-  <data name="Home_ParameterFocusSwitching.Description" xml:space="preserve"><value>Enable focus switching during live parameter adjustment. This may be unstable with some windows.</value></data>
+  <data name="Profile_General_ParameterFocusSwitching.Header" xml:space="preserve"><value>Switch focus for parameter adjustment</value></data>
+  <data name="Profile_General_ParameterFocusSwitching.Description" xml:space="preserve"><value>Enable focus switching during live parameter adjustment. This may be unstable with some windows.</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Header" xml:space="preserve"><value>Disable active effects when switching tasks</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Description" xml:space="preserve"><value>If switching tasks while using DLSSNR makes you feel like you have eaten poisonous mushrooms, try enabling this.</value></data>
 </root>

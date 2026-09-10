@@ -82,8 +82,6 @@ struct HomeViewModel : HomeViewModelT<HomeViewModel>, wil::notify_property_chang
 	void IsInlineParams(bool value);
 
 	bool IsFrontEdgeSyncEnabled() const noexcept;
-	bool IsParameterFocusSwitchingEnabled() const noexcept;
-	void IsParameterFocusSwitchingEnabled(bool value);
 	bool IsStopEffectsOnTaskSwitchEnabled() const noexcept;
 	void IsStopEffectsOnTaskSwitchEnabled(bool value);
 	void IsFrontEdgeSyncEnabled(bool value);

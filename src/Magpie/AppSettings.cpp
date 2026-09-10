@@ -88,6 +88,8 @@ static void WriteProfile(rapidjson::PrettyWriter<rapidjson::StringBuffer>& write
 		writer.String(StrHelper::UTF16ToUTF8(profile.launchParameters).c_str());
 	}
 
+	writer.Key("parameterFocusSwitching");
+	writer.Bool(profile.isParameterFocusSwitchingEnabled);
 	writer.Key("scalingMode");
 	writer.Int(profile.scalingMode);
 	writer.Key("captureMethod");
@@ -815,8 +817,6 @@ std::string AppSettings::_Serialize(const _AppSettingsData& data) {
 	writer.Bool(data._isStatisticsForDynamicDetectionEnabled);
 	writer.Key("frontEdgeSync");
 	writer.Bool(data._isFrontEdgeSyncEnabled);
-	writer.Key("parameterFocusSwitching");
-	writer.Bool(data._isParameterFocusSwitchingEnabled);
 	writer.Key("stopEffectsOnTaskSwitch");
 	writer.Bool(data._isStopEffectsOnTaskSwitchEnabled);
 	writer.Key("vrr");
@@ -1070,9 +1070,11 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 	JsonHelper::ReadBool(root, "enableStatisticsForDynamicDetection", _isStatisticsForDynamicDetectionEnabled);
 	JsonHelper::ReadFloat(root, "minFrameRate", _minFrameRate);
 	JsonHelper::ReadBool(root, "frontEdgeSync", _isFrontEdgeSyncEnabled);
-	// Existing configurations stay on the 0.6.6 input path unless explicitly enabled.
-	_isParameterFocusSwitchingEnabled = false;
-	JsonHelper::ReadBool(root, "parameterFocusSwitching", _isParameterFocusSwitchingEnabled);
+	// Migrate the former global choice only while loading existing profiles.
+	bool legacyParameterFocusSwitching = false;
+	JsonHelper::ReadBool(root, "parameterFocusSwitching", legacyParameterFocusSwitching);
+	_defaultProfile.isParameterFocusSwitchingEnabled = legacyParameterFocusSwitching;
+	if (root.HasMember("parameterFocusSwitching")) _isConfigMigrationNeeded = true;
 	_isStopEffectsOnTaskSwitchEnabled = false;
 	JsonHelper::ReadBool(root, "stopEffectsOnTaskSwitch", _isStopEffectsOnTaskSwitchEnabled);
 	JsonHelper::ReadBool(root, "vrr", _isVRREnabled);
@@ -1147,7 +1149,7 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 		if (size > 0) {
 			if (scaleProfilesArray[0].IsObject()) {
 				// 解析默认缩放配置不会失败
-				_LoadProfile(scaleProfilesArray[0].GetObj(), _defaultProfile, true);
+				_LoadProfile(scaleProfilesArray[0].GetObj(), _defaultProfile, true, legacyParameterFocusSwitching);
 			}
 
 			if (size > 1) {
@@ -1158,7 +1160,7 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 					}
 
 					Profile& rule = _profiles.emplace_back();
-					if (!_LoadProfile(scaleProfilesArray[i].GetObj(), rule)) {
+					if (!_LoadProfile(scaleProfilesArray[i].GetObj(), rule, false, legacyParameterFocusSwitching)) {
 						_profiles.pop_back();
 						continue;
 					}
@@ -1232,8 +1234,11 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 bool AppSettings::_LoadProfile(
 	const rapidjson::GenericObject<true, rapidjson::Value>& profileObj,
 	Profile& profile,
-	bool isDefault
+	bool isDefault,
+	bool legacyParameterFocusSwitching
 ) const noexcept {
+	profile.isParameterFocusSwitchingEnabled = legacyParameterFocusSwitching;
+	JsonHelper::ReadBool(profileObj, "parameterFocusSwitching", profile.isParameterFocusSwitchingEnabled);
 	if (!isDefault) {
 		if (!JsonHelper::ReadString(profileObj, "name", profile.name, true)) {
 			return false;

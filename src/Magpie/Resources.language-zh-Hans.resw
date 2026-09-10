@@ -1640,8 +1640,8 @@
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>预览</value></data>
   <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Ctrl+单击滑条输入数值。Esc：编辑→预览→关闭；点击预览面板继续编辑。面板开关快捷键：</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>请点击游戏窗口恢复控制</value></data>
-  <data name="Home_ParameterFocusSwitching.Header" xml:space="preserve"><value>参数调整焦点切换</value></data>
-  <data name="Home_ParameterFocusSwitching.Description" xml:space="preserve"><value>参数实时调整时启用焦点切换，但在部分窗口上运行时可能不稳定。</value></data>
+  <data name="Profile_General_ParameterFocusSwitching.Header" xml:space="preserve"><value>参数调整焦点切换</value></data>
+  <data name="Profile_General_ParameterFocusSwitching.Description" xml:space="preserve"><value>参数实时调整时启用焦点切换，但在部分窗口上运行时可能不稳定。</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Header" xml:space="preserve"><value>切屏时自动停用生效效果组</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Description" xml:space="preserve"><value>如果在使用 DLSSNR 时进行切屏，会让你感觉像吃了毒蘑菇，你可以尝试启用它。</value></data>
 </root>

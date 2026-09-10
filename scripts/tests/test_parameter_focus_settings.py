@@ -2,15 +2,13 @@
 from pathlib import Path
 import re
 import sys
+import subprocess
 
 root = Path(__file__).resolve().parents[2]
 settings = (root / 'src/Magpie/AppSettings.cpp').read_text(encoding='utf-8-sig')
 header = (root / 'src/Magpie/AppSettings.h').read_text(encoding='utf-8-sig')
 helper = (root / 'src/Magpie/JsonHelper.cpp').read_text(encoding='utf-8-sig')
 reader = helper[helper.index('bool JsonHelper::ReadBool('):helper.index('bool JsonHelper::ReadBoolFlag(')]
-field = re.search(r'bool _isParameterFocusSwitchingEnabled = [^;]+;', header).group()
-load = re.search(r'_isParameterFocusSwitchingEnabled = false;\s+JsonHelper::ReadBool\(root, "parameterFocusSwitching", _isParameterFocusSwitchingEnabled\);', settings).group()
-save = re.search(r'writer.Key\("parameterFocusSwitching"\);\s+writer.Bool\(data._isParameterFocusSwitchingEnabled\);', settings).group()
 
 harness = r'''
 #include <rapidjson/document.h>
@@ -58,13 +56,12 @@ int main() {
 }
 '''
 output = Path(sys.argv[1]) / 'parameter_focus_settings.cpp'
-first = harness.replace('READER', reader).replace('FIELD', field).replace('LOAD', load).replace('SAVE', save)
 field2 = re.search(r'bool _isStopEffectsOnTaskSwitchEnabled = [^;]+;', header).group()
 load2 = re.search(r'_isStopEffectsOnTaskSwitchEnabled = false;\s+JsonHelper::ReadBool\(root, "stopEffectsOnTaskSwitch", _isStopEffectsOnTaskSwitchEnabled\);', settings).group()
 save2 = re.search(r'writer.Key\("stopEffectsOnTaskSwitch"\);\s+writer.Bool\(data._isStopEffectsOnTaskSwitchEnabled\);', settings).group()
 second = harness.replace('READER', reader).replace('FIELD', field2).replace('LOAD', load2).replace('SAVE', save2)
 second = second.replace('_isParameterFocusSwitchingEnabled', '_isStopEffectsOnTaskSwitchEnabled').replace('parameterFocusSwitching', 'stopEffectsOnTaskSwitch').replace('parameter focus setting', 'task-switch setting')
-output.write_text(first, encoding='utf-8')
 other = Path(sys.argv[1]) / 'task_switch_settings.cpp'
 other.write_text(second, encoding='utf-8')
-print(output, other)
+subprocess.run([sys.executable, str(root/'scripts/tests/test_profile_parameter_focus.py'), sys.argv[1]], check=True)
+print(other)

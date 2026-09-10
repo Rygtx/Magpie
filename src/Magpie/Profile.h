@@ -84,6 +84,8 @@ enum class AutoScale {
 
 struct Profile {
 	void Copy(const Profile& other) noexcept {
+		// A newly created application profile opts in independently, even when copied.
+		isParameterFocusSwitchingEnabled = false;
 		scalingMode = other.scalingMode;
 		autoScale = other.autoScale;
 		initialWindowedScaleFactor = other.initialWindowedScaleFactor;
@@ -124,6 +126,7 @@ struct Profile {
 	// 允许 exe 和 lnk
 	std::filesystem::path launcherPath;
 
+	bool isParameterFocusSwitchingEnabled = false;
 	AutoScale autoScale = AutoScale::Disabled;
 
 	InitialWindowedScaleFactor initialWindowedScaleFactor = InitialWindowedScaleFactor::Auto;

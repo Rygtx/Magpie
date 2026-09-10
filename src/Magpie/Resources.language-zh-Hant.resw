@@ -1607,8 +1607,8 @@
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>預覽</value></data>
   <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Ctrl+點擊滑桿輸入數值。Esc：編輯→預覽→關閉；點擊預覽面板繼續編輯。面板開關快捷鍵：</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>請點擊遊戲視窗恢復控制</value></data>
-  <data name="Home_ParameterFocusSwitching.Header" xml:space="preserve"><value>參數調整焦點切換</value></data>
-  <data name="Home_ParameterFocusSwitching.Description" xml:space="preserve"><value>參數即時調整時啟用焦點切換，但在部分視窗上執行時可能不穩定。</value></data>
+  <data name="Profile_General_ParameterFocusSwitching.Header" xml:space="preserve"><value>參數調整焦點切換</value></data>
+  <data name="Profile_General_ParameterFocusSwitching.Description" xml:space="preserve"><value>參數即時調整時啟用焦點切換，但在部分視窗上執行時可能不穩定。</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Header" xml:space="preserve"><value>切換視窗時自動停用生效效果組</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Description" xml:space="preserve"><value>如果在使用 DLSSNR 時切換視窗，會讓你感覺像吃了毒蘑菇，你可以嘗試啟用它。</value></data>
 </root>
