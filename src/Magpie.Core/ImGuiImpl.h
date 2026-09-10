@@ -35,13 +35,14 @@ public:
 	void Draw(POINT drawOffset) noexcept;
 
 	void ClearStates() noexcept;
-	void ParameterEditing(bool value) noexcept { _parameterEditing = value; }
+	void ParameterEditing(bool value) noexcept;
 	bool OwnsPointerAtCursor() const noexcept;
 	bool DismissParameterPopup() noexcept;
 	std::optional<ImVec4> PresentedParameterRect() const noexcept { return _presentedParameterRect; }
 	void OnPresentSucceeded() noexcept;
 
-	ImGuiInputResult MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
+	ImGuiInputResult MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam,
+		std::optional<POINT> pointerPosition = std::nullopt) noexcept;
 	bool HasPendingInput() const noexcept;
 	bool HasUrgentInput() const noexcept;
 	bool HasCriticalInput() const noexcept { return !_pendingInput.criticalEvents.empty(); }

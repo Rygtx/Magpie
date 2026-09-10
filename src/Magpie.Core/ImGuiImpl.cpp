@@ -135,6 +135,23 @@ bool ImGuiImpl::BuildFonts() noexcept {
 	return _backend.BuildFonts();
 }
 
+void ImGuiImpl::ParameterEditing(bool value) noexcept {
+	if (std::exchange(_parameterEditing, value) == value || !value) return;
+	// NewFrame hit testing uses the previous frame's window flags. Restore
+	// input before feeding the activating click, rather than one frame later
+	// in Begin(), or that first control press is silently lost.
+	for (ImGuiWindow* window : ImGui::GetCurrentContext()->Windows) {
+		if (std::string_view(GetWindowIDFromName(window->RootWindow->Name)) != "effectParameters") continue;
+		window->Flags &= ~ImGuiWindowFlags_NoInputs;
+		if (window == window->RootWindow)
+			window->Flags &= ~(ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+	}
+	// ClearStates removes the normal input snapshot. Preview has its own
+	// last-presented bounds, which authorize this first press immediately.
+	if (_presentedParameterRect)
+		_presentedWindowRects.emplace_back("effectParameters", *_presentedParameterRect);
+}
+
 void ImGuiImpl::NewFrame(
 	phmap::flat_hash_map<std::string, OverlayWindowOption>& windowOptions,
 	float fittsLawAdjustment,
@@ -689,7 +706,8 @@ bool ImGuiImpl::DismissParameterPopup() noexcept {
 ImGuiInputResult ImGuiImpl::MessageHandler(
 	UINT msg,
 	WPARAM wParam,
-	LPARAM lParam
+	LPARAM lParam,
+	std::optional<POINT> pointerPosition
 ) noexcept {
 	if (_parameterEditing && (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN ||
 		msg == WM_KEYUP || msg == WM_SYSKEYUP)) {
@@ -710,7 +728,10 @@ ImGuiInputResult ImGuiImpl::MessageHandler(
 	const int mouseButton = GetMouseButtonFromMessage(msg, wParam);
 	if (mouseButton >= 0) {
 		ScalingWindow::Get().CursorManager().Update();
-		const ImVec2 mousePos = _CaptureMousePos(_fittsLawAdjustment);
+		const RECT& dest = ScalingWindow::Get().Renderer().DestRect();
+		const ImVec2 mousePos = pointerPosition
+			? ImVec2(float(pointerPosition->x - dest.left), float(pointerPosition->y - dest.top))
+			: _CaptureMousePos(_fittsLawAdjustment);
 		_QueueMove(mousePos, _ownedMouseButtons != 0);
 		const bool isDown = IsMouseButtonDownMessage(msg);
 		const uint32_t buttonMask = 1u << mouseButton;

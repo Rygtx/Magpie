@@ -82,6 +82,7 @@ static BOOL FakePosition(HWND, HWND, int x, int y, int w, int h, UINT flags) {
     hostRect = {x,y,x+w,y+h}; if (flags & SWP_SHOWWINDOW) visibleHost = true; return TRUE;
 }
 static BOOL FakeRect(HWND, RECT* r) { *r = hostRect; return TRUE; }
+static BOOL FakeClientToScreen(HWND, POINT* p) { p->x+=hostRect.left; p->y+=hostRect.top; return TRUE; }
 static BOOL FakeShow(HWND, int command) { visibleHost = command != SW_HIDE; return TRUE; }
 static BOOL FakeVisible(HWND) { return visibleHost; }
 static BOOL FakePost(HWND, UINT, WPARAM, LPARAM) { return TRUE; }
@@ -107,6 +108,7 @@ static LONG FakeMessageTime() { static LONG time; return ++time; }
 namespace ImGui { inline void FakePosition(ImGuiWindow* w, ImVec2 p) { SetWindowPos(w,p); } }
 #define SetWindowPos FakePosition
 #define GetWindowRect FakeRect
+#define ClientToScreen FakeClientToScreen
 #define ShowWindow FakeShow
 #define IsWindowVisible FakeVisible
 #define PostMessageW FakePost
@@ -217,7 +219,7 @@ static bool actualParameter = false;
 static EffectParameterDesc numericParameter;
 static float numericValue = 0.5f;
 static bool checkbox = false;
-static POINT choicePoint{}, childPoint{};
+static POINT choicePoint{}, childPoint{}, checkboxPoint{};
 static ImVec2 panelPos{20,20};
 static phmap::flat_hash_map<std::string,OverlayWindowOption> windows;
 static void Frame(bool present=true) {
@@ -231,6 +233,7 @@ static void Frame(bool present=true) {
                 numericValue=NormalizeEffectParameterValue(numericParameter,numericValue);
         } else ImGui::SliderInt("Slider",&slider,0,100);
         ImGui::Checkbox("Checkbox",&checkbox);
+        auto check=ImGui::GetItemRectMin(); checkboxPoint={LONG(check.x+8),LONG(check.y+8)};
         const bool comboOpen = ImGui::BeginCombo("Choice","Current");
         if (!comboOpen) { auto r = ImGui::GetItemRectMin(); choicePoint = {LONG(r.x+100),LONG(r.y+8)}; }
         if (comboOpen) {
@@ -252,7 +255,7 @@ static void Mouse(UINT msg, int x, int y) {
     if (foreground==game && visibleHost && msg==WM_LBUTTONDOWN && PtInRect(&hostRect,cursor))
         FakeSetForeground(inputHost); // Native WM_MOUSEACTIVATE activates before delivering DOWN.
     if (foreground==game) { if (msg==WM_LBUTTONDOWN || msg==WM_LBUTTONUP) ++gameEdges; return; }
-    OverlayDrawer::_ParameterInputWndProc(inputHost,msg,0,0);
+    OverlayDrawer::_ParameterInputWndProc(inputHost,msg,0,MAKELPARAM(x-hostRect.left,y-hostRect.top));
 }
 static void Key(UINT msg, int key) {
     keys[key]=msg==WM_KEYDOWN;
@@ -308,19 +311,30 @@ int main() {
     cursor={100,80}; Frames(); assert(!io.WantCaptureMouse);
     cursor=childPoint; Frames(); assert(!io.WantCaptureMouse && !panel._imguiImpl.OwnsPointerAtCursor());
     Mouse(WM_LBUTTONDOWN,600,450); Mouse(WM_LBUTTONUP,600,450); assert(gameEdges==2);
-    // Title, control and child areas all resume editing. The first complete
-    // gesture changes neither the slider nor the game, even when released outside.
-    for (POINT point : {POINT{40,28}, POINT{100,51}, childPoint}) {
-        const int before=slider;
-        Mouse(WM_LBUTTONDOWN,point.x,point.y); Frames();
-        assert(panel.IsEditingParameters() && foreground==inputHost && capture==inputHost);
-        assert(panel._parameterResumeClickPending && !ImGui::IsAnyItemActive());
-        Mouse(WM_MOUSEMOVE,600,450); Frames(); Mouse(WM_LBUTTONUP,600,450); Frames();
-        assert(panel.IsEditingParameters() && !capture && !panel._parameterResumeClickPending);
-        assert(slider==before && gameEdges==2);
+    // The original press activates editing AND operates the hit control.
+    auto preview = [&] {
         Key(WM_KEYDOWN,VK_ESCAPE); Key(WM_KEYUP,VK_ESCAPE); Frames(); panel.UpdateParameterInputHost();
         assert(panel._parameterPanelState==ParameterPanelState::Preview && foreground==game);
-    }
+    };
+    Mouse(WM_LBUTTONDOWN,100,51); Frame();
+    assert(panel.IsEditingParameters() && ImGui::IsAnyItemActive() && capture==inputHost);
+    Mouse(WM_MOUSEMOVE,600,450); Frames(); Mouse(WM_LBUTTONUP,600,450); Frames();
+    assert(slider==100 && !capture && panel.IsEditingParameters() && gameEdges==2);
+    preview();
+    const bool beforeCheck=checkbox;
+    Mouse(WM_LBUTTONDOWN,checkboxPoint.x,checkboxPoint.y);
+    Mouse(WM_LBUTTONUP,checkboxPoint.x,checkboxPoint.y); Frames();
+    assert(panel.IsEditingParameters() && checkbox!=beforeCheck && gameEdges==2);
+    preview();
+    Mouse(WM_LBUTTONDOWN,choicePoint.x,choicePoint.y); Frames();
+    Mouse(WM_LBUTTONUP,choicePoint.x,choicePoint.y); Frames();
+    assert(panel.IsEditingParameters() && !ImGui::GetCurrentContext()->OpenPopupStack.empty());
+    Key(WM_KEYDOWN,VK_ESCAPE); Key(WM_KEYUP,VK_ESCAPE); Frames();
+    preview();
+    Mouse(WM_LBUTTONDOWN,childPoint.x,childPoint.y); Frame();
+    Mouse(WM_LBUTTONUP,childPoint.x,childPoint.y); Frames();
+    assert(panel.IsEditingParameters() && gameEdges==2);
+    preview();
     // A failed Present must not move the native hit target ahead of the visible panel.
     panelPos={450,400}; Frame(false); panel.UpdateParameterInputHost();
     assert(hostRect.left==20 && hostRect.top==20);

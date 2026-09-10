@@ -59,6 +59,7 @@ bool OverlayDrawer::_BeginParameterInput() noexcept {
 	_parameterHeldButtons = 0;
 	_returnClickPending = _escapePending = _parameterResumeClickPending = false;
 	_parameterHeldKeys.fill(false);
+	ClearStates();
 	const RECT& rect = scaling.RendererRect();
 	SetWindowPos(_hwndParameterInput, HWND_TOPMOST, rect.left, rect.top,
 		rect.right - rect.left, rect.bottom - rect.top, SWP_NOACTIVATE | SWP_SHOWWINDOW);
@@ -177,7 +178,6 @@ void OverlayDrawer::_SetParameterPanelState(ParameterPanelState state, bool retu
 	if (state == ParameterPanelState::Edit) {
 		_isEffectParametersVisible = true;
 		if (!IsEditingParameters()) {
-			ClearStates();
 			_parameterFocusFailed = !_BeginParameterInput();
 			if (_parameterFocusFailed) _parameterPanelState = ParameterPanelState::Preview;
 		}
@@ -281,13 +281,18 @@ LRESULT CALLBACK OverlayDrawer::_ParameterInputWndProc(HWND hwnd, UINT msg, WPAR
 	}
 	if (button >= 0 && down && self->_parameterPanelState == ParameterPanelState::Preview &&
 		!self->_parameterResumeClickPending) {
-		// WM_MOUSEACTIVATE has already activated the bounded preview window.
-		// The complete first gesture enters editing without changing a control
-		// or delivering an unmatched mouse edge to the game.
+		// Preserve the event's position before activation resizes the host and
+		// releases source cursor mapping. The same DOWN must reach the control.
+		POINT point{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+		ClientToScreen(hwnd, &point);
 		self->_SetParameterPanelState(ParameterPanelState::Edit);
-		self->_parameterResumeClickPending = true;
+		self->_parameterResumeClickPending = !self->IsEditingParameters();
 		self->_parameterHeldButtons = 1u << button;
 		SetCapture(hwnd);
+		if (self->IsEditingParameters()) {
+			self->_imguiImpl.MessageHandler(msg, wParam, lParam, point);
+			self->_overlayDirty = true;
+		}
 		return msg == WM_XBUTTONDOWN ? TRUE : 0;
 	}
 	if (self->_parameterResumeClickPending && button >= 0) {
