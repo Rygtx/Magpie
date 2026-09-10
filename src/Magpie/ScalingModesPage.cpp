@@ -295,8 +295,10 @@ void ScalingModesPage::RenameTextBox_Loaded(IInspectable const& sender, RoutedEv
 
 void ScalingModesPage::RemoveScalingModeButton_Click(IInspectable const& sender, RoutedEventArgs const&) {
 	Button button = sender.try_as<Button>();
-	ScalingModeItem* scalingModeItem = get_self<ScalingModeItem>(
-		button.Tag().try_as<winrt::Magpie::ScalingModeItem>());
+	if (!button) return;
+	const auto item = button.Tag().try_as<winrt::Magpie::ScalingModeItem>();
+	if (!item) return;
+	ScalingModeItem* scalingModeItem = get_self<ScalingModeItem>(item);
 	if (scalingModeItem->IsInUse()) {
 		// 如果有缩放配置正在使用此缩放模式则弹出确认弹窗
 		FlyoutBase::GetAttachedFlyout(button).ShowAt(button);

@@ -51,6 +51,7 @@ constexpr IssueAction GetIssueAction(ScalingError error) noexcept {
 	case ScalingError::HdrDisplayRequired:
 	case ScalingError::RtxHdrUnavailable:
 	case ScalingError::ScalingModeEmpty:
+	case ScalingError::DuplicateScalingModeNames:
 	case ScalingError::ScalingModeUnknownEffect:
 	case ScalingError::EffectCompileFailed:
 	case ScalingError::EffectResourceFailed:

@@ -260,6 +260,8 @@
 		                        HorizontalAlignment="Stretch"
 		                        ChildrenTransitions="{StaticResource SettingsCardsAnimations}"
 		                        Orientation="Vertical">
+			<muxc:InfoBar x:Uid="ScalingModes_DuplicateNames" IsClosable="False"
+			              IsOpen="{x:Bind ViewModel.HasDuplicateNames, Mode=OneWay}" Severity="Warning" />
 			<!--  Padding 是为了缓解一个动画 bug  -->
 			<ListView Padding="0,0,0,44"
 			          ItemsSource="{x:Bind ViewModel.ScalingModes, Mode=OneTime}"
@@ -386,6 +388,9 @@
 														<local:TextMenuFlyout />
 													</TextBox.ContextFlyout>
 												</TextBox>
+												<TextBlock MaxWidth="280" Margin="0,0,0,12" TextWrapping="Wrap"
+												           Text="{x:Bind RenameProblem, Mode=OneWay}"
+												           Visibility="{x:Bind HasRenameProblem, Mode=OneWay}" />
 												<Button x:Uid="ScalingModes_RenameFlyout_OK"
 												        MinWidth="80"
 												        HorizontalAlignment="Right"
@@ -609,14 +614,18 @@
 								</ListView>
 							</local:SettingsExpander.Items>
 							<local:SettingsExpander.ItemsHeader>
-								<muxc:InfoBar x:Uid="ScalingModes_HasUnkownEffects"
-								              MinHeight="0"
-								              Margin="0,0,0,-4"
-								              BorderThickness="0,0,0,0"
-								              CornerRadius="0"
-								              IsClosable="False"
-								              IsOpen="{x:Bind HasUnkownEffects, Mode=OneWay}"
-								              Severity="Warning" />
+								<local:SimpleStackPanel>
+									<muxc:InfoBar x:Uid="ScalingModes_NameConflict" IsClosable="False"
+									              IsOpen="{x:Bind HasNameConflict, Mode=OneWay}" Severity="Warning" />
+									<muxc:InfoBar x:Uid="ScalingModes_HasUnkownEffects"
+									              MinHeight="0"
+									              Margin="0,0,0,-4"
+									              BorderThickness="0,0,0,0"
+									              CornerRadius="0"
+									              IsClosable="False"
+									              IsOpen="{x:Bind HasUnkownEffects, Mode=OneWay}"
+									              Severity="Warning" />
+								</local:SimpleStackPanel>
 							</local:SettingsExpander.ItemsHeader>
 							<local:SettingsExpander.ItemsFooter>
 								<local:SettingsCard Style="{StaticResource DefaultSettingsExpanderItemStyle}">

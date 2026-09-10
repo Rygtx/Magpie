@@ -90,6 +90,7 @@ static const wchar_t* MessageKey(ScalingError error) noexcept {
 	case ScalingError::ConfigurationRecoveredPartial: return L"Message_ConfigurationRecoveredPartial";
 	case ScalingError::ConfigurationRepaired: return L"Message_ConfigurationRepaired";
 	case ScalingError::ConfigurationResetDefaults: return L"Message_ConfigurationResetDefaults";
+	case ScalingError::DuplicateScalingModeNames: return L"Message_DuplicateScalingModeNames";
 	default: return L"Message_ScalingFailedGeneral";
 	}
 }
@@ -182,7 +183,7 @@ void ErrorService::Report(ScalingError error, std::string context, HWND target,
 	try {
 		const auto diagnostic = fmt::format("Diagnostic MP-{:03}: system={} context={}",
 			static_cast<int>(error), systemError, context);
-		if (IsRecoveryNotice(error)) Logger::Get().Info(diagnostic);
+		if (IsRecoveryNotice(error) || error == ScalingError::DuplicateScalingModeNames) Logger::Get().Info(diagnostic);
 		else Logger::Get().Error(diagnostic);
 		Logger::Get().Flush();
 		winrt::Magpie::implementation::App::Get().Dispatcher().TryEnqueue([this, error, context = std::move(context), target, systemError,
@@ -211,7 +212,7 @@ void ErrorService::Report(ScalingError error, std::string context, HWND target,
 				_lastContext = context;
 				_lastSystemError = systemError;
 				_issueContext = issueContext;
-				_isInformational = IsRecoveryNotice(error);
+				_isInformational = IsRecoveryNotice(error) || error == ScalingError::DuplicateScalingModeNames;
 				_action = GetIssueAction(error);
 				if (_action == IssueAction::Profile && !issueContext.hasProfile) _action = IssueAction::None;
 				++_revision;

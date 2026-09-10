@@ -1640,4 +1640,11 @@
   <data name="ScalingModes_RecoveryInvalid_Name" xml:space="preserve"><value>Invalid effect</value></data>
   <data name="ScalingModes_RecoveryInvalid_Description" xml:space="preserve"><value>This item could not be fully recovered. Remove it and add the effect you want.</value></data>
   <data name="ScalingModes_MissingEffect_Description" xml:space="preserve"><value>The effect file is unavailable. Restore its file, or remove this item and add a replacement.</value></data>
+  <data name="ScalingModes_NameRequired" xml:space="preserve"><value>Enter a name for this effect group.</value></data>
+  <data name="ScalingModes_NameAlreadyExists" xml:space="preserve"><value>This name is already in use. Choose a different name; capitalization and surrounding spaces do not distinguish names.</value></data>
+  <data name="ScalingModes_DuplicateNames.Title" xml:space="preserve"><value>Update duplicate group names</value></data>
+  <data name="ScalingModes_DuplicateNames.Message" xml:space="preserve"><value>Existing settings contain groups with the same name. Rename them individually using the pencil button; all effects and profile links have been retained.</value></data>
+  <data name="ScalingModes_NameConflict.Message" xml:space="preserve"><value>Another group uses this name. Use the pencil button to choose a different name.</value></data>
+  <data name="ScalingModes_ImportRenamed" xml:space="preserve"><value>Imported all effect groups; duplicate names received numbered suffixes. You can rename them using the pencil button.</value></data>
+  <data name="Message_DuplicateScalingModeNames" xml:space="preserve"><value>Existing settings contain duplicate effect-group names. Open Effect groups and rename them using the pencil button; all groups have been retained.</value></data>
 </root>

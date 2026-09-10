@@ -51,8 +51,8 @@ ScalingModeItem::ScalingModeItem(
 		auto_revoke, std::bind_front(&ScalingModeItem::_ScalingModesService_Added, this));
 	_scalingModeMovedRevoker = ScalingModesService::Get().ScalingModeMoved(
 		auto_revoke, std::bind_front(&ScalingModeItem::_ScalingModesService_Moved, this));
-	_scalingModeRemovedRevoker = ScalingModesService::Get().ScalingModeRemoved(
-		auto_revoke, std::bind_front(&ScalingModeItem::_ScalingModesService_Removed, this));
+	_scalingModeNamesChangedRevoker = ScalingModesService::Get().ScalingModeNamesChanged(
+		auto_revoke, std::bind_front(&ScalingModeItem::_ScalingModesService_NamesChanged, this));
 
 	ScalingMode& data = _Data();
 	{
@@ -95,11 +95,23 @@ void ScalingModeItem::_ScalingModesService_Moved(uint32_t fromIndex, uint32_t to
 	}
 }
 
-void ScalingModeItem::_ScalingModesService_Removed(uint32_t index) {
-	if (_index > index) {
-		_Index(_index - 1);
-	}
+void ScalingModeItem::PrepareForRemoval(uint32_t index) noexcept {
+	if (_IsRemoved()) return;
+	if (_index == index) Detach();
+	else if (_index > index) _Index(_index - 1);
+}
+
+void ScalingModeItem::RefreshAfterRemoval() {
+	if (_IsRemoved()) return;
 	RaisePropertyChanged(L"CanDrag");
+	_ScalingModesService_NamesChanged();
+}
+
+void ScalingModeItem::_ScalingModesService_NamesChanged() {
+	if (_IsRemoved()) return;
+	RaisePropertyChanged(L"Name");
+	RaisePropertyChanged(L"HasNameConflict");
+	RenameText(_renameText);
 }
 
 void ScalingModeItem::_Effects_VectorChanged(IObservableVector<IInspectable> const&, IVectorChangedEventArgs const& args) {
@@ -251,8 +263,7 @@ void ScalingModeItem::Name(const hstring& value) noexcept {
 		return;
 	}
 
-	_Data().name = value;
-	AppSettings::Get().SaveAsync();
+	if (!ScalingModesService::Get().RenameScalingMode(_index, value)) RenameText(value);
 }
 
 hstring ScalingModeItem::Description() const noexcept {
@@ -293,6 +304,10 @@ bool ScalingModeItem::HasUnkownEffects() const noexcept {
 	return false;
 }
 
+bool ScalingModeItem::HasNameConflict() const noexcept {
+	return !_IsRemoved() && ScalingModesService::Get().HasNameConflict(_index);
+}
+
 void ScalingModeItem::RenameText(const hstring& value) noexcept {
 	if (_IsRemoved()) {
 		return;
@@ -303,7 +318,14 @@ void ScalingModeItem::RenameText(const hstring& value) noexcept {
 
 	_trimedRenameText = value;
 	StrHelper::Trim(_trimedRenameText);
-	bool newEnabled = !_trimedRenameText.empty() && _trimedRenameText != _Data().name;
+	const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
+	if (_trimedRenameText.empty()) _renameProblem = loader.GetString(L"ScalingModes_NameRequired");
+	else if (!ScalingModesService::Get().CanUseName(_trimedRenameText, _index))
+		_renameProblem = loader.GetString(L"ScalingModes_NameAlreadyExists");
+	else _renameProblem = {};
+	RaisePropertyChanged(L"RenameProblem");
+	RaisePropertyChanged(L"HasRenameProblem");
+	bool newEnabled = _renameProblem.empty() && _trimedRenameText != _Data().name;
 	if (_isRenameButtonEnabled != newEnabled) {
 		_isRenameButtonEnabled = newEnabled;
 		RaisePropertyChanged(L"IsRenameButtonEnabled");
@@ -333,14 +355,15 @@ void ScalingModeItem::RenameButton_Click() {
 	if (_IsRemoved() || !_isRenameButtonEnabled) {
 		return;
 	}
+	auto lifetime = get_strong();
+	if (!ScalingModesService::Get().RenameScalingMode(_index, _trimedRenameText)) {
+		RenameText(_renameText);
+		return;
+	}
 
 	// Flyout 没有 IsOpen 可供绑定，只能用变通方法关闭
 	XamlHelper::ClosePopups(App::Get().RootPage()->XamlRoot());
 
-	_Data().name = _trimedRenameText;
-	RaisePropertyChanged(L"Name");
-
-	AppSettings::Get().SaveAsync();
 }
 
 bool ScalingModeItem::TakeAutoRenameRequest() noexcept {
@@ -376,16 +399,22 @@ void ScalingModeItem::Remove() {
 	if (_IsRemoved()) {
 		return;
 	}
+	auto lifetime = get_strong();
+	const uint32_t index = _index;
+	// RemoveAt can synchronously re-enter bindings and release the last UI reference.
+	Detach();
+	ScalingModesService::Get().RemoveScalingMode(index);
+}
+
+void ScalingModeItem::Detach() noexcept {
+	if (_IsRemoved()) return;
+	_Index(std::numeric_limits<uint32_t>::max());
 
 	// 被删除后不会立刻析构，因此手动清理事件订阅
 	_effectsChangedRevoker.revoke();
 	_scalingModeAddedRevoker.Revoke();
 	_scalingModeMovedRevoker.Revoke();
-	_scalingModeRemovedRevoker.Revoke();
-
-	ScalingModesService::Get().RemoveScalingMode(_index);
-
-	_Index(std::numeric_limits<uint32_t>::max());
+	_scalingModeNamesChangedRevoker.Revoke();
 }
 
 ScalingMode& ScalingModeItem::_Data() noexcept {

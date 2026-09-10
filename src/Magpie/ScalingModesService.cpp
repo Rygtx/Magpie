@@ -7,6 +7,7 @@
 #include "JsonHelper.h"
 #include "Logger.h"
 #include "ScalingMode.h"
+#include "ScalingModeNames.h"
 #include "ScalingModesService.h"
 #include "StrHelper.h"
 
@@ -24,18 +25,46 @@ uint32_t ScalingModesService::GetScalingModeCount() {
 }
 
 void ScalingModesService::AddScalingMode(std::wstring_view name, int copyFrom) {
-	assert(!name.empty());
-
 	std::vector<ScalingMode>& scalingModes = AppSettings::Get().ScalingModes();
+	if (ScalingModeNames::Trim(name).empty() ||
+		(copyFrom >= 0 && static_cast<size_t>(copyFrom) >= scalingModes.size())) return;
+	const auto uniqueName = ScalingModeNames::Unique(name, [&](std::wstring_view candidate) {
+		return ScalingModeNames::Contains(scalingModes, candidate);
+	});
 	if (copyFrom < 0) {
-		scalingModes.emplace_back().name = name;
+		scalingModes.emplace_back().name = uniqueName;
 	} else {
-		scalingModes.emplace_back(scalingModes[copyFrom]).name = name;
+		scalingModes.emplace_back(scalingModes[copyFrom]).name = uniqueName;
 	}
 
 	ScalingModeAdded.Invoke(copyFrom < 0 ? EffectAddedWay::Add : EffectAddedWay::Duplicate);
 
 	AppSettings::Get().SaveAsync();
+}
+
+bool ScalingModesService::CanUseName(std::wstring_view name, uint32_t exceptIndex) const noexcept {
+	return !ScalingModeNames::Trim(name).empty() &&
+		!ScalingModeNames::Contains(AppSettings::Get().ScalingModes(), name, exceptIndex);
+}
+
+bool ScalingModesService::HasDuplicateNames() const noexcept {
+	return ScalingModeNames::HasDuplicates(AppSettings::Get().ScalingModes());
+}
+
+bool ScalingModesService::HasNameConflict(uint32_t index) const noexcept {
+	const auto& modes = AppSettings::Get().ScalingModes();
+	return index < modes.size() && ScalingModeNames::Contains(modes, modes[index].name, index);
+}
+
+bool ScalingModesService::RenameScalingMode(uint32_t index, std::wstring_view name) {
+	auto& modes = AppSettings::Get().ScalingModes();
+	if (index >= modes.size() || !CanUseName(name, index)) return false;
+	const std::wstring normalized(ScalingModeNames::Trim(name));
+	if (modes[index].name == normalized) return true;
+	modes[index].name = normalized;
+	ScalingModeNamesChanged.Invoke();
+	AppSettings::Get().SaveAsync();
+	return true;
 }
 
 static void UpdateProfileAfterRemove(Profile& profile, int removedIdx) {
@@ -48,6 +77,8 @@ static void UpdateProfileAfterRemove(Profile& profile, int removedIdx) {
 
 void ScalingModesService::RemoveScalingMode(uint32_t index) {
 	std::vector<ScalingMode>& scalingModes = AppSettings::Get().ScalingModes();
+	if (index >= scalingModes.size()) return;
+	ScalingModeRemoving.Invoke(index);
 	scalingModes.erase(scalingModes.begin() + index);
 
 	UpdateProfileAfterRemove(AppSettings::Get().DefaultProfile(), (int)index);
@@ -173,6 +204,7 @@ static bool LoadScalingMode(
 	if (!JsonHelper::ReadString(scalingModeObj, "name", scalingMode.name)) {
 		return false;
 	}
+	if (!loadingSettings && ScalingModeNames::Trim(scalingMode.name).empty()) return false;
 
 	auto effectsNode = scalingModeObj.FindMember("effects");
 	if (effectsNode == scalingModeObj.MemberEnd()) {
@@ -435,7 +467,9 @@ static V065NormalizationStats NormalizeV065ScalingModes(
 	return stats;
 }
 
-bool ScalingModesService::Import(const rapidjson::GenericObject<true, rapidjson::Value>& root, bool loadingSettings) noexcept {
+bool ScalingModesService::Import(const rapidjson::GenericObject<true, rapidjson::Value>& root, bool loadingSettings,
+	uint32_t* renamedCount) noexcept {
+	if (renamedCount) *renamedCount = 0;
 	auto scalingModesNode = root.FindMember("scalingModes");
 	if (scalingModesNode == root.MemberEnd()) {
 		return true;
@@ -506,6 +540,22 @@ bool ScalingModesService::Import(const rapidjson::GenericObject<true, rapidjson:
 	}
 
 	std::vector<ScalingMode>& settings = AppSettings::Get().ScalingModes();
+	// Preserve legacy groups on startup so the user can identify and rename them.
+	// Explicit imports keep every chain while assigning unique names in batch order.
+	if (!loadingSettings) {
+		for (size_t i = 0; i < scalingModes.size(); ++i) {
+			auto& mode = scalingModes[i];
+			const auto uniqueName = ScalingModeNames::Unique(mode.name, [&](std::wstring_view candidate) {
+				if (ScalingModeNames::Contains(settings, candidate)) return true;
+				for (size_t j = 0; j < i; ++j) {
+					if (ScalingModeNames::Equal(scalingModes[j].name, candidate)) return true;
+				}
+				return false;
+			});
+			if (ScalingModeNames::Trim(mode.name) != uniqueName && renamedCount) ++*renamedCount;
+			mode.name = uniqueName;
+		}
+	}
 	settings.insert(
 		settings.end(),
 		std::make_move_iterator(scalingModes.begin()),

@@ -396,6 +396,9 @@ bool AppSettings::Initialize() noexcept {
 }
 
 void AppSettings::PublishStartupNotice() noexcept {
+	if (ScalingModesService::Get().HasDuplicateNames()) {
+		ErrorService::Get().Report(ScalingError::DuplicateScalingModeNames);
+	}
 	if (_recoveredConfigPath.empty()) return;
 	ErrorService::Get().Report(_recoveryNotice,
 		StrHelper::UTF16ToUTF8(_recoveredConfigPath.native()) + _recoveryDetails);

@@ -1607,4 +1607,11 @@
   <data name="ScalingModes_RecoveryInvalid_Name" xml:space="preserve"><value>失效效果器</value></data>
   <data name="ScalingModes_RecoveryInvalid_Description" xml:space="preserve"><value>此項設定無法完整復原。請移除此項，並重新新增所需效果器。</value></data>
   <data name="ScalingModes_MissingEffect_Description" xml:space="preserve"><value>找不到對應效果檔案。請還原該檔案，或移除此項並新增替代效果器。</value></data>
+  <data name="ScalingModes_NameRequired" xml:space="preserve"><value>請輸入效果組名稱。</value></data>
+  <data name="ScalingModes_NameAlreadyExists" xml:space="preserve"><value>名稱已存在，請換一個名稱；僅修改大小寫或首尾空格不能區分效果組。</value></data>
+  <data name="ScalingModes_DuplicateNames.Title" xml:space="preserve"><value>請更新重名效果組</value></data>
+  <data name="ScalingModes_DuplicateNames.Message" xml:space="preserve"><value>舊設定中存在同名效果組，請使用鉛筆按鈕逐一修改名稱；效果內容和關聯設定已保留。</value></data>
+  <data name="ScalingModes_NameConflict.Message" xml:space="preserve"><value>此名稱與其他效果組重複，請點擊鉛筆按鈕修改名稱。</value></data>
+  <data name="ScalingModes_ImportRenamed" xml:space="preserve"><value>效果組已全部匯入，重複名稱已自動加入序號；可使用鉛筆按鈕重新命名。</value></data>
+  <data name="Message_DuplicateScalingModeNames" xml:space="preserve"><value>舊設定中存在同名效果組，請開啟「效果組」，使用鉛筆按鈕修改名稱；全部效果組已保留。</value></data>
 </root>

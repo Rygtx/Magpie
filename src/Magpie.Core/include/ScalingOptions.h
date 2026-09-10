@@ -391,7 +391,8 @@ enum class ScalingError {
 	HdrCaptureRequired,
 	HdrDisplayRequired,
 	HdrCaptureMethodRequired,
-	RtxHdrUnavailable
+	RtxHdrUnavailable,
+	DuplicateScalingModeNames
 };
 
 struct ScalingFlags {
