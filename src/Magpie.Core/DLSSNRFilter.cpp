@@ -39,10 +39,10 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) 
 			"reflectionGlowMultiplier", 1.0f, 0.0f, 2.0f),
 		.style = std::clamp(static_cast<int>(std::lround(
 			getParameter("style", 0.0f))), 0, 2),
-		.intensity = getClamped("intensity", 1.0f, 0.0f, 1.0f),
-		.localToneStrength = getClamped("localToneStrength", 1.0f, 0.0f, 1.0f),
+		.intensity = getClamped("intensity", 1.0f, 0.0f, 2.0f),
+		.localToneStrength = getClamped("localToneStrength", 1.0f, 0.0f, 2.0f),
 		.localStructureStrength = getClamped(
-			"localStructureStrength", 1.0f, 0.0f, 1.0f),
+			"localStructureStrength", 1.0f, 0.0f, 2.0f),
 		.skinStructureStrength = getClamped(
 			"skinStructureStrength", -1.0f, -1.0f, 2.0f),
 		.useAutoMask = getParameter("useAutoMask", 0.0f) >= 0.5f,
@@ -1881,11 +1881,11 @@ bool DLSSNRFilter::Initialize(
 	_settings.reflectionGlowMultiplier = ClampFinite(
 		_settings.reflectionGlowMultiplier, 0.0f, 2.0f, 1.0f);
 	_settings.intensity = ClampFinite(
-		_settings.intensity, 0.0f, 1.0f, 1.0f);
+		_settings.intensity, 0.0f, 2.0f, 1.0f);
 	_settings.localToneStrength = ClampFinite(
-		_settings.localToneStrength, 0.0f, 1.0f, 1.0f);
+		_settings.localToneStrength, 0.0f, 2.0f, 1.0f);
 	_settings.localStructureStrength = ClampFinite(
-		_settings.localStructureStrength, 0.0f, 1.0f, 1.0f);
+		_settings.localStructureStrength, 0.0f, 2.0f, 1.0f);
 	_ngxCore = &ngxCore;
 	_impl.reset();
 	FrameGuidancePerformance::ResetDlssnrGpuTiming();
