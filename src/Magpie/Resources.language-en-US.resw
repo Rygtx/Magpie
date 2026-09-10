@@ -1099,7 +1099,7 @@
   <data name="Settings_General_SmoothMotionCompatibilityMode.Description" xml:space="preserve">
     <value>Restart Magpie after each effect session to release GPU memory retained by NVIDIA Smooth Motion. Enable only when Smooth Motion is configured for Magpie.</value>
   </data>
-  <data name="Overlay_Toolbar_EffectParameters" xml:space="preserve"><value>Open / close parameter panel</value></data>
+  <data name="Overlay_Toolbar_EffectParameters" xml:space="preserve"><value>Effect parameters</value></data>
   <data name="Overlay_EffectParameters" xml:space="preserve"><value>Effect parameters</value></data>
   <data name="Overlay_EffectParameters_Live" xml:space="preserve"><value>Live</value></data>
   <data name="Overlay_EffectParameters_RestartRequired" xml:space="preserve"><value>Restart</value></data>

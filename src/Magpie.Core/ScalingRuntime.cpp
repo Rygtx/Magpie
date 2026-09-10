@@ -157,11 +157,11 @@ uint32_t ScalingRuntime::RunId() const noexcept {
 	return ScalingWindow::RunId();
 }
 
-void ScalingRuntime::UpdateParameterShortcutLabel(std::string label) {
+void ScalingRuntime::UpdateToolbarShortcutLabels(ToolbarShortcutLabels labels) {
 	const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);
-	_Dispatcher().TryEnqueue([this, generation, label = std::move(label)]() mutable {
+	_Dispatcher().TryEnqueue([this, generation, labels = std::move(labels)]() mutable {
 		if (_commandGeneration.load(std::memory_order_acquire) == generation)
-			ScalingWindow::Get().ParameterShortcutLabel(std::move(label));
+			ScalingWindow::Get().UpdateToolbarShortcutLabels(std::move(labels));
 	});
 }
 

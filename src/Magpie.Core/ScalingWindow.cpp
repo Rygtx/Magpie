@@ -1813,8 +1813,9 @@ bool ScalingWindow::HasHeldParameterInput() const noexcept {
 	return _renderer && IsWindow(_srcTracker.Handle()) && _renderer->HasHeldParameterInput();
 }
 
-void ScalingWindow::ParameterShortcutLabel(std::string value) noexcept {
-	_options.parameterShortcutLabel = std::move(value);
+void ScalingWindow::UpdateToolbarShortcutLabels(ToolbarShortcutLabels labels) noexcept {
+	if (_options.toolbarShortcutLabels == labels) return;
+	_options.toolbarShortcutLabels = std::move(labels);
 	if (_renderer) _renderer->RefreshOverlay();
 }
 

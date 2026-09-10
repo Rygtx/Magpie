@@ -13,6 +13,17 @@ namespace Magpie {
 
 enum class OverlayAction { Profiler, EffectParameters, Screenshot, ToolbarPin, Comparison };
 
+struct ToolbarShortcutLabels {
+	std::string profiler;
+	std::string parameters;
+	std::string screenshot;
+	std::string pin;
+	std::string comparison;
+	std::string fullscreen;
+	std::string windowed;
+	bool operator==(const ToolbarShortcutLabels&) const = default;
+};
+
 enum class CaptureMethod {
 	GraphicsCapture,
 	DesktopDuplication,
@@ -483,7 +494,7 @@ struct ScalingOptions {
 
 	// 下面的成员支持在缩放时修改
 	OverlayOptions overlayOptions;
-	std::string parameterShortcutLabel;
+	ToolbarShortcutLabels toolbarShortcutLabels;
 
 	void (*showToast)(HWND hwndTarget, std::wstring_view msg) noexcept = nullptr;
 	std::function<void(HWND hwndTarget, ScalingError error)> showError;

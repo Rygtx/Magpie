@@ -1099,7 +1099,7 @@
   <data name="Settings_General_SmoothMotionCompatibilityMode.Description" xml:space="preserve">
     <value>每次停用效果组后重启 Magpie，释放 NVIDIA Smooth Motion 驱动驻留的显存。仅在已为 Magpie 启用 Smooth Motion 时开启。</value>
   </data>
-  <data name="Overlay_Toolbar_EffectParameters" xml:space="preserve"><value>打开／关闭实时参数面板</value></data>
+  <data name="Overlay_Toolbar_EffectParameters" xml:space="preserve"><value>实时参数修改</value></data>
   <data name="Overlay_EffectParameters" xml:space="preserve"><value>效果参数</value></data>
   <data name="Overlay_EffectParameters_Live" xml:space="preserve"><value>实时</value></data>
   <data name="Overlay_EffectParameters_RestartRequired" xml:space="preserve"><value>重启</value></data>

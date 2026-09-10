@@ -820,6 +820,12 @@ static std::string IconLabel(ImWchar iconChar) noexcept {
 	return StrHelper::UTF16ToUTF8(text);
 }
 
+static std::string FormatToolbarTooltip(std::string_view name, std::string_view shortcut) {
+	std::string result(name);
+	if (!shortcut.empty()) result.append("（").append(shortcut).append("）");
+	return result;
+}
+
 bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 	bool needRedraw = false;
 
@@ -893,7 +899,7 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 			}
 		};
 
-		auto drawButton = [&](ImWchar icon, const char* tooltip, const char* description = nullptr) {
+		auto drawButton = [&](ImWchar icon, const char* tooltip) {
 			ImGui::PushFont(_fontIcons);
 			const bool clicked = ImGui::Button(IconLabel(icon).c_str());
 			if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
@@ -902,7 +908,7 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 			}
 			ImGui::PopFont();
 			if (ImGui::IsItemHovered()) {
-				_imguiImpl.Tooltip(tooltip, _dpiScale, description);
+				_imguiImpl.Tooltip(tooltip, _dpiScale);
 			}
 			return clicked;
 		};
@@ -910,20 +916,24 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		// 光标不在缩放窗口上时阻止交互
 		ImGui::BeginDisabled(!IsEditingParameters() && !ScalingWindow::Get().CursorManager().CursorHandle());
 
-		const std::string& pinStr = _GetResourceString(L"Overlay_Toolbar_Pin");
+		const auto& shortcuts = ScalingWindow::Get().Options().toolbarShortcutLabels;
+		auto tooltip = [&](std::wstring_view name, std::string_view shortcut) {
+			return FormatToolbarTooltip(_GetResourceString(name), shortcut);
+		};
+		const std::string pinStr = tooltip(L"Overlay_Toolbar_Pin", shortcuts.pin);
 		drawToggleButton(_isToolbarPinned, OverlayHelper::SegoeIcons::Pinned, pinStr.c_str());
 		ImGui::SameLine();
-		const std::string& profilerStr = _GetResourceString(L"Overlay_Toolbar_Profiler");
+		const std::string profilerStr = tooltip(L"Overlay_Toolbar_Profiler", shortcuts.profiler);
 		drawToggleButton(_isProfilerVisible, OverlayHelper::SegoeIcons::Diagnostic, profilerStr.c_str());
 		ImGui::SameLine();
-		const std::string& parametersStr = _GetResourceString(L"Overlay_Toolbar_EffectParameters");
+		const std::string parametersStr = tooltip(L"Overlay_Toolbar_EffectParameters", shortcuts.parameters);
 		bool parametersVisible = _isEffectParametersVisible;
 		drawToggleButton(parametersVisible, OverlayHelper::SegoeIcons::Parameters, parametersStr.c_str());
 		if (parametersVisible != _isEffectParametersVisible) InvokeAction(OverlayAction::EffectParameters);
 		ImGui::SameLine();
 		Renderer& renderer = ScalingWindow::Get().Renderer();
 		bool passThrough = renderer.IsPassThroughActive();
-		const std::string& comparisonTip = _GetResourceString(L"Overlay_Toolbar_PassThrough");
+		const std::string comparisonTip = tooltip(L"Overlay_Toolbar_PassThrough", shortcuts.comparison);
 		drawToggleButton(passThrough, OverlayHelper::SegoeIcons::View, comparisonTip.c_str());
 		if (passThrough != renderer.IsPassThroughActive() && renderer.SetPassThroughActive(passThrough)) {
 			_ShowComparisonStatus(passThrough);
@@ -934,9 +944,8 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		drawToggleButton(_isDemoWindowVisible, OverlayHelper::SegoeIcons::Design, demoStr.c_str());
 #endif
 		ImGui::SameLine();
-		const std::string& screenshotStr = _GetResourceString(L"Overlay_Toolbar_TakeScreenshot");
-		const std::string& screenshotDescStr = _GetResourceString(L"Overlay_Toolbar_TakeScreenshot_Description");
-		if (drawButton(OverlayHelper::SegoeIcons::Camera, screenshotStr.c_str(), screenshotDescStr.c_str())) {
+		const std::string screenshotStr = tooltip(L"Overlay_Toolbar_TakeScreenshot", shortcuts.screenshot);
+		if (drawButton(OverlayHelper::SegoeIcons::Camera, screenshotStr.c_str())) {
 			ScalingWindow::Get().Renderer().TakeDisplayedScreenshot();
 		}
 		// 截图按钮右键菜单
@@ -1040,8 +1049,9 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 			const bool isWindowedMode = ScalingWindow::Get().Options().IsWindowedMode();
 			const ImWchar icon = isWindowedMode ?
 				OverlayHelper::SegoeIcons::FullScreen : OverlayHelper::SegoeIcons::Favicon;
-			const std::string& switchScalingStr = _GetResourceString(
-				isWindowedMode ? L"Overlay_Toolbar_SwitchToFullscreen" : L"Overlay_Toolbar_SwitchToWindowed");
+			const std::string switchScalingStr = tooltip(
+				isWindowedMode ? L"Overlay_Toolbar_SwitchToFullscreen" : L"Overlay_Toolbar_SwitchToWindowed",
+				isWindowedMode ? shortcuts.fullscreen : shortcuts.windowed);
 			if (drawButton(icon, switchScalingStr.c_str())) {
 				ScalingWindow::Dispatcher().TryEnqueue([]() {
 					ScalingWindow::Get().ToggleScaling(!ScalingWindow::Get().Options().IsWindowedMode());
@@ -1054,9 +1064,9 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.769f, 0.169f, 0.11f, 1.0f });
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.769f, 0.169f, 0.11f, 0.8f });
 
-		const std::string& closeStr = _GetResourceString(L"Overlay_Toolbar_Close");
-		const std::string& closeDescStr = _GetResourceString(L"Overlay_Toolbar_Close_Description");
-		if (drawButton(OverlayHelper::SegoeIcons::Cancel, closeStr.c_str(), closeDescStr.c_str())) {
+		const std::string closeStr = tooltip(L"Overlay_Toolbar_Close",
+			ScalingWindow::Get().Options().IsWindowedMode() ? shortcuts.windowed : shortcuts.fullscreen);
+		if (drawButton(OverlayHelper::SegoeIcons::Cancel, closeStr.c_str())) {
 			ScalingWindow::Get().RequestStop(ScalingWindow::RunId());
 		}
 		if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
@@ -1387,7 +1397,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	if (IsEditingParameters() && window->TitleBarRect().Contains(ImGui::GetIO().MousePos)) {
 		const std::string hint = StrHelper::Concat(_GetResourceString(L"Overlay_Parameters_InputHint"),
-			" ", ScalingWindow::Get().Options().parameterShortcutLabel);
+			" ", ScalingWindow::Get().Options().toolbarShortcutLabels.parameters);
 		_imguiImpl.Tooltip(hint.c_str(), _dpiScale);
 	}
 	const OverlayWindowRect rect{

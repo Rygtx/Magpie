@@ -23,6 +23,22 @@ using winrt::Magpie::ShortcutAction;
 
 namespace Magpie {
 
+static ToolbarShortcutLabels GetToolbarShortcutLabels() {
+	const auto& settings = AppSettings::Get();
+	auto label = [&](ShortcutAction action) {
+		return StrHelper::UTF16ToUTF8(settings.GetShortcut(action).ToString());
+	};
+	return {
+		.profiler = label(ShortcutAction::Profiler),
+		.parameters = label(ShortcutAction::EffectParameters),
+		.screenshot = label(ShortcutAction::Screenshot),
+		.pin = label(ShortcutAction::ToolbarPin),
+		.comparison = label(ShortcutAction::Comparison),
+		.fullscreen = label(ShortcutAction::Scale),
+		.windowed = label(ShortcutAction::WindowedModeScale)
+	};
+}
+
 ScalingService& ScalingService::Get() noexcept {
 	static ScalingService instance;
 	return instance;
@@ -48,9 +64,8 @@ void ScalingService::Initialize() {
 
 	_shortcutActivatedRevoker = ShortcutService::Get().ShortcutActivated(
 		auto_revoke, std::bind_front(&ScalingService::_ShortcutService_ShortcutPressed, this));
-	_parameterShortcutChangedRevoker = AppSettings::Get().ShortcutChanged(auto_revoke, [this](ShortcutAction action) {
-		if (action == ShortcutAction::EffectParameters && _scalingRuntime)
-			_scalingRuntime->UpdateParameterShortcutLabel(StrHelper::UTF16ToUTF8(AppSettings::Get().GetShortcut(action).ToString()));
+	_toolbarShortcutsChangedRevoker = AppSettings::Get().ShortcutChanged(auto_revoke, [this](ShortcutAction) {
+		if (_scalingRuntime) _scalingRuntime->UpdateToolbarShortcutLabels(GetToolbarShortcutLabels());
 	});
 	_frameSyncChangedRevoker = AppSettings::Get().FrontEdgeSyncChanged(auto_revoke, [this] {
 		const auto& settings = AppSettings::Get();
@@ -70,7 +85,7 @@ void ScalingService::Uninitialize() {
 	_checkForegroundTimer.Stop();
 	_countDownTimer.Stop();
 	_frameSyncChangedRevoker.Revoke();
-	_parameterShortcutChangedRevoker.Revoke();
+	_toolbarShortcutsChangedRevoker.Revoke();
 	_scalingRuntime.reset();
 	// The runtime destructor drains UI requests before this final flush.
 	_FlushEffectParametersSaves(true);
@@ -488,7 +503,7 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 
 	// 应用全局配置
 	AppSettings& settings = AppSettings::Get();
-	options.parameterShortcutLabel = StrHelper::UTF16ToUTF8(settings.GetShortcut(ShortcutAction::EffectParameters).ToString());
+	options.toolbarShortcutLabels = GetToolbarShortcutLabels();
 	options.IsDeveloperMode(settings.IsDeveloperMode());
 	options.IsDebugMode(settings.IsDebugMode());
 	options.IsBenchmarkMode(settings.IsBenchmarkMode());

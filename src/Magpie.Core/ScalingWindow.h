@@ -102,7 +102,7 @@ public:
 
 	class Renderer* TryGetRenderer() noexcept { return _renderer.get(); }
 	bool IsParameterInputWindow(HWND hwnd) const noexcept;
-	void ParameterShortcutLabel(std::string value) noexcept;
+	void UpdateToolbarShortcutLabels(ToolbarShortcutLabels labels) noexcept;
 	class CursorManager* TryGetCursorManager() noexcept { return _cursorManager.get(); }
 
 	bool IsSrcRepositioning() const noexcept {

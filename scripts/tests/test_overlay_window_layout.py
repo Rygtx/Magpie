@@ -28,7 +28,7 @@ constexpr float EFFECT_PARAMETERS_MIN_WIDTH = 360, EFFECT_PARAMETERS_MIN_HEIGHT 
 const char* EFFECT_PARAMETERS_WINDOW_ID = "effectParameters";
 struct Options { std::unordered_map<std::string, OverlayWindowOption> windows; };
 struct Input { bool FrameInputCanceled() { return false; } void Tooltip(const char*,float) {} };
-struct ScalingWindow { static ScalingWindow& Get() { static ScalingWindow s; return s; } struct Data { std::string parameterShortcutLabel; } data; const Data& Options() const { return data; } };
+struct ScalingWindow { static ScalingWindow& Get() { static ScalingWindow s; return s; } struct Data { struct { std::string parameters; } toolbarShortcutLabels; } data; const Data& Options() const { return data; } };
 struct StrHelper { template<class... T> static std::string Concat(T&&... t) { std::string s; (s.append(t),...); return s; } };
 struct Panel {
     bool IsEditingParameters() const { return true; }

@@ -6,6 +6,8 @@
 
 `Ctrl+单击` 滑条可直接输入参数数值。输入使用实际参数单位，按声明的步长归一化并限制在范围内；普通拖动继续使用离散步数。例如步长为 0.05 时输入 0.73，会应用 0.75。
 
+工具栏悬停提示统一为“按钮名”或“按钮名（当前快捷键）”，不附带操作或状态说明。固定、性能分析、实时参数、对比、截图使用对应绑定；切换模式使用目标模式的快捷键，停用使用当前模式的快捷键。修改或清除绑定时同步更新，最小化与演示窗口没有绑定则只显示名称。
+
 ## 实现及自动验证
 
 - 使用 `WS_EX_NOREDIRECTIONBITMAP` 的可激活输入宿主覆盖渲染区域，保持原有 ImGui 绘制。原生原型验证透明像素、整窗命中、激活、解除光标限制、首击完整交接和后续游戏点击。依据：[Microsoft Windows Composition 文档](https://learn.microsoft.com/en-us/archive/msdn-magazine/2014/june/windows-with-c-high-performance-window-layering-using-the-windows-composition-engine)。
