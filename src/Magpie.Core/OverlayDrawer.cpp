@@ -1477,11 +1477,6 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		ImGui::EndCombo();
 	}
 	ImGui::EndDisabled();
-	ImGui::TextWrapped("%s", _GetResourceString(ScalingWindow::Get().Renderer().FrameSyncStatusResource()).c_str());
-	if (_startupFrameSync.enabled && _startupFrameSync.mode == FrameSyncMode::Reflex &&
-		!ScalingWindow::Get().Renderer().HasFrameGeneration()) {
-		ImGui::TextWrapped("%s", _GetResourceString(ScalingWindow::Get().Renderer().ReflexStatusResource()).c_str());
-	}
 	ImGui::TextUnformatted(_GetResourceString(L"Overlay_FrameSync_Target").c_str());
 	ImGui::SameLine();
 	ImGui::TextDisabled("%s", _GetResourceString(L"Overlay_EffectParameters_RestartRequired").c_str());
@@ -1524,11 +1519,6 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		ImGui::PushID(itemId++);
 		ImGui::SeparatorText(
 			std::string(GetEffectDisplayName(description)).c_str());
-		if (ClassifyFrameGenerationEffect(description.name) == FrameGenerationEffectKind::DLSS) {
-			ImGui::TextWrapped("%s", _GetResourceString(
-				ScalingWindow::Get().Renderer().ReflexStatusResource()).c_str());
-			ImGui::TextWrapped("%s", _GetResourceString(L"Overlay_FrameSync_DlssOutput").c_str());
-		}
 
 		std::string_view currentGroup;
 		// 仅在 _DEBUG 下读取（参数元数据一致性告警），release 下以 maybe_unused 抑制 ClangCL -Werror

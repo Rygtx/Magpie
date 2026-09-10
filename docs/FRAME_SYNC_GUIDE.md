@@ -10,13 +10,13 @@
 | Async | 在取帧前限制开始间隔，迟到后不追赶旧网格 | 控制基础输入，保留生成帧排序与输出间隔 | XeLL 接管 |
 | NVIDIA Reflex | 将统一目标交给驱动；请求低延迟 On、Boost Off | 驱动负责统一基础 FPS；每个基础候选在捕获前 Sleep 一次 | XeLL 接管 |
 
-Beta 6 Fix1 起，普通效果与 DLSS FG 都可使用 Reflex 驱动基础限帧：要求 NVIDIA DXGI 呈现、效果与呈现位于同一显卡，当前 D3D11 异步标记接口要求 R565+。初始化／调用失败时先清除应用设置的驱动限帧，再回退 Async 并保留有效基础目标。清除失败会明确报告并停止本轮缩放，不能显示为已成功回退；请重启 Magpie 后再试。窗口切换期间清除驱动配置，恢复 DXGI 后重新应用最新目标。
+Beta 6 中，普通效果与 DLSS FG 都可使用 Reflex 驱动基础限帧：要求 NVIDIA DXGI 呈现、效果与呈现位于同一显卡，当前 D3D11 异步标记接口要求 R565+。初始化／调用失败时先清除应用设置的驱动限帧，再回退 Async 并保留有效基础目标。清除失败时只记录日志并停止本轮缩放，避免残留限帧与 Async 同时运行。窗口切换期间清除驱动配置，恢复 DXGI 后重新应用最新目标。
 
 Reflex 生效时不再为同一基础目标运行 StepTimer 固定限帧，也不使用 Front Edge 的 FG 输入期限等待。生成／真实帧 FIFO、独立输出间隔、容量与资源背压和 fence 保留。显式 Async／Front Edge 或关闭帧同步时，DLSS FG 仍请求低延迟 On、Boost Off，应用驱动限帧间隔为 0。
 
-工具栏分别显示请求模式、实际基础限帧器、低延迟请求与最近一次查询状态、FG 输出方式。低延迟查询 Off 不代表帧率间隔不可用：成功接受的驱动限帧继续负责基础节奏，Sleep 与标记也保留。状态显示“驱动已接受”表示软件路径和 API 请求成功，实际基础帧率、显示间隔及性能收益仍须实机验证。原 Beta 6 的“选择 Reflex 实际使用 Async”映射已由 Fix1 取代。
+实时参数面板只保留帧同步设置和效果参数，不显示当前同步方式、Reflex 状态或 FG 输出状态。Reflex 自动回退仅记简短日志，不弹出提示、报错或更新面板状态。
 
-XeSS 使用 XeLL 自身的低延迟和限帧，不叠加 Magpie 的 Async／Reflex 限帧器。工具栏明确显示 XeLL 接管。
+低延迟查询 Off 不代表帧率间隔不可用：成功接受的驱动限帧继续负责基础节奏，Sleep 与标记也保留。实际基础帧率、显示间隔及性能收益仍须实机验证。XeSS 使用 XeLL 自身的低延迟和限帧，不叠加 Magpie 的 Async／Reflex 限帧器。
 
 ## 目标基础帧率
 
@@ -57,4 +57,4 @@ Beta 6 新增源窗口焦点交接保护、持久待重建请求、FIFO 重试�
 
 实现记录：[帧同步模式与 Reflex 职责](experimental/reviews/20260909-v0.6.7-frame-sync-modes.md)。技术来源：[RTSS 与官方资料调查](experimental/reviews/20260909-rtss-async-reflex-frame-sync-review.md)、[NVAPI](https://docs.nvidia.com/nvapi/group__dx.html)、[XeLL](https://github.com/intel/xess/blob/main/doc/xell_developer_guide_english.md)。
 
-Fix1 代码、自动验证与实机状态分别见 [Reflex 驱动基础限帧实施记录](experimental/reviews/20260910-beta6-fix1-reflex.md)。
+Reflex 驱动限帧的代码、自动验证与实机状态分别见 [Reflex 驱动基础限帧实施记录](experimental/reviews/20260910-beta6-reflex-pacing.md)。

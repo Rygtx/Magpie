@@ -1287,35 +1287,6 @@ void Renderer::_UpdateOverlayRefreshRate() noexcept {
 }
 
 
-const wchar_t* Renderer::FrameSyncStatusResource() const noexcept {
-	if (_reflex.PacingState() == ReflexPacingState::CleanupFailed) return L"Overlay_Reflex_CleanupFailed";
-	if (_reflex.CaptureBlocked()) return L"Overlay_Reflex_Configuring";
-	switch (ActiveFrameSyncBackend()) {
-	case FrameSyncBackend::None: return ScalingWindow::Get().Options().isFrontEdgeSyncEnabled &&
-		!ScalingWindow::Get().Options().IsBenchmarkMode() ? L"Overlay_FrameSync_Unsupported" : L"Overlay_FrameSync_ActiveOff";
-	case FrameSyncBackend::Async:
-		if (_frameSyncBackend == FrameSyncBackend::Reflex)
-			return _reflex.State() == ReflexState::DriverOff ? L"Overlay_FrameSync_ReflexDriverOff" :
-				(_reflex.State() == ReflexState::Paused ? L"Overlay_FrameSync_ReflexPaused" : L"Overlay_FrameSync_ReflexFallback");
-		return L"Overlay_FrameSync_ActiveAsync";
-	case FrameSyncBackend::Reflex: return L"Overlay_FrameSync_ActiveReflex";
-	case FrameSyncBackend::XeLL: return L"Overlay_FrameSync_ActiveXeLL";
-	default: return L"Overlay_FrameSync_ActiveFrontEdge";
-	}
-}
-
-const wchar_t* Renderer::ReflexStatusResource() const noexcept {
-	if (_reflex.PacingState() == ReflexPacingState::CleanupFailed) return L"Overlay_Reflex_CleanupFailed";
-	switch (_reflex.State()) {
-	case ReflexState::Active: return L"Overlay_FrameSync_DlssLowLatencyOn";
-	case ReflexState::DriverOff: return L"Overlay_Reflex_DriverOff";
-	case ReflexState::Paused: return L"Overlay_Reflex_Paused";
-	case ReflexState::Faulted: return L"Overlay_Reflex_Faulted";
-	case ReflexState::Stopped: return L"Overlay_Reflex_Stopped";
-	default: return L"Overlay_FrameSync_DlssLowLatencyUnavailable";
-	}
-}
-
 double Renderer::_FrameSyncFrameRate() const noexcept {
 	return ResolvePresentationFrameRate(ScalingWindow::Get().Options().frontEdgeSyncFrameRate,
 		_existingBaseFrameRateLimit.load(std::memory_order_acquire),
@@ -2841,20 +2812,14 @@ void Renderer::_BackendThreadProc() noexcept {
 		_frameSource->WaitType() == FrameSourceWaitType::WaitForEvent;
 
 	MSG msg;
-	bool reflexCleanupReported = false;
+	bool reflexCleanupStopQueued = false;
 	while (true) {
-		if (_reflex.PacingState() == ReflexPacingState::CleanupFailed && !reflexCleanupReported) {
-			reflexCleanupReported = true;
+		if (_reflex.PacingState() == ReflexPacingState::CleanupFailed && !reflexCleanupStopQueued) {
+			reflexCleanupStopQueued = true;
+			Logger::Get().Warn("Reflex frame limit cleanup failed; stopping scaling");
 			ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime] {
 				auto& window = ScalingWindow::Get();
 				if (!session->IsCurrent(ScalingWindow::RunId()) || !window) return;
-				const auto message = window.GetLocalizedString(L"Overlay_Reflex_CleanupFailed");
-				if (const auto report = window.Options().reportErrorDetails) {
-					report(window.SrcTracker().Handle(), ScalingError::ScalingFailedGeneral,
-						winrt::to_string(message), 0);
-				} else {
-					window.ShowToast(message);
-				}
 				window.Stop();
 			});
 		}
@@ -3095,13 +3060,9 @@ void Renderer::_UpdateFrameRateLimits() noexcept {
 		_reflex.SetFrameRateLimit(FrameSyncIntervalUs(_FrameSyncFrameRate()));
 	_appliedFrameSyncBackend = ActiveFrameSyncBackend();
 	if (_frameSyncBackend == FrameSyncBackend::Reflex &&
-		_appliedFrameSyncBackend == FrameSyncBackend::Async && !_reflex.CanResume() && !_reflexFallbackNotified) {
-		_reflexFallbackNotified = true;
-		ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime] {
-			auto& window = ScalingWindow::Get();
-			if (session->IsCurrent(ScalingWindow::RunId()) && window)
-				window.ShowToast(window.GetLocalizedString(L"Overlay_FrameSync_ReflexFallback"));
-		});
+		_appliedFrameSyncBackend == FrameSyncBackend::Async && !_reflex.CanResume() && !_reflexFallbackLogged) {
+		_reflexFallbackLogged = true;
+		Logger::Get().Info("Reflex unavailable; using Async base pacing");
 	}
 	// Exactly one owner for the base FPS. Capacity/resource waits remain active.
 	const bool consumerPacing = (_appliedFrameSyncBackend == FrameSyncBackend::FrontEdge &&

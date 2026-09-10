@@ -43,18 +43,11 @@ struct ScalingOptions {
     std::optional<float> maxFrameRate;
     bool IsBenchmarkMode() const { return false; }
 };
-struct Dispatcher { template<class F> void TryEnqueue(F) {} };
 struct ScalingWindow {
     ScalingOptions options;
     static ScalingWindow& Get() { static ScalingWindow window; return window; }
     auto& Options() { return options; }
-    static auto Dispatcher() { return Magpie::Dispatcher{}; }
-    static int RunId() { return 1; }
-    const wchar_t* GetLocalizedString(const wchar_t* value) { return value; }
-    void ShowToast(const wchar_t*) {}
-    explicit operator bool() const { return true; }
 };
-struct Session { bool IsCurrent(int) { return true; } };
 struct Logger { static Logger& Get() { static Logger logger; return logger; } void Info(std::string) {} };
 struct Timer {
     std::optional<float> limit;
@@ -94,9 +87,7 @@ struct Renderer {
     FrameSyncBackend _frameSyncBackend=FrameSyncBackend::FrontEdge;
     FrameSyncBackend _appliedFrameSyncBackend=FrameSyncBackend::None;
     Reflex _reflex;
-    bool _reflexFallbackNotified=false;
-    Session session;
-    Session* _sessionLifetime=&session;
+    bool _reflexFallbackLogged=false;
     Timer _stepTimer;
     double _baseFrameRateLimit=0;
     CaptureFrameCadence _captureCadence;
@@ -127,7 +118,7 @@ int main() {
     renderer._reflex.BeginCapture();
     renderer._UpdateFrameRateLimits();
     assert(renderer._appliedFrameSyncBackend==FrameSyncBackend::Async && renderer._stepTimer.limit==60);
-    assert(renderer._reflexFallbackNotified);
+    assert(renderer._reflexFallbackLogged);
     // Test direct-NVAPI base units through production resolver + controller +
     // renderer configuration, including Off-query and monitor changes.
     for (unsigned multiplier=2; multiplier<=4; ++multiplier) {

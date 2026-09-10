@@ -1,4 +1,6 @@
-﻿# Beta 6：全屏参数交接与 DLSSFG 调度修复
+# Beta 6：全屏参数交接与 DLSSFG 调度修复
+
+本文保留 Beta 6 初始实现记录；后续驱动限帧及静默回退以 [当前实现](20260910-beta6-reflex-pacing.md) 为准，均属于 Beta 6。
 
 基线：Beta 5 `ef538ffc`。实施日期：2026-09-10。
 

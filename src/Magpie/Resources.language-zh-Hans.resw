@@ -1574,16 +1574,6 @@
   <data name="Home_FrameSync_Mode.Header" xml:space="preserve"><value>同步模式</value></data>
   <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge：提交节奏；Async：捕获间隔；Reflex：驱动基础限帧，包含 DLSS FG。</value></data>
   <data name="Overlay_FrameSync_Enable" xml:space="preserve"><value>启用帧同步</value></data>
-  <data name="Overlay_FrameSync_ActiveOff" xml:space="preserve"><value>当前：帧同步关闭。配置和效果器的已有上限仍生效。</value></data>
-  <data name="Overlay_FrameSync_ActiveFrontEdge" xml:space="preserve"><value>当前：Front Edge Sync。</value></data>
-  <data name="Overlay_FrameSync_ActiveAsync" xml:space="preserve"><value>当前：Async，按严格最小间隔开始处理。</value></data>
-  <data name="Overlay_FrameSync_ActiveReflex" xml:space="preserve"><value>实际基础限帧器：Reflex 驱动限帧。驱动已接受基础间隔；低延迟查询状态单独显示。</value></data>
-  <data name="Overlay_FrameSync_ActiveXeLL" xml:space="preserve"><value>当前：XeLL 接管 XeSS 补帧的限帧和低延迟，使用统一目标。</value></data>
-  <data name="Overlay_FrameSync_ReflexFallback" xml:space="preserve"><value>Reflex 暂不可用，已使用 Async 保持同一目标。请让效果与显示使用同一 NVIDIA 显卡，允许 DirectFlip，更新驱动后重新启用缩放以重试。</value></data>
-  <data name="Overlay_FrameSync_DlssLowLatencyOn" xml:space="preserve"><value>Reflex 已请求开启、Boost 关闭；驱动报告低延迟开启。基础 FPS 由帧同步控制。</value></data>
-  <data name="Overlay_FrameSync_DlssLowLatencyUnavailable" xml:space="preserve"><value>Reflex 低延迟暂不可用。请使用支持的 NVIDIA DXGI 呈现路径并重新启用缩放。FG 保留当前输出节奏。</value></data>
-  <data name="Overlay_FrameSync_Unsupported" xml:space="preserve"><value>此呈现路径不支持 Front Edge Sync。请选择 Async 并重新启用缩放，以启用输入限帧。</value></data>
-  <data name="Overlay_FrameSync_ReflexPaused" xml:space="preserve"><value>窗口调整期间暂用 Async；恢复 DXGI 呈现后自动恢复 Reflex。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Label" xml:space="preserve"><value>光流质量</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Option_0" xml:space="preserve"><value>性能</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>质量</value></data>
@@ -1650,12 +1640,4 @@
   <data name="Overlay_Parameters_Preview" xml:space="preserve"><value>预览</value></data>
   <data name="Overlay_Parameters_InputHint" xml:space="preserve"><value>Ctrl+单击滑条输入数值。Esc：编辑→预览→关闭；点击预览面板继续编辑。面板开关快捷键：</value></data>
   <data name="Overlay_Parameters_FocusFailed" xml:space="preserve"><value>请点击游戏窗口恢复控制</value></data>
-  <data name="Overlay_FrameSync_ReflexDriverOff" xml:space="preserve"><value>实际基础限帧器：Async；当前未配置驱动限帧。</value></data>
-  <data name="Overlay_Reflex_DriverOff" xml:space="preserve"><value>Reflex 已请求开启、Boost 关闭；驱动报告低延迟关闭。驱动或控制面板策略可能与请求不同。</value></data>
-  <data name="Overlay_Reflex_Paused" xml:space="preserve"><value>DXGI 呈现暂不可用，Reflex 请求已暂停。</value></data>
-  <data name="Overlay_Reflex_Faulted" xml:space="preserve"><value>本轮 Reflex 接口调用失败，低延迟状态不可确认。请重新启用缩放后重试。</value></data>
-  <data name="Overlay_Reflex_Stopped" xml:space="preserve"><value>本次会话 Reflex 已停止。</value></data>
-  <data name="Overlay_FrameSync_DlssOutput" xml:space="preserve"><value>FG 输出：生成帧之后呈现真实帧，使用独立输出节奏与有界容量。</value></data>
-  <data name="Overlay_Reflex_CleanupFailed" xml:space="preserve"><value>无法清除 Reflex 驱动限帧。正在停止缩放，已阻止 Async 回退；请重启 Magpie 后再试。</value></data>
-  <data name="Overlay_Reflex_Configuring" xml:space="preserve"><value>正在切换 Reflex 驱动配置，捕获等待中。</value></data>
 </root>

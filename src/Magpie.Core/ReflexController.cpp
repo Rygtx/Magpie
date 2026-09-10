@@ -116,12 +116,7 @@ public:
 		return _async11(_device.get(), &params);
 	}
 	void ReportFailure(const char* operation, int status) noexcept override {
-		const char* nextStep = status == NVAPI_INVALID_COMBINATION
-			? "Select the same NVIDIA adapter for effects and presentation, then restart scaling to retry Reflex."
-			: "Update the NVIDIA driver and restart scaling to retry Reflex.";
-		Logger::Get().Warn(fmt::format(
-			"Reflex call failed: operation={} status={}; renderer will report pacing/fallback state. "
-			"{}", operation, status, nextStep));
+		Logger::Get().Warn(fmt::format("Reflex call failed: operation={} status={}", operation, status));
 	}
 
 private:

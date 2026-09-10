@@ -109,9 +109,6 @@ public:
 		return _frameSyncBackend == FrameSyncBackend::Reflex && _reflex.CanUseAsync()
 			? FrameSyncBackend::Async : _frameSyncBackend;
 	}
-	const wchar_t* FrameSyncStatusResource() const noexcept;
-	bool IsReflexActive() const noexcept { return _reflex.Available(); }
-	const wchar_t* ReflexStatusResource() const noexcept;
 
 	const std::vector<const EffectDesc*>& ActiveEffectDescs() const noexcept {
 		return _activeEffectDescs;
@@ -151,7 +148,7 @@ private:
 	// Backend thread only: detects driver availability transitions and installs
 	// the corresponding limiter before another capture can be accepted.
 	FrameSyncBackend _appliedFrameSyncBackend = FrameSyncBackend::None;
-	bool _reflexFallbackNotified = false;
+	bool _reflexFallbackLogged = false;
 	bool _frameSyncUsesSharedSlot = false;
 	bool _frameSyncLimiterFailed = false;
 	uint32_t _configuredFrameGenerationMultiplier = 1;

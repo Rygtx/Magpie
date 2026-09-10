@@ -1,6 +1,6 @@
-# Beta 6 Fix1：DLSSFG Reflex 驱动基础限帧
+# Beta 6：DLSSFG Reflex 驱动基础限帧
 
-日期：2026-09-10。基线：原 Beta 6 `5796b01d`。包版本：`0.6.7-beta6-fix1`。
+日期：2026-09-10。基线：原 Beta 6 `5796b01d`。包版本：`0.6.7-beta6`。
 
 ## 完成状态
 
@@ -36,7 +36,7 @@
 
 低延迟状态（Unavailable／Active／DriverOff／Paused／Faulted／Stopped）与限帧状态（Clear／Configuring／Active／CleanupFailed）独立。SetSleepMode 成功代表接受配置；GetSleepStatus 只报告低延迟状态。查询成功 Off 保留有效驱动限帧，也保留 Sleep／标记；不会伪造 API 错误或逐帧强制请求 On。
 
-发生真实调用失败，先进入 Configuring，禁止 Async 接管；随后请求低延迟 Off、interval=0。清除 Set 成功后才发布 Clear，Renderer 使用同一基础目标回退 Async。清除 Set 失败则发布 CleanupFailed，阻止继续捕获，给出错误并停止本轮缩放；不重试刷日志，不声称干净回退。清除后的查询错误单独记录，不能据此声称已经成功清除的间隔仍然存在。
+发生真实调用失败，先进入 Configuring，禁止 Async 接管；随后请求低延迟 Off、interval=0。清除 Set 成功后才发布 Clear，Renderer 使用同一基础目标回退 Async。清除 Set 失败则发布 CleanupFailed，阻止继续捕获，仅记简短日志并停止本轮缩放；不重试刷日志，不声称干净回退。清除后的查询错误单独记录，不能据此声称已经成功清除的间隔仍然存在。
 
 控制器保守记录是否曾尝试设置非零应用间隔。仅请求过 0 的会话没有应用限帧残留：驱动初始化不支持时，即使 Off 清理也不支持，仍可正常回退 Async；不会把低延迟接口不可用误报为限帧残留。已尝试过非零间隔时，必须等清零 Set 成功后才允许回退；即使非零 Set 返回错误也按可能部分生效处理。该区别已加入故障测试。
 
@@ -46,7 +46,9 @@ Sleep 不持有配置互斥锁，驱动对象在后端线程退出前保持存�
 
 ## UI 与兼容性
 
-模式选框显示请求，实际状态显示基础限帧器、驱动是否接受间隔、低延迟 On 请求与最近查询状态；DLSSFG 区单独显示 FIFO 输出方式。过渡状态及清除失败有独立文案。英文、简中、繁中资源同步。
+按维护者要求，实时参数面板不显示当前同步方式、Reflex 请求／查询状态、回退状态或 FG 输出状态。保留模式选择、目标 FPS 与效果参数。Reflex 自动回退仅记录简短日志，不调用 Toast 或错误报告；清除失败保留内部停止处理，也不弹窗。已删除对应状态展示接口和英／简中／繁中资源。
+
+本项属于 `0.6.7-beta6` 的迭代，不另设 Fix 版本或发布说明。
 
 显式 Async 继续在捕获前限基础 FPS，Front Edge 保留原输入期限行为，帧同步关闭时保留已有上限；这些 DLSSFG 模式的应用驱动间隔为 0，低延迟仍独立请求。普通非 FG Reflex 采用相同独立状态修正；XeSSFG／MFG 仍由 XeLL 接管。默认 Front Edge 60 FPS 和已有配置值不变。
 
