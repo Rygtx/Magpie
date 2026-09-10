@@ -46,9 +46,9 @@ bool OverlayDrawer::_EnsureParameterInputHost() noexcept {
 }
 
 bool OverlayDrawer::_BeginParameterInput() noexcept {
-	// An asynchronous restart must never activate over an unrelated application.
-	if (!_HasParameterForeground()) {
-		Logger::Get().Info("Parameter editing activation skipped: foreground is outside the scaling session");
+	// USER32 must already have activated the host through an actual panel click.
+	// Opening or restoring the panel must never take foreground from the game.
+	if (!_hwndParameterInput || GetForegroundWindow() != _hwndParameterInput) {
 		return false;
 	}
 	_parameterInputTransition = true;
@@ -68,12 +68,8 @@ bool OverlayDrawer::_BeginParameterInput() noexcept {
 	const RECT& rect = scaling.RendererRect();
 	SetWindowPos(_hwndParameterInput, HWND_TOPMOST, rect.left, rect.top,
 		rect.right - rect.left, rect.bottom - rect.top, SWP_NOACTIVATE | SWP_SHOWWINDOW);
-	const HWND currentForeground = GetForegroundWindow();
-	if (currentForeground == scaling.SrcTracker().Handle() || currentForeground == scaling.Handle() ||
-		currentForeground == _hwndParameterInput) SetForegroundWindow(_hwndParameterInput);
 	const bool activated = GetForegroundWindow() == _hwndParameterInput;
 	if (activated) {
-		SetFocus(_hwndParameterInput);
 		ClipCursor(nullptr);
 		_imguiImpl.ParameterEditing(true);
 		for (int key : { VK_CONTROL, VK_SHIFT, VK_MENU, VK_LWIN, VK_RWIN }) {
@@ -182,11 +178,14 @@ bool OverlayDrawer::HandleParameterPreviewEscape(WPARAM message, const KBDLLHOOK
 }
 
 void OverlayDrawer::_ToggleParameterPanel() noexcept {
-	_SetParameterPanelState(_isEffectParametersVisible ? ParameterPanelState::Closed : ParameterPanelState::Edit);
+	_SetParameterPanelState(_isEffectParametersVisible ? ParameterPanelState::Closed : ParameterPanelState::Preview);
 }
 
 void OverlayDrawer::_SetParameterPanelState(ParameterPanelState state, bool returnFocus) noexcept {
 	_previewEscapeCanClose = _previewClosePending = false;
+	if (state == ParameterPanelState::Edit &&
+		(!_hwndParameterInput || GetForegroundWindow() != _hwndParameterInput))
+		state = ParameterPanelState::Preview;
 	if (state == ParameterPanelState::Edit) {
 		_isEffectParametersVisible = true;
 		if (!IsEditingParameters()) {
@@ -303,14 +302,14 @@ std::optional<ImGuiInputResult> OverlayDrawer::_HandleParameterInputMessage(
 		// while messages waited for rendering. Both HWND routes use screen coordinates.
 		const DWORD position = GetMessagePos();
 		const POINT point{ GET_X_LPARAM(position), GET_Y_LPARAM(position) };
-		if (down && _parameterPanelState == ParameterPanelState::Preview &&
+		if (fromHost && down && _parameterPanelState == ParameterPanelState::Preview &&
 			!_parameterResumeClickPending && _HasParameterForeground() &&
 			_imguiImpl.IsParameterPreviewAt(point)) {
 			_SetParameterPanelState(ParameterPanelState::Edit);
-			_parameterResumeClickPending = !IsEditingParameters();
+			// Activation consumes the entire first click, including an outside release.
+			_parameterResumeClickPending = true;
 			_parameterHeldButtons = 1u << button;
 			SetCapture(_hwndParameterInput);
-			if (IsEditingParameters()) queue(point);
 			return ImGuiInputResult::Urgent;
 		}
 		if (_parameterResumeClickPending) {

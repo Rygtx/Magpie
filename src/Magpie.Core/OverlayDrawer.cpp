@@ -262,8 +262,8 @@ OverlaySessionState OverlayDrawer::CaptureSessionState() const noexcept {
 void OverlayDrawer::RestoreSessionState(const OverlaySessionState& state) noexcept {
 	_isToolbarVisible = state.toolbarVisible;
 	_isToolbarPinned = state.toolbarPinned;
-	_SetParameterPanelState(state.parameterPanelState == ParameterPanelState::Closed && state.effectParametersVisible
-		? ParameterPanelState::Preview : state.parameterPanelState, false);
+	_SetParameterPanelState(state.effectParametersVisible
+		? ParameterPanelState::Preview : ParameterPanelState::Closed, false);
 	if (_isProfilerVisible != state.profilerVisible) InvokeAction(OverlayAction::Profiler);
 	_overlayDirty = true;
 	_ClearStatesIfNoVisibleWindow();

@@ -303,6 +303,12 @@ static bool PreviewEscape(UINT message, DWORD flags=0) {
     if (!claimed) keys[VK_ESCAPE]=message==WM_KEYDOWN || message==WM_SYSKEYDOWN;
     return claimed;
 }
+static void EnterEdit() {
+    if (overlay->IsEditingParameters()) return;
+    overlay->_SetParameterPanelState(ParameterPanelState::Preview); Frames();
+    Mouse(WM_LBUTTONDOWN,100,30); Mouse(WM_LBUTTONUP,100,30); Frames();
+    assert(overlay->IsEditingParameters());
+}
 int main() {
     ShortcutProbe shortcut;
     assert(shortcut.Hook()==17 && shortcut.fires==0);
@@ -316,14 +322,15 @@ int main() {
     drawToolbar=panel._isToolbarVisible=true; Frames();
     ScalingMouse(WM_LBUTTONDOWN,{540,45},{540,45}); Frames();
     ScalingMouse(WM_LBUTTONUP,{540,45},{540,45}); Frames();
-    assert(panel.IsEditingParameters() && foreground==inputHost);
+    assert(!panel.IsEditingParameters() && foreground==game && focusAttempts==0);
+    EnterEdit();
     ScalingMouse(WM_LBUTTONDOWN,{600,450},{600,450});
     ScalingMouse(WM_LBUTTONUP,{600,450},{600,450}); Frames(); panel.UpdateParameterInputHost();
     assert(panel._parameterPanelState==ParameterPanelState::Preview);
     panel._SetParameterPanelState(ParameterPanelState::Closed); drawToolbar=panel._isToolbarVisible=false; Frames();
     cursor=messagePoint={100,100};
-    // One shared toolbar/shortcut action opens edit and closes visible panels.
-    panel._ToggleParameterPanel(); Frames(); assert(panel.IsEditingParameters());
+    // Opening through the toolbar/shortcut stays in preview and never activates.
+    panel._ToggleParameterPanel(); Frames(); assert(!panel.IsEditingParameters() && foreground==game);
     panel._ToggleParameterPanel(); Frames(); panel.UpdateParameterInputHost();
     assert(panel._parameterPanelState==ParameterPanelState::Closed && !panel._isEffectParametersVisible && foreground==game);
     panel._ToggleParameterPanel(); Frames();
@@ -331,11 +338,11 @@ int main() {
     assert(panel._isEffectParametersVisible && !panel.IsEditingParameters());
     panel._ToggleParameterPanel(); Frames(); assert(!panel._isEffectParametersVisible);
     // Closing through the action still waits for held shortcut modifiers.
-    panel._ToggleParameterPanel(); Frames(); Key(WM_KEYDOWN,VK_MENU);
+    panel._ToggleParameterPanel(); Frames(); EnterEdit(); Key(WM_KEYDOWN,VK_MENU);
     panel._ToggleParameterPanel(); Frames(); assert(panel.IsEditingParameters());
     Key(WM_KEYUP,VK_MENU); Frames(); panel.UpdateParameterInputHost();
     assert(panel._parameterPanelState==ParameterPanelState::Closed && foreground==game);
-    panel._SetParameterPanelState(ParameterPanelState::Edit); Frame();
+    EnterEdit(); Frame();
     assert(panel._imguiImpl.OwnsPointerAtCursor()); Frames();
     assert(panel.IsEditingParameters() && foreground==inputHost && visibleHost);
     // Moving out never exits edit; the first outside click stays entirely in the host.
@@ -353,24 +360,32 @@ int main() {
     cursor={100,80}; Frames(); assert(!io.WantCaptureMouse);
     cursor=childPoint; Frames(); assert(!io.WantCaptureMouse && !panel._imguiImpl.OwnsPointerAtCursor());
     Mouse(WM_LBUTTONDOWN,600,450); Mouse(WM_LBUTTONUP,600,450); assert(gameEdges==2);
-    // The original press activates editing AND operates the hit control.
+    // The activation click never changes a control, including an outside release.
     auto preview = [&] {
         Key(WM_KEYDOWN,VK_ESCAPE); Key(WM_KEYUP,VK_ESCAPE); Frames(); panel.UpdateParameterInputHost();
         assert(panel._parameterPanelState==ParameterPanelState::Preview && foreground==game);
     };
+    const int beforeSlider=slider;
     Mouse(WM_LBUTTONDOWN,100,51); Frame();
-    assert(panel.IsEditingParameters() && ImGui::IsAnyItemActive() && capture==inputHost);
+    assert(panel.IsEditingParameters() && !ImGui::IsAnyItemActive() && capture==inputHost);
     Mouse(WM_MOUSEMOVE,600,450); Frames(); Mouse(WM_LBUTTONUP,600,450); Frames();
-    assert(slider==100 && !capture && panel.IsEditingParameters() && gameEdges==2);
+    assert(slider==beforeSlider && !capture && panel.IsEditingParameters() && gameEdges==2);
+    Mouse(WM_LBUTTONDOWN,100,51); Frames(); Mouse(WM_MOUSEMOVE,600,450); Frames();
+    Mouse(WM_LBUTTONUP,600,450); Frames(); assert(slider==100);
     preview();
     const bool beforeCheck=checkbox;
     Mouse(WM_LBUTTONDOWN,checkboxPoint.x,checkboxPoint.y);
     Mouse(WM_LBUTTONUP,checkboxPoint.x,checkboxPoint.y); Frames();
-    assert(panel.IsEditingParameters() && checkbox!=beforeCheck && gameEdges==2);
+    assert(panel.IsEditingParameters() && checkbox==beforeCheck && gameEdges==2);
+    Mouse(WM_LBUTTONDOWN,checkboxPoint.x,checkboxPoint.y); Frames();
+    Mouse(WM_LBUTTONUP,checkboxPoint.x,checkboxPoint.y); Frames(); assert(checkbox!=beforeCheck);
     preview();
     Mouse(WM_LBUTTONDOWN,choicePoint.x,choicePoint.y); Frames();
     Mouse(WM_LBUTTONUP,choicePoint.x,choicePoint.y); Frames();
-    assert(panel.IsEditingParameters() && !ImGui::GetCurrentContext()->OpenPopupStack.empty());
+    assert(panel.IsEditingParameters() && ImGui::GetCurrentContext()->OpenPopupStack.empty());
+    Mouse(WM_LBUTTONDOWN,choicePoint.x,choicePoint.y); Frames();
+    Mouse(WM_LBUTTONUP,choicePoint.x,choicePoint.y); Frames();
+    assert(!ImGui::GetCurrentContext()->OpenPopupStack.empty());
     Key(WM_KEYDOWN,VK_ESCAPE); Key(WM_KEYUP,VK_ESCAPE); Frames();
     preview();
     Mouse(WM_LBUTTONDOWN,childPoint.x,childPoint.y); Frame();
@@ -394,12 +409,13 @@ int main() {
     assert(!pointer._UpdateParameterCursor() && pointer._isUnderCapture);
     foreground=game; pointer._isUnderCapture=false; cursor=messagePoint={100,100};
     // The scaling HWND is a real second input route. Its preview press must
-    // enter editing, and its outside press must request Preview just like the host.
+    // remain passive without native host activation; edit events still share routing.
     const bool scalingCheck=checkbox;
     ScalingMouse(WM_LBUTTONDOWN,checkboxPoint,checkboxPoint); Frame();
-    assert(panel.IsEditingParameters() && foreground==inputHost);
+    assert(!panel.IsEditingParameters() && foreground==game);
     ScalingMouse(WM_LBUTTONUP,checkboxPoint,checkboxPoint); Frames();
-    assert(checkbox!=scalingCheck);
+    assert(checkbox==scalingCheck);
+    EnterEdit();
     // A cursor already moved back over the panel must not change where the DOWN happened.
     ScalingMouse(WM_LBUTTONDOWN,{600,450},checkboxPoint); Frames();
     assert(panel._pendingParameterPanelState==ParameterPanelState::Preview && panel.IsEditingParameters());
@@ -408,7 +424,7 @@ int main() {
     // Modifiers inherited at activation may release to the old game queue.
     // No host WM_KEYUP arrives: physical release must still permit leaving edit.
     keys[VK_MENU]=keys[VK_SHIFT]=true;
-    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    EnterEdit(); Frames();
     keys[VK_MENU]=keys[VK_SHIFT]=false;
     ScalingMouse(WM_LBUTTONDOWN,{600,450},{600,450});
     ScalingMouse(WM_LBUTTONUP,{600,450},{600,450}); Frames(); panel.UpdateParameterInputHost();
@@ -416,7 +432,7 @@ int main() {
     assert(!io.KeyAlt && !io.KeyShift);
     // A delayed focus/cancel notification for the scaling HWND must not
     // cancel the newly focused input host or discard its pending control press.
-    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    EnterEdit(); Frames();
     Mouse(WM_LBUTTONDOWN,100,51); Frame();
     assert(ImGui::IsAnyItemActive());
     panel.MessageHandler(WM_KILLFOCUS,WPARAM(inputHost),0);
@@ -450,7 +466,7 @@ int main() {
     panel._SetParameterPanelState(ParameterPanelState::Preview); assert(PreviewEscape(WM_KEYUP)); panel.UpdateParameterInputHost();
     assert(panel._parameterPanelState==ParameterPanelState::Preview);
     // A drag that starts on the panel stays captured after leaving the panel.
-    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    EnterEdit(); Frames();
     Mouse(WM_LBUTTONDOWN,100,51); Frames();
     assert(ImGui::IsAnyItemActive() && capture==inputHost);
     Mouse(WM_MOUSEMOVE,600,450); Frames();
@@ -463,7 +479,7 @@ int main() {
     Mouse(WM_LBUTTONDOWN,600,450); Frames(); Mouse(WM_LBUTTONUP,600,450); Frames();
     panel.UpdateParameterInputHost();
     assert(!panel.IsEditingParameters() && ImGui::GetCurrentContext()->OpenPopupStack.empty());
-    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    EnterEdit(); Frames();
     // Keyboard Escape first dismisses a popup, then exits on a complete key pair.
     Mouse(WM_LBUTTONDOWN,choicePoint.x,choicePoint.y); Frames(); Mouse(WM_LBUTTONUP,choicePoint.x,choicePoint.y); Frames();
     assert(!ImGui::GetCurrentContext()->OpenPopupStack.empty());
@@ -473,7 +489,7 @@ int main() {
     Key(WM_KEYUP,VK_ESCAPE); Frames(); panel.UpdateParameterInputHost();
     assert(!panel.IsEditingParameters() && foreground==game);
     // Real ImGui numeric input receives modifier/key/character events in order.
-    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    EnterEdit(); Frames();
     Key(WM_KEYDOWN,VK_CONTROL); Frames();
     Mouse(WM_LBUTTONDOWN,100,51); Frames(); Mouse(WM_LBUTTONUP,100,51); Frames();
     assert(ImGui::GetCurrentContext()->InputTextState.ID == ImGui::GetCurrentContext()->ActiveId && ImGui::IsAnyItemActive());
@@ -504,16 +520,16 @@ int main() {
     actualParameter=false; Frames();
     panel._SetParameterPanelState(ParameterPanelState::Preview); Frames(); panel.UpdateParameterInputHost();
     // Shortcut modifiers and queued releases delay a return to the game.
-    keys[VK_CONTROL]=true; panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    keys[VK_CONTROL]=true; EnterEdit(); Frames();
     panel._SetParameterPanelState(ParameterPanelState::Preview); assert(panel.IsEditingParameters());
     Key(WM_KEYUP,VK_CONTROL); Frames(); panel.UpdateParameterInputHost(); assert(!panel.IsEditingParameters());
-    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    EnterEdit(); Frames();
     Mouse(WM_LBUTTONDOWN,100,51); Frames();
     panel._SetParameterPanelState(ParameterPanelState::Preview); assert(panel.IsEditingParameters());
     Mouse(WM_LBUTTONUP,100,51); assert(panel.IsEditingParameters());
     Frames(); panel.UpdateParameterInputHost(); assert(!panel.IsEditingParameters());
     // Losing foreground cancels capture and ImGui activity without activating the game.
-    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    EnterEdit(); Frames();
     Mouse(WM_LBUTTONDOWN,100,51); Frames();
     const int attempts=focusAttempts; FakeSetForeground((HWND)9);
     assert(!panel.IsEditingParameters() && foreground==(HWND)9 && !capture && !visibleHost);
@@ -522,13 +538,14 @@ int main() {
     // A rebuild restore over another app stays in preview. No focus attempt is made.
     panel._SetParameterPanelState(ParameterPanelState::Edit,false);
     assert(!panel.IsEditingParameters() && foreground==(HWND)9 && focusAttempts==attempts+1);
-    // Focus failure makes one attempt, then leaves a visible preview and no capture.
-    foreground=game; denyFocus=true; panel._SetParameterPanelState(ParameterPanelState::Edit);
-    assert(!panel.IsEditingParameters() && panel._parameterFocusFailed && visibleHost && !capture);
+    // Programmatic edit requests stay in preview without any activation attempt.
+    foreground=game; denyFocus=true; const int beforeRequest=focusAttempts;
+    panel._SetParameterPanelState(ParameterPanelState::Edit);
+    assert(!panel.IsEditingParameters() && !panel._parameterFocusFailed && visibleHost && !capture && focusAttempts==beforeRequest);
     const int failedAttempts=focusAttempts; panel.UpdateParameterInputHost(); panel.UpdateParameterInputHost();
     assert(focusAttempts==failedAttempts); denyFocus=false;
     // Stopping while a panel press is down defers HWND destruction until its up.
-    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    EnterEdit(); Frames();
     Mouse(WM_LBUTTONDOWN,100,51); Key(WM_KEYDOWN,'Z'); Frames();
     auto& scalingWindow = ScalingWindow::Get(); scalingWindow.Stop();
     assert(scalingWindow.Handle() && scalingWindow._stopRequested && panel.IsEditingParameters());
@@ -537,21 +554,21 @@ int main() {
     assert(scalingWindow.ProcessPendingStop());
     assert(!scalingWindow.Handle() && !visibleHost && !capture && gameEdges==2);
     scalingWindow.alive=true;
-    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    EnterEdit(); Frames();
     const auto editingState=panel.CaptureSessionState();
     Key(WM_KEYDOWN,'Z'); panel._SetParameterPanelState(ParameterPanelState::Preview);
     assert(panel.CaptureSessionState().parameterPanelState==ParameterPanelState::Preview);
     panel._SetParameterPanelState(ParameterPanelState::Closed);
     assert(!panel.CaptureSessionState().effectParametersVisible);
     Key(WM_KEYUP,'Z'); Frames(); panel.UpdateParameterInputHost();
-    panel.RestoreSessionState(editingState); Frames(); assert(panel.IsEditingParameters());
+    panel.RestoreSessionState(editingState); Frames(); assert(!panel.IsEditingParameters() && foreground==game);
     panel.ReleaseParameterInput(); foreground=(HWND)9;
     const int beforeRestore=focusAttempts; panel.RestoreSessionState(editingState); Frames();
     assert(!panel.IsEditingParameters() && foreground==(HWND)9 && focusAttempts==beforeRestore);
-    foreground=game; panel.RestoreSessionState(editingState); Frames(); assert(panel.IsEditingParameters());
+    foreground=game; panel.RestoreSessionState(editingState); Frames(); assert(!panel.IsEditingParameters() && foreground==game);
     panel._SetParameterPanelState(ParameterPanelState::Closed); Frames(); panel.UpdateParameterInputHost();
     assert(!panel._isEffectParametersVisible && !visibleHost && foreground==game);
-    std::cout << "PASS production input: real toolbar Button route, registered parameter hotkey route, both HWND mouse routes, event-coordinate outside click, inherited modifier release, delayed scaling focus/cancel messages, three states, first-click slider/checkbox/dropdown, last-present hit target, preview Esc guards, drag/popup/numeric input, deferred stop and restore\n";
+    std::cout << "PASS production input: real toolbar Button route, registered parameter hotkey route, both HWND mouse routes, event-coordinate outside click, inherited modifier release, delayed scaling focus/cancel messages, three states, passive opening/restoration, activation-only first click and subsequent slider/checkbox/dropdown, last-present hit target, preview Esc guards, drag/popup/numeric input, deferred stop and restore\n";
 }
 '''
 
