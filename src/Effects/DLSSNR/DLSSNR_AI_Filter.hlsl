@@ -135,8 +135,8 @@ float localStructureStrength;
 //!PARAMETER
 //!GROUP DLSSNR
 //!LABEL Skin Structure Strength
-//!DEFAULT -1
-//!MIN -1
+//!DEFAULT 0
+//!MIN 0
 //!MAX 2
 //!STEP 0.05
 float skinStructureStrength;

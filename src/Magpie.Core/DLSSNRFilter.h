@@ -19,7 +19,7 @@ struct DLSSNRSettings {
 	float intensity = 1.0f;
 	float localToneStrength = 1.0f;
 	float localStructureStrength = 1.0f;
-	float skinStructureStrength = -1.0f;
+	float skinStructureStrength = 0.0f;
 	bool useAutoMask = false;
 	bool uiCorrection = false;
 	MotionVectorRequest motionRequest{};

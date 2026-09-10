@@ -198,10 +198,12 @@ private:
 		bool waitForGpu = false,
 		uint32_t sharedTextureSlot = std::numeric_limits<uint32_t>::max(),
 		FrontendRenderTimings* timings = nullptr,
-		bool stableBaseOnly = false
+		bool stableBaseOnly = false,
+		bool* droppedFrame = nullptr
 	) noexcept;
 	bool _FrontendOverlayRender(bool contentChanged = false) noexcept;
-	bool _UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept;
+	enum class FrontendBaseResult { Ready, Retry, Dropped };
+	FrontendBaseResult _UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept;
 	bool _OpenFrontendSharedTextures() noexcept;
 	void _ResetDLSSFGSlotEvents() noexcept;
 	void _CopySceneToTarget(ID3D11Texture2D* scene, ID3D11Texture2D* target,
@@ -296,6 +298,7 @@ private:
 	std::array<winrt::com_ptr<IDXGIKeyedMutex>, MAX_SHARED_TEXTURE_SLOTS>
 		_frontendSharedMotionTextureMutexes;
 	std::array<uint64_t, MAX_SHARED_TEXTURE_SLOTS> _lastAccessMutexKeys{};
+	std::array<uint64_t, MAX_SHARED_TEXTURE_SLOTS> _discardedFrontendKeys{};
 	std::array<std::mutex, MAX_SHARED_TEXTURE_SLOTS> _sharedTextureAccessMutexes;
 	winrt::com_ptr<ID3D11Texture2D> _frontendBaseTexture;
 	winrt::com_ptr<ID3D11Texture2D> _frontendPresentedBaseTexture;

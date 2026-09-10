@@ -2,6 +2,9 @@
 
 保留 Beta 3 的全部功能，本次更新：
 
+- 修复旧帧被拒收后消费确认未推进、可能阻塞后续帧的问题；DLSS 插帧队列也会正确完成丢弃任务，避免重放旧画面。
+- DLSSNR 皮肤结构强度范围调整为 `0–2`，默认值为 `0`；旧配置中的负值按 `0` 使用。
+
 - 实时参数面板支持常驻预览与编辑切换：编辑时释放鼠标；单击游戏区域后返回游戏，本次点击不会执行游戏操作。
 - 默认 `Alt+Shift+E` 改为“编辑参数／返回游戏”，可在首页配置。预览保持显示并鼠标穿透，可通过工具栏重新编辑或关闭。
 - `Esc` 优先关闭下拉菜单／数值输入，再返回游戏；重新启用效果组后恢复面板位置和交互状态，切到其他应用时尊重新焦点。
@@ -17,6 +20,9 @@
 # Magpie Experimental v0.6.7 Beta 4
 
 Includes all Beta 3 features, with the following updates:
+
+- Fixed missing consumption acknowledgement after rejecting a stale frame, which could block subsequent frames. DLSS frame-generation queues also complete dropped jobs without replaying an old image.
+- DLSSNR Skin Structure Strength now ranges from `0–2`, with a default of `0`. Negative values in existing configurations are clamped to `0`.
 
 - Live parameters can remain visible as a click-through preview. Editing releases the cursor; clicking the game returns control after consuming that complete click.
 - `Alt+Shift+E` now toggles editing and returning to the game, with a configurable shortcut. The toolbar can resume editing or close the preview.

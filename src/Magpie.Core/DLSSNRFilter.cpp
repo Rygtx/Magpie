@@ -44,7 +44,7 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) 
 		.localStructureStrength = getClamped(
 			"localStructureStrength", 1.0f, 0.0f, 2.0f),
 		.skinStructureStrength = getClamped(
-			"skinStructureStrength", -1.0f, -1.0f, 2.0f),
+			"skinStructureStrength", 0.0f, 0.0f, 2.0f),
 		.useAutoMask = getParameter("useAutoMask", 0.0f) >= 0.5f,
 		.uiCorrection = getParameter("uiCorrection", 0.0f) >= 0.5f,
 		.motionRequest = ParseDlssOpticalFlowRequest(option),

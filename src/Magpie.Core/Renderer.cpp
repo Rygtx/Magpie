@@ -641,6 +641,7 @@ bool Renderer::_OpenFrontendSharedTextures() noexcept {
 		_frontendSharedMotionTextureMutexes[i] = nullptr;
 		_frontendSharedMotionTextures[i] = nullptr;
 		_lastAccessMutexKeys[i] = 0;
+		_discardedFrontendKeys[i] = 0;
 	}
 	for (uint32_t i = 0; i < _sharedTextureSlotCount; ++i) {
 		if (!_sharedTextureHandles[i]) {
@@ -692,28 +693,31 @@ void Renderer::_ResetDLSSFGSlotEvents() noexcept {
 	}
 }
 
-bool Renderer::_UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept {
+Renderer::FrontendBaseResult Renderer::_UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept {
 	FrameTrace::Scope traceBase(FrameTrace::Event::FrontendBase, sharedTextureSlot);
 	if (sharedTextureSlot >= _sharedTextureSlotCount) {
-		return false;
+		return FrontendBaseResult::Retry;
 	}
 	ID3D11Texture2D* source = _frontendSharedTextures[sharedTextureSlot].get();
 	IDXGIKeyedMutex* keyedMutex = _frontendSharedTextureMutexes[sharedTextureSlot].get();
 	if (!source || !keyedMutex) {
-		return false;
+		return FrontendBaseResult::Retry;
 	}
 
 	std::unique_lock accessLock(
 		_sharedTextureAccessMutexes[sharedTextureSlot], std::try_to_lock);
 	if (!accessLock.owns_lock()) {
 		FrameTrace::Mark(FrameTrace::Event::FrontendAcquireBusy, 0, sharedTextureSlot);
-		return false;
+		return FrontendBaseResult::Retry;
 	}
 
 	const uint64_t currentKey =
 		_sharedTextureMutexKeys[sharedTextureSlot].load(std::memory_order_acquire);
+	if (currentKey != 0 && _discardedFrontendKeys[sharedTextureSlot] == currentKey) {
+		return FrontendBaseResult::Dropped;
+	}
 	if (_lastAccessMutexKeys[sharedTextureSlot] == currentKey && _frontendBaseValid) {
-		return true;
+		return FrontendBaseResult::Ready;
 	}
 
 	const uint64_t releaseKey = currentKey + 1;
@@ -740,7 +744,7 @@ bool Renderer::_UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept {
 		hr = AcquirePresentationTextures(mutexes, currentKey, 0);
 	}
 	if (FAILED(hr)) {
-		return false;
+		return FrontendBaseResult::Retry;
 	}
 	const uint64_t slotSequence =
 		_sharedTextureCaptureSequences[sharedTextureSlot].load(std::memory_order_acquire);
@@ -752,14 +756,25 @@ bool Renderer::_UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept {
 	if ((slotSequence != 0 && activeSequence != 0 && slotSequence != activeSequence) ||
 		(slotGeneration != 0 && activeGeneration != 0 && slotGeneration != activeGeneration)) {
 		const HRESULT staleRelease = ReleasePresentationTextures(mutexes, releaseKey);
-		if (SUCCEEDED(staleRelease)) {
-			_sharedTextureMutexKeys[sharedTextureSlot].store(releaseKey, std::memory_order_release);
-			_lastAccessMutexKeys[sharedTextureSlot] = releaseKey;
+		if (FAILED(staleRelease)) {
+			Logger::Get().ComError("Release stale frontend shared texture failed", staleRelease);
+			return FrontendBaseResult::Retry;
+		}
+		_sharedTextureMutexKeys[sharedTextureSlot].store(releaseKey, std::memory_order_release);
+		_lastAccessMutexKeys[sharedTextureSlot] = releaseKey;
+		_discardedFrontendKeys[sharedTextureSlot] = releaseKey;
+		_frontendBaseNeedsPresent = false;
+		// Dropping a slot also finishes its consumption transaction. Keep this
+		// acknowledgement under accessLock, before the producer can reuse it.
+		// It is not a presentation and must not advance presentation statistics.
+		if (_frameSyncEnabled && _frameSyncUsesSharedSlot) {
+			_frameSyncAcknowledgedKey.store(releaseKey, std::memory_order_release);
+			SetEvent(_frameSyncConsumedEvent.get());
 		}
 		Logger::Get().Info(fmt::format(
 			"Dropped stale frontend slot={} sequence={}/{} resourceGeneration={}/{}",
 			sharedTextureSlot, slotSequence, activeSequence, slotGeneration, activeGeneration));
-		return false;
+		return FrontendBaseResult::Dropped;
 	}
 
 	D3D11_TEXTURE2D_DESC sourceDesc{};
@@ -839,18 +854,19 @@ bool Renderer::_UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept {
 	const HRESULT releaseResult = ReleasePresentationTextures(mutexes, releaseKey);
 	if (FAILED(releaseResult)) {
 		Logger::Get().ComError("Release frontend shared texture failed", releaseResult);
-		return false;
+		return FrontendBaseResult::Retry;
 	}
 	_sharedTextureMutexKeys[sharedTextureSlot].store(releaseKey, std::memory_order_release);
 	_lastAccessMutexKeys[sharedTextureSlot] = releaseKey;
 	if (FAILED(hr)) {
 		Logger::Get().ComError("Create stable frontend base texture failed", hr);
-		return false;
+		return FrontendBaseResult::Retry;
 	}
 
 	_frontendBaseValid = true;
 	_frontendBaseNeedsPresent = true;
-	return true;
+	_discardedFrontendKeys[sharedTextureSlot] = 0;
+	return FrontendBaseResult::Ready;
 }
 
 void Renderer::_CopySceneToTarget(ID3D11Texture2D* scene, ID3D11Texture2D* target,
@@ -876,8 +892,10 @@ bool Renderer::_FrontendRender(
 	bool waitForGpu,
 	uint32_t sharedTextureSlot,
 	FrontendRenderTimings* timings,
-	bool stableBaseOnly
+	bool stableBaseOnly,
+	bool* droppedFrame
 ) noexcept {
+	if (droppedFrame) *droppedFrame = false;
 	if (_pendingFrontendFrame) return _SubmitFrontendFrame();
 	_frontendPacingDeadline.reset();
 	const bool paced = ActiveFrameSyncBackend() == FrameSyncBackend::FrontEdge && !_hasFrameGeneration &&
@@ -915,11 +933,12 @@ bool Renderer::_FrontendRender(
 	if (sharedTextureSlot >= _sharedTextureSlotCount) {
 		sharedTextureSlot = _latestSharedTextureSlot.load(std::memory_order_acquire);
 	}
-	if (!stableBaseOnly &&
-		(!_frontendBaseValid || _lastAccessMutexKeys[sharedTextureSlot] !=
-			_sharedTextureMutexKeys[sharedTextureSlot].load(std::memory_order_acquire)) &&
-		!_UpdateFrontendBase(sharedTextureSlot)) {
-		return false;
+	if (!stableBaseOnly) {
+		const FrontendBaseResult result = _UpdateFrontendBase(sharedTextureSlot);
+		if (result != FrontendBaseResult::Ready) {
+			if (droppedFrame) *droppedFrame = result == FrontendBaseResult::Dropped;
+			return false;
+		}
 	}
 	ID3D11Texture2D* baseTexture = stableBaseOnly ?
 		_frontendPresentedBaseTexture.get() : _frontendBaseTexture.get();
@@ -1372,8 +1391,16 @@ DLSSFGFrameRenderResult Renderer::RenderDLSSFGFrame(
 	const auto pacingEnd = pacingStart;
 
 	FrontendRenderTimings timings;
+	bool droppedFrame = false;
 	const bool presented = _FrontendRender(
-		false, sharedTextureSlot, &timings);
+		false, sharedTextureSlot, &timings, false, &droppedFrame);
+	if (droppedFrame) {
+		consumePendingFrame();
+		if (_sharedTextureAvailableEvents[sharedTextureSlot]) {
+			SetEvent(_sharedTextureAvailableEvents[sharedTextureSlot].get());
+		}
+		return DLSSFGFrameRenderResult::Dropped;
+	}
 	if (!presented) {
 		return DLSSFGFrameRenderResult::Retry;
 	}
