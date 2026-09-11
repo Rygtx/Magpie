@@ -1644,4 +1644,28 @@
   <data name="Profile_General_ParameterFocusSwitching.Description" xml:space="preserve"><value>Enable focus switching during live parameter adjustment. This may be unstable with some windows.</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Header" xml:space="preserve"><value>Disable active effects when switching tasks</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Description" xml:space="preserve"><value>If switching tasks while using DLSSNR makes you feel like you have eaten poisonous mushrooms, try enabling this.</value></data>
+  <data name="EffectPicker_CustomSummary" xml:space="preserve"><value>Custom effect; see the author's documentation.</value></data>
+  <data name="EffectPicker_CustomDetails" xml:space="preserve"><value>This effect has not been reviewed yet. See the author's documentation for its purpose, parameters, and recommended position in an effect chain. HDR compatibility has not been verified.</value></data>
+  <data name="EffectPicker_All" xml:space="preserve"><value>All</value></data>
+  <data name="EffectPicker_AllDescription" xml:space="preserve"><value>Browse the purpose, recommended scenarios, and combination guidance for installed effects.</value></data>
+  <data name="EffectPicker_DetailScrollHint" xml:space="preserve"><value>Ctrl + wheel: scroll description</value></data>
+  <data name="EffectPicker_NameSeparator" xml:space="preserve"><value>, </value></data>
+  <data name="EffectPicker_EffectCountSuffix" xml:space="preserve"><value> effects</value></data>
+  <data name="EffectPicker_GettingStarted" xml:space="preserve"><value>Getting started</value></data>
+  <data name="EffectPicker_GettingStartedDescription" xml:space="preserve"><value>Choose an approachable effect for your scenario, then compare the image before adding more.</value></data>
+  <data name="EffectPicker_Advanced" xml:space="preserve"><value>Advanced</value></data>
+  <data name="EffectPicker_AdvancedDescription" xml:space="preserve"><value>Video super resolution, frame generation, AI image enhancement, and frame-rate control. Choose according to your GPU and target image.</value></data>
+  <data name="EffectPicker_CustomCategory" xml:space="preserve"><value>Custom / uncategorized</value></data>
+  <data name="EffectPicker_CustomCategoryDescription" xml:space="preserve"><value>Installed effects without catalog guidance. See the author's documentation for parameters and chain placement.</value></data>
+  <data name="EffectPicker_SearchPlaceholder" xml:space="preserve"><value>Search effects, purposes, or keywords…</value></data>
+  <data name="EffectPicker_SearchAutomationName" xml:space="preserve"><value>Search all effects</value></data>
+  <data name="EffectPicker_JumpTo" xml:space="preserve"><value>Jump to </value></data>
+  <data name="EffectPicker_AlphabetIndexAutomationName" xml:space="preserve"><value>Jump to effects by first letter</value></data>
+  <data name="EffectPicker_Selected" xml:space="preserve"><value>Selected</value></data>
+  <data name="EffectPicker_ChildSelected" xml:space="preserve"><value>Child category selected</value></data>
+  <data name="EffectPicker_Expanded" xml:space="preserve"><value>Expanded</value></data>
+  <data name="EffectPicker_Collapsed" xml:space="preserve"><value>Collapsed</value></data>
+  <data name="EffectPicker_SearchAllCategories" xml:space="preserve"><value>Searching all categories</value></data>
+  <data name="EffectPicker_NoMatches" xml:space="preserve"><value>No matching effects</value></data>
+  <data name="EffectPicker_NoMatchesDescription" xml:space="preserve"><value>Try a shorter keyword, search for an algorithm family, or choose “All” to browse installed effects.</value></data>
 </root>

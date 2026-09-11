@@ -1611,4 +1611,28 @@
   <data name="Profile_General_ParameterFocusSwitching.Description" xml:space="preserve"><value>參數即時調整時啟用焦點切換，但在部分視窗上執行時可能不穩定。</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Header" xml:space="preserve"><value>切換視窗時自動停用生效效果組</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Description" xml:space="preserve"><value>如果在使用 DLSSNR 時切換視窗，會讓你感覺像吃了毒蘑菇，你可以嘗試啟用它。</value></data>
+  <data name="EffectPicker_CustomSummary" xml:space="preserve"><value>自訂效果器；請參考作者說明。</value></data>
+  <data name="EffectPicker_CustomDetails" xml:space="preserve"><value>此效果器尚無用途評審。請參考作者提供的用途、參數與組合說明。HDR 相容性待驗證。</value></data>
+  <data name="EffectPicker_All" xml:space="preserve"><value>全部</value></data>
+  <data name="EffectPicker_AllDescription" xml:space="preserve"><value>查看已安裝效果器的用途、適用場景和組合建議。</value></data>
+  <data name="EffectPicker_DetailScrollHint" xml:space="preserve"><value>Ctrl + 滾輪：捲動說明</value></data>
+  <data name="EffectPicker_NameSeparator" xml:space="preserve"><value>，</value></data>
+  <data name="EffectPicker_EffectCountSuffix" xml:space="preserve"><value> 個效果器</value></data>
+  <data name="EffectPicker_GettingStarted" xml:space="preserve"><value>入門</value></data>
+  <data name="EffectPicker_GettingStartedDescription" xml:space="preserve"><value>按適用場景選擇容易上手的效果器，先從一個開始比較畫面。</value></data>
+  <data name="EffectPicker_Advanced" xml:space="preserve"><value>進階</value></data>
+  <data name="EffectPicker_AdvancedDescription" xml:space="preserve"><value>影片超解析、補幀、AI 畫面重塑與幀率調節，按顯示卡條件和目標畫面選擇。</value></data>
+  <data name="EffectPicker_CustomCategory" xml:space="preserve"><value>自訂／未分類</value></data>
+  <data name="EffectPicker_CustomCategoryDescription" xml:space="preserve"><value>已安裝但尚無用途說明的效果器。請參考作者說明選擇參數和組合位置。</value></data>
+  <data name="EffectPicker_SearchPlaceholder" xml:space="preserve"><value>搜尋效果器、用途或關鍵字……</value></data>
+  <data name="EffectPicker_SearchAutomationName" xml:space="preserve"><value>搜尋全部效果器</value></data>
+  <data name="EffectPicker_JumpTo" xml:space="preserve"><value>定位 </value></data>
+  <data name="EffectPicker_AlphabetIndexAutomationName" xml:space="preserve"><value>按首字母定位效果器</value></data>
+  <data name="EffectPicker_Selected" xml:space="preserve"><value>已選取</value></data>
+  <data name="EffectPicker_ChildSelected" xml:space="preserve"><value>已選取其子分類</value></data>
+  <data name="EffectPicker_Expanded" xml:space="preserve"><value>已展開</value></data>
+  <data name="EffectPicker_Collapsed" xml:space="preserve"><value>已收合</value></data>
+  <data name="EffectPicker_SearchAllCategories" xml:space="preserve"><value>搜尋全部分類</value></data>
+  <data name="EffectPicker_NoMatches" xml:space="preserve"><value>沒有相符的效果器</value></data>
+  <data name="EffectPicker_NoMatchesDescription" xml:space="preserve"><value>嘗試縮短關鍵字、搜尋演算法家族名稱，或選擇「全部」查看已安裝效果器。</value></data>
 </root>
