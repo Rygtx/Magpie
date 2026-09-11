@@ -102,11 +102,3 @@ The former global focus-switching choice migrates to existing profiles, preservi
 | `NGX_OTA_Switch.bat`               | Reuses the optional 0.6.6 tool to inspect or toggle NVIDIA NGX OTA updates and clean up update processes; normal installation does not require it. Relevant actions require administrator privileges and affect system-wide NGX settings. Use **Restore default** to undo changes; deleting the BAT does not restore settings. |
 
 Contributor: [TurnX-alt](https://github.com/TurnX-alt) contributed UI, preset and build-consistency fixes; [konodiodaaaaa1](https://github.com/konodiodaaaaa1) contributed HDR support.
-
-## What's Changed
-* fix(build/ui/ux): ClangCL no-SDK 构建报错修复 + preset 参数键与反馈链接修正 + 缩放开始 toast + 一致性检查套件（基于 upstream/experimental 9824d758） by @TurnX-alt in https://github.com/SAOG0721/Magpie/pull/23
-
-## New Contributors
-* @TurnX-alt made their first contribution in https://github.com/SAOG0721/Magpie/pull/23
-
-**Full Changelog**: https://github.com/SAOG0721/Magpie/compare/v0.6.6-experimental...v0.6.7-experimental
