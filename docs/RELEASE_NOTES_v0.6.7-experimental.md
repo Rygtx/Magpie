@@ -8,17 +8,14 @@
 - **可选的参数焦点切换**：默认配置和各应用配置可独立设置“参数调整焦点切换”，新配置默认关闭，使用基于 0.6.6 的鼠标操作方式。开启后支持编辑／预览切换及 `Ctrl+单击` 输入数值，但在部分窗口上运行时可能不稳定。
 - **可选的切屏自动停用**：主页“高级”新增“切屏时自动停用生效效果组”，默认关闭。开启后，使用 `Alt+Tab`、`Win+Tab` 等切屏组合键时自动停用全屏效果组，切回来后需手动重新启用；可用于缓解部分 DLSSNR 切屏异常。
 - **新增帧同步模式**：在 Front Edge Sync 之外增加 Async 和 NVIDIA Reflex；普通效果与 DLSS FG 均可选择 Reflex 基础限帧，主页和参数面板共用同一组设置。
-- **更方便的效果组管理**：新建、复制、导入和重命名时自动检查重名；已有同名效果组保留内容，并提示修改名称。
 - **独立保存增强版配置**：与原版 Magpie 的设置分开保存，支持导入旧配置。工具栏快捷键提示及 FAQ、帮助入口同步完善。
 
 ### 效果器
 
 - **RTX Video 降噪与 VSR**：增加低／中／高／极高四档实时强度，默认中档；旧效果组保留对应强度。
 - **DLSSNR 强度调整**：NR 强度、局部色调强度和局部结构强度扩大至 `0–2`，默认 `1`；皮肤结构强度为 `0–2`，默认 `0`，步进均为 `0.05`。
-- **DLSSNR 自动适配 SDR／HDR 输入**，减少手动设置；优化 DLSS NR 与 DLSS FG 的资源使用。
 - **更多光流选择**：DLSS NR、DLSS FG 和光流诊断效果支持 AMD／NVIDIA 光流及质量选择。光流默认关闭，从旧配置首次迁移时也会关闭一次，之后可手动开启并保存。
 - **新增 HDR 组件**：提供 HDR → SDR、SDR → HDR 和 RTX Video HDR，可按源内容与显示需要搭配使用。HDR 默认关闭，通过添加组件启用。
-- **统一 XeSS 补帧名称**：显示名称去掉 ZeroMV 后缀，已有配置保持兼容。
 
 ### 错误与兼容性
 
@@ -26,7 +23,6 @@
 - 修复添加效果、删除效果组或停止缩放时可能出现的闪退。
 - 修复配置目录缺失导致无法启动、便携配置保存失败等问题；配置损坏时尝试从备份或有效条目恢复，并提示需要处理的失效效果。
 - 修复部分 HDR 内容亮度显示不正确的问题，改善 HDR 与不同效果组合的兼容性。
-- Reflex 自动回退时不弹出提示；实时参数面板不显示同步、Reflex 或 FG 输出状态。
 - 完善错误详情和解决步骤。窗口模式遇到全屏或最大化的源应用时，会提示先切换为普通窗口。
 
 ## 使用说明
@@ -39,22 +35,9 @@
 2. 从托盘完全退出 Magpie。
 3. 将 `Magpie-Experimental-x64.zip` 完整解压到新目录，运行其中的 `Magpie.exe`。程序与 `resources.pri` 必须来自同一次构建，不要仅替换 EXE。
 
-普通配置优先读取 `%LOCALAPPDATA%\Magpie\config\v4e\config.json`；没有增强版配置时可导入旧 `v4` 配置，后续保存到 `v4e`。便携配置使用新程序目录内的 `config\v4e\config.json`。如需手动迁移，只复制所需配置，保留原文件用于回退；**不要复制旧效果目录、DLL 或深度组件到新目录**。
-
 升级后发现同名效果组时，原内容会保留，请逐个改名；出现失效效果时，可恢复对应效果文件，或移除失效项后添加替代效果。
 
 旧版全局“参数调整焦点切换”会迁移到已有配置；已有单独设置优先保留，之后新建的配置默认关闭。
-
-### 参数与帧率设置
-
-- **参数生效方式**：Live／实时立即生效；Restart／重启需点击“应用并重新启用”。重新启用时恢复面板位置和大小；关闭焦点切换时恢复显示状态，开启时恢复编辑／预览状态。
-- **面板操作**：默认 `Alt+Shift+E` 打开或关闭参数面板，可在设置中改绑。“参数调整焦点切换”在默认配置或应用配置中设置，下次启用效果组时生效，新配置默认关闭；此时面板显示后即可用鼠标操作，点击游戏区域保持面板显示，可用标题栏关闭按钮关闭。开启后会切换焦点，点击预览中的控件可直接操作，点击游戏区域返回预览；`Esc` 先关闭临时输入或下拉菜单，再按“编辑 → 预览 → 关闭”退出。
-- **统一基础 FPS**：默认开启 Front Edge Sync，目标 `60 FPS`。主页支持 `0` 自动或 `1–1000 FPS`，参数面板滑条为 `15–360 FPS`、步进 `1`；已有合法值不会因打开面板而被改写。修改自动保存，重新启用缩放后生效。
-- **Front Edge／Async／Reflex**：Front Edge 保留原提交节奏；Async 在捕获前限制基础输入间隔；Reflex 将同一基础目标交给 NVIDIA 驱动。Reflex 要求支持的 NVIDIA DXGI 呈现路径，效果与呈现使用同一显卡；需使用 R565 或更新的 NVIDIA 驱动。不可用时自动回退 Async，仅记日志。关闭帧同步仍保留其他既有上限和 FG 的低延迟机制。
-- **自动目标与补帧**：`0` 按显示器刷新率折算基础 FPS，有 FG 时除以倍率。例如 240 Hz 下，2×／3×／4× 分别为基础 120／80／60 FPS；手动 80 FPS 配合 2× 的名义输出为 160 FPS。源程序限帧仍需单独设置，相同数值不代表逐帧同步；源或 GPU 跟不上时实际帧率会更低。
-- **DLSSNR 残差控制**：先开启“调整输入分辨率”，即使比例为 100% 也能使用残差调整。降低比例可减轻性能压力，但会损失部分画面信息。
-- **补帧与光流搭配**：一个效果组只使用一种 FG。需要光流时手动选择方法和质量；性能压力较大时可降低质量或关闭光流对比。
-- **HDR 使用**：根据源内容和输出需要排列“HDR 组件”；HDR 输出需要相应显示环境。不要用旧全局兼容开关代替转换链配置。
 
 ## 附件的作用与使用
 
@@ -78,17 +61,14 @@ Contributor: [TurnX-alt](https://github.com/TurnX-alt) 提供界面、预设与�
 - **Optional focus switching for parameters**: The default profile and each application profile can independently set Switch focus for parameter adjustment. New profiles default to Off for mouse interaction based on 0.6.6. Enabling it provides Edit/Preview switching and `Ctrl+click` numeric entry, but may be unstable with some windows.
 - **Optional stop on task switching**: Advanced on Home adds Disable active effects when switching tasks, disabled by default. When enabled, combinations such as `Alt+Tab` and `Win+Tab` stop fullscreen effects, which must be re-enabled manually after returning. This can help with some DLSSNR task-switching issues.
 - **Additional frame-sync modes**: Async and NVIDIA Reflex join Front Edge Sync. Ordinary effects and DLSS FG can use Reflex base pacing, with shared settings on Home and in the parameter panel.
-- **Easier effect-group management**: creating, copying, importing and renaming groups checks for duplicate names. Existing duplicates retain their contents and are marked for renaming.
 - **Separate enhanced settings** from the original Magpie, with support for importing older configurations. Shortcut tooltips, FAQ links and help access are also improved.
 
 ### Effects
 
 - **RTX Video Denoise and VSR** offer Low/Medium/High/Ultra strength levels that apply live, defaulting to Medium. Existing groups retain their corresponding strength.
 - **Expanded DLSSNR controls**: NR intensity, local tone strength and local structure strength now range from `0–2`, defaulting to `1`. Skin structure strength ranges from `0–2`, defaulting to `0`. All four use steps of `0.05`.
-- **DLSSNR automatically adapts to SDR/HDR input**, reducing manual setup. Resource use has been optimized for DLSS NR and DLSS FG.
 - **More optical-flow choices**: DLSS NR, DLSS FG and optical-flow diagnostics support AMD/NVIDIA methods and quality levels. Optical flow defaults to Off and is disabled once when first migrating older settings; users can then enable and save their choice.
 - **New HDR Components**: HDR to SDR, SDR to HDR and RTX Video HDR can be combined for the source content and display. HDR defaults to Off and is enabled by adding components.
-- **Consistent XeSS frame-generation naming**: display names omit ZeroMV while existing configurations remain compatible.
 
 ### Errors and Compatibility
 
@@ -96,7 +76,6 @@ Contributor: [TurnX-alt](https://github.com/TurnX-alt) 提供界面、预设与�
 - Fixed possible crashes when adding effects, deleting effect groups or stopping scaling.
 - Fixed startup failures caused by missing configuration directories and portable-setting save failures. Damaged settings can recover from backups or valid entries, with invalid effects identified for attention.
 - Fixed incorrect brightness in some HDR content and improved compatibility between HDR and different effect combinations.
-- Automatic Reflex fallback does not display a notification; live parameters do not show synchronization, Reflex or FG output status.
 - Improved error details and recovery steps. Windowed mode asks users to switch fullscreen or maximized source applications to a normal window first.
 
 ## Usage
@@ -109,22 +88,10 @@ Contributor: [TurnX-alt](https://github.com/TurnX-alt) 提供界面、预设与�
 2. Fully exit Magpie from the system tray.
 3. Extract `Magpie-Experimental-x64.zip` completely into a new folder and run its `Magpie.exe`. Keep the EXE and `resources.pri` from the same build together; do not replace only the EXE.
 
-Normal settings prefer `%LOCALAPPDATA%\Magpie\config\v4e\config.json`. If enhanced settings are absent, older `v4` settings can be imported; subsequent saves use `v4e`. Portable settings use `config\v4e\config.json` inside the new program folder. For manual migration, copy only the required configuration and retain the originals for rollback; **do not copy old effects, DLLs or depth components into the new folder**.
 
 Existing groups with duplicate names retain their contents and should be renamed individually. For an invalid effect, restore its file or remove the entry and add a replacement.
 
 The former global focus-switching choice migrates to existing profiles, preserving any individual choices. Profiles created afterward default to Off.
-
-### Parameters and Frame Rates
-
-- **Applying parameters**: Live takes effect immediately; Restart requires Apply and restart. Re-enabling restores panel geometry and visibility with focus switching off, or its Edit/Preview state with focus switching on.
-- **Panel controls**: `Alt+Shift+E` opens or closes the panel by default and can be rebound in settings. Set Switch focus for parameter adjustment in the default or application profile; it applies when effects are next enabled. New profiles default to Off: the visible panel responds directly to mouse input, game-area clicks leave it visible, and its title-bar button closes it. When On, the panel switches focus; clicking preview controls operates them directly, game-area clicks return to Preview, and Escape dismisses temporary input or dropdowns before stepping through Edit → Preview → Closed.
-- **Unified base FPS**: defaults remain Front Edge Sync enabled at `60 FPS`. Home supports `0` for automatic or `1–1000 FPS`; the panel slider spans `15–360 FPS` in steps of `1`. Opening the panel preserves existing valid values. Changes save automatically and apply when scaling is re-enabled.
-- **Front Edge/Async/Reflex**: Front Edge retains the existing submission pacing; Async limits base-input intervals before capture; Reflex gives the same base target to the NVIDIA driver. Reflex requires a supported NVIDIA DXGI path with effects and presentation on the same GPU; an R565 or newer NVIDIA driver is required. Unavailable Reflex falls back to Async with logging only. Disabling frame sync retains other existing caps and FG low-latency handling.
-- **Automatic targets and FG**: `0` derives base FPS from display refresh rate, divided by the FG multiplier. At 240 Hz, 2×/3×/4× target base rates of 120/80/60 FPS. A manual 80 FPS target with 2× FG nominally outputs 160 FPS. Source-application limiting remains separate; matching numbers do not imply frame-by-frame synchronization, and slower sources or GPUs can produce lower actual rates.
-- **DLSSNR residual controls**: enable Adjust Input Resolution first, even at 100%. Lowering the percentage can reduce processing pressure but loses some image information.
-- **Combining FG and optical flow**: use one FG effect per group. Select an optical-flow method and quality manually when needed; lower its quality or disable it for comparison when performance is constrained.
-- **HDR usage**: arrange HDR Components for the source and intended output; HDR output requires a suitable display setup. Do not substitute the old global compatibility switch for a conversion chain.
 
 ## Assets: Purpose and Instructions
 
@@ -135,3 +102,11 @@ The former global focus-switching choice migrates to existing profiles, preservi
 | `NGX_OTA_Switch.bat`               | Reuses the optional 0.6.6 tool to inspect or toggle NVIDIA NGX OTA updates and clean up update processes; normal installation does not require it. Relevant actions require administrator privileges and affect system-wide NGX settings. Use **Restore default** to undo changes; deleting the BAT does not restore settings. |
 
 Contributor: [TurnX-alt](https://github.com/TurnX-alt) contributed UI, preset and build-consistency fixes; [konodiodaaaaa1](https://github.com/konodiodaaaaa1) contributed HDR support.
+
+## What's Changed
+* fix(build/ui/ux): ClangCL no-SDK 构建报错修复 + preset 参数键与反馈链接修正 + 缩放开始 toast + 一致性检查套件（基于 upstream/experimental 9824d758） by @TurnX-alt in https://github.com/SAOG0721/Magpie/pull/23
+
+## New Contributors
+* @TurnX-alt made their first contribution in https://github.com/SAOG0721/Magpie/pull/23
+
+**Full Changelog**: https://github.com/SAOG0721/Magpie/compare/v0.6.6-experimental...v0.6.7-experimental
