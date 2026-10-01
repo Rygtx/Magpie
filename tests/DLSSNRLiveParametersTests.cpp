@@ -54,6 +54,12 @@ int main() {
 	assert(first.residualParametersDirty && !first.resetHistory && !second.resetHistory && !third.resetHistory);
 	assert(first.evaluateParameterRevision == 0 && second.evaluateParameterRevision == 0 && third.evaluateParameterRevision == 0);
 	assert(filter._settings.residualSaturation == .3f && filter._settings.residualLightness == 1.2f);
+	for (const auto name : DLSSNR_RESIDUAL_PARAMETERS) {
+		names = {std::string(name)};
+		option.parameters[std::string(name)] = 1;
+		assert(filter.ApplyLiveParameters(option,names));
+		assert(first.evaluateParameterRevision == 0 && second.evaluateParameterRevision == 0 && third.evaluateParameterRevision == 0);
+	}
 	names = {"pass3_intensity"}; option.parameters["pass3_intensity"] = .4f;
 	assert(filter.ApplyLiveParameters(option, names));
 	assert(first.evaluateParameterRevision == 0 && second.evaluateParameterRevision == 0 && third.evaluateParameterRevision == 1);

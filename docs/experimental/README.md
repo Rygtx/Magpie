@@ -20,6 +20,8 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [069 DLSSNR 细节控制 TODO](todos/20261001-v0.6.9-dlssnr-detail-control-TODO.md)：Oklab、保护／压缩、频率与色度时域控制已实施，旧 HSL 配置保留；[实施及验证记录](reviews/20261001-v0.6.9-dlssnr-detail-control.md)包含生产 shader 响应图。069 beta1 编译部署与真实内容／原生 UI 验收交由独立会话。
+
 - [069 快捷键清除与“未设置”状态 TODO](todos/20261001-v0.6.9-shortcut-clear-TODO.md)：行内垃圾桶、弹窗清除、显式空绑定持久化与正常注销已实现，自动回归通过；真实界面验收和 069 beta1 编译部署交由独立会话。关联 Issue #34。
 - [069 To do - xBR](todos/20260921-v0.6.9-xbr-TODO.md)：筛选标准 LV2 固定倍率、NoBlend 与 Hybrid 为首批范围；LV3、MLV4 和 Super-xBR 需经过画质/性能门槛后再决定是否进入 0.6.9。
 - [069 DLSSNR 重复资源开销优化 To do](todos/20261001-v0.6.9-dlssnr-overhead-optimization-TODO.md)：入口共用缩放 / 引导、出口统一总残差、D3D12 集中调度与缓存优化已实施；自动回归及有限真实 NGX 冒烟通过，069 beta1 产品编译部署与完整画质 / 性能验收交由独立会话。

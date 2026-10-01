@@ -1196,11 +1196,14 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity_Label" xml:space="preserve"><value>NR 強度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Label" xml:space="preserve"><value>局部結構強度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Label" xml:space="preserve"><value>局部色調強度</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>反射／輝光控制</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>反射／光暈控制
+Oklab 模式中只控制變亮修正</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>明度變化強度</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>Residual 總強度</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>Residual 總強度
+（0 移除，1 保持，2 放大）</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Label" xml:space="preserve"><value>色度變化強度（Oklab）／飽和度（HSL）</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Label" xml:space="preserve"><value>陰影／結構控制</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Label" xml:space="preserve"><value>陰影／結構控制
+Oklab 模式中只控制變暗修正</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Label" xml:space="preserve"><value>皮膚結構強度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_style_Label" xml:space="preserve"><value>NR 風格
 （0 預設，1 自然，2 電影）</value></data>

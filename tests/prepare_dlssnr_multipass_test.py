@@ -32,7 +32,8 @@ for block in shader.split("//!PARAMETER\n")[1:]:
     match = re.search(r"^(?:int|float) (\w+);", block, re.M)
     assert match and match[1] not in blocks
     blocks[match[1]] = block[:match.end()]
-assert len(blocks) == 33
+assert len(blocks) == 44
+assert "//!DEFAULT 1" in blocks["residualColorMode"]
 anti = blocks["antiFlicker"]
 assert list(blocks).index("antiFlicker") == list(blocks).index("multiPass") + 1
 assert "//!GROUP DLSSNR · Pass 1" in anti and "//!DEFAULT 0" in anti
@@ -70,4 +71,4 @@ for lang in ("en-US", "zh-Hans", "zh-Hant"):
         assert entries[f"EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_{i}"]
     for i in (1, 2, 3):
         assert entries[f"EffectParam_DLSSNR_DLSSNR_AI_Filter_Group_DLSSNR____Pass_{i}"] == f"DLSSNR · Pass {i}"
-print("Multi Pass shader defaults/ranges, 33 unique keys, dynamic-column viewport and localization contracts passed.")
+print("Multi Pass shader defaults/ranges, 44 unique keys, dynamic-column viewport and localization contracts passed.")

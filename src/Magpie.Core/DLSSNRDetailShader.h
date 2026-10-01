@@ -49,7 +49,8 @@ float3 ControlledColor(int2 p, out float4 metrics) {
     float3 o = ReducedColor.Load(int3(p,0)).rgb;
     float3 n = ReducedDenoised.Load(int3(p,0)).rgb;
     metrics = float4(0,1,1,1);
-    if (!all(isfinite(o)) || !all(isfinite(n))) return o;
+    if (!all(isfinite(o))) return 0;
+    if (!all(isfinite(n))) return o;
     if (ColorMode == 0) return ApplyResidualControls(o,n-o);
     // Exact neutral output, no conversion work. Near-neutral values converge
     // to this candidate because the gamut map is identity on in-gamut RGB.
@@ -64,6 +65,7 @@ void PrepareResidual(uint3 tid : SV_DispatchThreadID) {
     if (any(tid.xy >= TargetExtent)) return;
     int2 p = tid.xy;
     float3 o = ReducedColor.Load(int3(p,0)).rgb;
+    if (!all(isfinite(o))) o = 0;
     float4 metrics;
     float3 color = ControlledColor(p,metrics);
     float3 residual = color-o;
@@ -76,6 +78,7 @@ void PrepareResidual(uint3 tid : SV_DispatchThreadID) {
             [unroll] for (int x=-1;x<=1;++x) {
                 int2 q = clamp(p+int2(x,y),0,int2(TargetExtent)-1);
                 float3 guide = ReducedColor.Load(int3(q,0)).rgb;
+                if (!all(isfinite(guide))) continue;
                 float3 diff = guide-o;
                 float spatial = (x==0 ? 2 : 1)*(y==0 ? 2 : 1);
                 float w = spatial*exp(-dot(diff,diff)/.005);
@@ -105,7 +108,7 @@ void PrepareResidual(uint3 tid : SV_DispatchThreadID) {
         else if (DebugView == 7) color = metrics.z;
         residual = color-o;
     }
-    ControlledResidual[p] = float4(residual,0);
+    ControlledResidual[p] = float4(ColorMode == 1 && DebugView != 0 ? color : residual,0);
 }
 )hlsl";
 }

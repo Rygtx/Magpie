@@ -29,7 +29,7 @@ int DLSSNRColorMode(GetValue&& get) noexcept {
 // Shared by import normalization and the new-effect creation path. Copy/export
 // preserve the explicit key, including hidden controls.
 template<class Map>
-void InitializeDLSSNRColorMode(Map& values, bool newlyCreated) {
-	values.try_emplace(L"residualColorMode", newlyCreated ? 1.f : 0.f);
+bool InitializeDLSSNRColorMode(Map& values, bool newlyCreated) {
+	return values.try_emplace(L"residualColorMode", newlyCreated ? 1.f : 0.f).second;
 }
 }

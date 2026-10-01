@@ -66,7 +66,10 @@ struct NativeEffectBackend {
 	virtual bool ApplyLiveParameters(const EffectOption&, std::span<const std::string>) noexcept = 0;
 	HdrEffectBoundaryContext _hdrBoundary;
 };
+struct ID3D11DeviceContext { void CopyResource(ID3D11Texture2D* target, ID3D11Texture2D* from) { target->value = from->value; } };
 struct DeviceResources {
+	ID3D11DeviceContext context;
+	ID3D11DeviceContext* GetD3DDC() { return &context; }
 	int failTextureAt = -1, created = 0;
 	DeviceResources* GetD3DDevice() { return this; }
 	HRESULT CreateTexture2D(const D3D11_TEXTURE2D_DESC* desc, void*, ID3D11Texture2D** texture) {
@@ -84,6 +87,7 @@ struct DLSSNRTemporal {
 		raw = value; lastBase = base; return true;
 	}
 	void Reset() { ++resets; }
+	void ConfigureDetail(float, bool) {}
 	bool Draw(const NativeEffectDrawContext& context) { ++draws; context.output->value = raw->value; return true; }
 };
 struct Logger {
@@ -222,6 +226,9 @@ int main() {
 			const int resets = DLSSNRTemporal::resets;
 			std::vector<std::string> names{"residualMultiplier"};
 			assert(chain.ApplyLiveParameters(option, names));
+			assert(DLSSNRTemporal::resets == resets + 1);
+			names = {"residualShowProtection", "residualShowAdvanced"};
+			assert(chain.ApplyLiveParameters(option,names));
 			assert(DLSSNRTemporal::resets == resets + 1);
 			if (count == 1) {
 				names = {"pass3_intensity"};

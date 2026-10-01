@@ -71,7 +71,7 @@ float reflectionGlowMultiplier;
 //!PARAMETER
 //!GROUP Detail Control
 //!LABEL Residual Color Mode
-//!DEFAULT 0
+//!DEFAULT 1
 //!OPTION 0 Legacy HSL
 //!OPTION 1 Oklab
 int residualColorMode;
@@ -114,7 +114,7 @@ float residualHighlightProtection;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Local Runaway Compression\n(0 Off, 1 Strongest)
+//!LABEL Local Correction Compression\n(0 Off, 1 Strongest)
 //!DEFAULT 0
 //!MIN 0
 //!MAX 1

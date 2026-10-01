@@ -1229,11 +1229,14 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity_Label" xml:space="preserve"><value>NR Intensity</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Label" xml:space="preserve"><value>Local Structure Strength</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Label" xml:space="preserve"><value>Local Tone Strength</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>Reflection / Glow Control</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>Reflection / Glow Control
+Positive lightness changes in Oklab</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>Lightness Change Strength</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>Residual Strength</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>Residual Strength
+(0 Remove, 1 Keep, 2 Amplify)</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Label" xml:space="preserve"><value>Chroma Change (Oklab) / Saturation (HSL)</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Label" xml:space="preserve"><value>Shadow / Structure Control</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Label" xml:space="preserve"><value>Shadow / Structure Control
+Negative lightness changes in Oklab</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Label" xml:space="preserve"><value>Skin Structure Strength</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_style_Label" xml:space="preserve"><value>NR Style
 (0 Default, 1 Natural, 2 Cinematic)</value></data>
@@ -1707,7 +1710,7 @@
 (0 Off, 1 Strongest)</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHighlightProtection_Label" xml:space="preserve"><value>Highlight Protection
 (0 Off, 1 Strongest)</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Label" xml:space="preserve"><value>Local Runaway Compression
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Label" xml:space="preserve"><value>Local Correction Compression
 (0 Off, 1 Strongest)</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualShowAdvanced_Label" xml:space="preserve"><value>Show Advanced Controls</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Label" xml:space="preserve"><value>Broad Correction Strength

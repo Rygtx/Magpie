@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "NgxRuntimeGuard.h"
 #include "DLSSNRFilter.h"
+#include "DLSSNRColorShader.h"
+#include "DLSSNRDetailShader.h"
+#include "DLSSNRDetailParameters.h"
 #include "DLSSNRParameters.h"
 #include "DLSSNRChainCache.h"
 #include "DeviceResources.h"
@@ -32,13 +35,22 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) 
 		.inputResolutionPercent = static_cast<uint32_t>(std::clamp(
 			static_cast<int>(std::lround(
 				getParameter("inputResolutionPercent", 100.0f))), 25, 100)),
-		.residualMultiplier = getClamped("residualMultiplier", 1.0f, 1.0f, 2.0f),
+		.residualMultiplier = getClamped("residualMultiplier", 1.0f, 0.0f, 2.0f),
 		.residualSaturation = getClamped("residualSaturation", 1.0f, 0.0f, 2.0f),
 		.residualLightness = getClamped("residualLightness", 1.0f, 0.0f, 2.0f),
 		.shadowStructureMultiplier = getClamped(
 			"shadowStructureMultiplier", 1.0f, 0.0f, 2.0f),
 		.reflectionGlowMultiplier = getClamped(
 			"reflectionGlowMultiplier", 1.0f, 0.0f, 2.0f),
+		.residualColorMode = getParameter("residualColorMode", 0.f) == 1.f ? 1 : 0,
+		.residualHueProtection = getClamped("residualHueProtection", 0.f, 0.f, 1.f),
+		.residualDarkProtection = getClamped("residualDarkProtection", 0.f, 0.f, 1.f),
+		.residualHighlightProtection = getClamped("residualHighlightProtection", 0.f, 0.f, 1.f),
+		.residualLocalCompression = getClamped("residualLocalCompression", 0.f, 0.f, 1.f),
+		.residualLowFrequencyGain = getClamped("residualLowFrequencyGain", 1.f, 0.f, 2.f),
+		.residualDetailGain = getClamped("residualDetailGain", 1.f, 0.f, 2.f),
+		.residualChromaTemporalStrength = getClamped("residualChromaTemporalStrength", 0.f, 0.f, 1.f),
+		.residualDebugView = static_cast<int>(std::lround(getClamped("residualDebugView", 0.f, 0.f, 7.f))),
 		.style = std::clamp(static_cast<int>(std::lround(
 			getParameter("style", 0.0f))), 0, 2),
 		.intensity = getClamped("intensity", 1.0f, 0.0f, 2.0f),
@@ -170,6 +182,14 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
+    uint ColorMode;
+    float HueProtection;
+    float DarkProtection;
+    float HighlightProtection;
+    float LocalCompression;
+    float LowFrequencyGain;
+    float DetailGain;
+    uint DebugView;
 };
 
 float Sinc(float x) {
@@ -242,6 +262,14 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
+    uint ColorMode;
+    float HueProtection;
+    float DarkProtection;
+    float HighlightProtection;
+    float LocalCompression;
+    float LowFrequencyGain;
+    float DetailGain;
+    uint DebugView;
 };
 
 [numthreads(8, 8, 1)]
@@ -305,6 +333,14 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
+    uint ColorMode;
+    float HueProtection;
+    float DarkProtection;
+    float HighlightProtection;
+    float LocalCompression;
+    float LowFrequencyGain;
+    float DetailGain;
+    uint DebugView;
 };
 
 float3 RGBToHSL(float3 color) {
@@ -393,16 +429,7 @@ float3 ApplyResidualControls(float3 original, float3 residual) {
     return output;
 }
 
-[numthreads(8, 8, 1)]
-void PrepareResidual(uint3 tid : SV_DispatchThreadID) {
-    if (any(tid.xy >= TargetExtent)) return;
-    float3 original = ReducedColor.Load(int3(tid.xy, 0)).rgb;
-    float3 denoised = ReducedDenoised.Load(int3(tid.xy, 0)).rgb;
-    // Apply every residual control once per low-resolution pixel, before
-    // either Catmull-Rom pass. Keep signed differences in an FP16 texture.
-    ControlledResidual[tid.xy] = float4(
-        ApplyResidualControls(original, denoised - original) - original, 0.0);
-}
+
 )";
 
 constexpr char RESIDUAL_HORIZONTAL_HLSL[] = R"(
@@ -419,6 +446,14 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
+    uint ColorMode;
+    float HueProtection;
+    float DarkProtection;
+    float HighlightProtection;
+    float LocalCompression;
+    float LowFrequencyGain;
+    float DetailGain;
+    uint DebugView;
 };
 
 float CatmullRom(float x) {
@@ -469,6 +504,14 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
+    uint ColorMode;
+    float HueProtection;
+    float DarkProtection;
+    float HighlightProtection;
+    float LocalCompression;
+    float LowFrequencyGain;
+    float DetailGain;
+    uint DebugView;
 };
 
 float CatmullRom(float x) {
@@ -504,9 +547,12 @@ void CompositeResidualVertical(uint3 tid : SV_DispatchThreadID) {
         residual /= abs(totalWeight) > 1e-6 ? totalWeight : 1.0;
     }
     OutputColor[tid.xy] = float4(
-        saturate(original + residual), storedOriginal.a);
+        saturate(ColorMode == 1 && DebugView != 0 ? residual : original + residual), storedOriginal.a);
 }
 )";
+
+inline const std::string RESIDUAL_PREPARE_SHADER = std::string(DLSSNR_COLOR_HLSL) +
+	RESIDUAL_PREPARE_HLSL + std::string(DLSSNR_DETAIL_HLSL);
 
 struct ResampleConstants {
 	uint32_t sourceWidth = 0;
@@ -521,8 +567,16 @@ struct ResampleConstants {
 	float residualLightness = 1.0f;
 	float shadowStructureMultiplier = 1.0f;
 	float reflectionGlowMultiplier = 1.0f;
+	uint32_t colorMode = 0;
+	float hueProtection = 0;
+	float darkProtection = 0;
+	float highlightProtection = 0;
+	float localCompression = 0;
+	float lowFrequencyGain = 1;
+	float detailGain = 1;
+	uint32_t debugView = 0;
 };
-static_assert(sizeof(ResampleConstants) == 48);
+static_assert(sizeof(ResampleConstants) == 80);
 
 bool NGXSucceeded(NVSDK_NGX_Result result) noexcept {
 	return NVSDK_NGX_SUCCEED(result);
@@ -1353,7 +1407,7 @@ static bool CreateResolutionScalingResources(
 			"DLSSNRGuidanceDownsample", impl.guidanceDownsampleShader11))) &&
 		(!impl.convertInputToRgba || CreateComputeShader(impl, COLOR_CONVERT_HLSL,
 			"ConvertToRgba", "DLSSNRColorConvert", impl.colorConvertShader11)) &&
-		CreateComputeShader(impl, RESIDUAL_PREPARE_HLSL, "PrepareResidual",
+		CreateComputeShader(impl, RESIDUAL_PREPARE_SHADER, "PrepareResidual",
 			"DLSSNRResidualPrepare", impl.residualPrepareShader11) &&
 		(impl.sourceWidth == impl.width || CreateComputeShader(
 			impl, RESIDUAL_HORIZONTAL_HLSL, "UpsampleResidualHorizontal",
@@ -1757,7 +1811,15 @@ static bool CompositeResidual(
 		.residualSaturation = settings.residualSaturation,
 		.residualLightness = settings.residualLightness,
 		.shadowStructureMultiplier = settings.shadowStructureMultiplier,
-		.reflectionGlowMultiplier = settings.reflectionGlowMultiplier
+		.reflectionGlowMultiplier = settings.reflectionGlowMultiplier,
+		.colorMode = static_cast<uint32_t>(settings.residualColorMode),
+		.hueProtection = settings.residualHueProtection,
+		.darkProtection = settings.residualDarkProtection,
+		.highlightProtection = settings.residualHighlightProtection,
+		.localCompression = settings.residualLocalCompression,
+		.lowFrequencyGain = settings.residualLowFrequencyGain,
+		.detailGain = settings.residualDetailGain,
+		.debugView = static_cast<uint32_t>(settings.residualDebugView)
 	};
 	if (!impl.residualConstantsValid || impl.residualParametersDirty) {
 		impl.context11->UpdateSubresource(
@@ -1837,11 +1899,11 @@ DLSSNRFilter::GetFrameGuidanceRequirements() const noexcept {
 EffectParameterApplyMode DLSSNRFilter::GetParameterApplyMode(
 	std::string_view parameterName
 ) const noexcept {
+	if (parameterName == "residualShowProtection" || parameterName == "residualShowAdvanced")
+		return EffectParameterApplyMode::Live;
 	if (_settings.experimentalHdr.enabled &&
 		(parameterName == "enableInputResolutionScaling" || parameterName == "inputResolutionPercent" ||
-		 parameterName == "residualMultiplier" || parameterName == "residualSaturation" ||
-		 parameterName == "residualLightness" || parameterName == "shadowStructureMultiplier" ||
-		 parameterName == "reflectionGlowMultiplier")) return EffectParameterApplyMode::Unavailable;
+		 IsDLSSNRResidualParameter(parameterName))) return EffectParameterApplyMode::Unavailable;
 	if (parameterName == "style" || parameterName == "intensity" ||
 		parameterName == "localToneStrength" ||
 		parameterName == "localStructureStrength" ||
@@ -1849,14 +1911,9 @@ EffectParameterApplyMode DLSSNRFilter::GetParameterApplyMode(
 		parameterName == "useAutoMask" || parameterName == "uiCorrection") {
 		return EffectParameterApplyMode::Live;
 	}
-	if (parameterName == "residualMultiplier" ||
-		parameterName == "residualSaturation" ||
-		parameterName == "residualLightness" ||
-		parameterName == "shadowStructureMultiplier" ||
-		parameterName == "reflectionGlowMultiplier") {
+	if (IsDLSSNRResidualParameter(parameterName)) {
 		return _settings.enableInputResolutionScaling
-			? EffectParameterApplyMode::Live
-			: EffectParameterApplyMode::RestartRequired;
+			? EffectParameterApplyMode::Live : EffectParameterApplyMode::RestartRequired;
 	}
 	return EffectParameterApplyMode::RestartRequired;
 }
@@ -1900,7 +1957,16 @@ bool DLSSNRFilter::ApplyLiveParameters(
 	const bool residualChanged = post.residualMultiplier != _settings.residualMultiplier ||
 		post.residualSaturation != _settings.residualSaturation || post.residualLightness != _settings.residualLightness ||
 		post.shadowStructureMultiplier != _settings.shadowStructureMultiplier ||
-		post.reflectionGlowMultiplier != _settings.reflectionGlowMultiplier;
+		post.reflectionGlowMultiplier != _settings.reflectionGlowMultiplier ||
+		post.residualColorMode != _settings.residualColorMode ||
+		post.residualHueProtection != _settings.residualHueProtection ||
+		post.residualDarkProtection != _settings.residualDarkProtection ||
+		post.residualHighlightProtection != _settings.residualHighlightProtection ||
+		post.residualLocalCompression != _settings.residualLocalCompression ||
+		post.residualLowFrequencyGain != _settings.residualLowFrequencyGain ||
+		post.residualDetailGain != _settings.residualDetailGain ||
+		post.residualChromaTemporalStrength != _settings.residualChromaTemporalStrength ||
+		post.residualDebugView != _settings.residualDebugView;
 	for (size_t i = 0; i < _passSettings.size(); ++i) {
 		if (SameNRSettings(candidates[i], _passSettings[i])) continue;
 		Impl& pass = i ? *_impl->laterPasses[i - 1] : *_impl;
@@ -1938,7 +2004,7 @@ bool DLSSNRFilter::InitializeChain(DeviceResources& resources, NgxD3D12Core& ngx
 	_passSettings.assign(passes.begin(), passes.end());
 	_settings = settings;
 	_settings.residualMultiplier = ClampFinite(
-		_settings.residualMultiplier, 1.0f, 2.0f, 1.0f);
+		_settings.residualMultiplier, 0.0f, 2.0f, 1.0f);
 	_settings.residualSaturation = ClampFinite(
 		_settings.residualSaturation, 0.0f, 2.0f, 1.0f);
 	_settings.residualLightness = ClampFinite(
@@ -1947,6 +2013,15 @@ bool DLSSNRFilter::InitializeChain(DeviceResources& resources, NgxD3D12Core& ngx
 		_settings.shadowStructureMultiplier, 0.0f, 2.0f, 1.0f);
 	_settings.reflectionGlowMultiplier = ClampFinite(
 		_settings.reflectionGlowMultiplier, 0.0f, 2.0f, 1.0f);
+	_settings.residualColorMode = _settings.residualColorMode == 1 ? 1 : 0;
+	_settings.residualHueProtection = ClampFinite(_settings.residualHueProtection,0.f,1.f,0.f);
+	_settings.residualDarkProtection = ClampFinite(_settings.residualDarkProtection,0.f,1.f,0.f);
+	_settings.residualHighlightProtection = ClampFinite(_settings.residualHighlightProtection,0.f,1.f,0.f);
+	_settings.residualLocalCompression = ClampFinite(_settings.residualLocalCompression,0.f,1.f,0.f);
+	_settings.residualLowFrequencyGain = ClampFinite(_settings.residualLowFrequencyGain,0.f,2.f,1.f);
+	_settings.residualDetailGain = ClampFinite(_settings.residualDetailGain,0.f,2.f,1.f);
+	_settings.residualChromaTemporalStrength = ClampFinite(_settings.residualChromaTemporalStrength,0.f,1.f,0.f);
+	_settings.residualDebugView = std::clamp(_settings.residualDebugView,0,7);
 	_settings.intensity = ClampFinite(
 		_settings.intensity, 0.0f, 2.0f, 1.0f);
 	_settings.localToneStrength = ClampFinite(
