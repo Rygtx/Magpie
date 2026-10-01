@@ -21,6 +21,7 @@
 ## 使用与验证边界
 
 - 多层低分辨率串联与统一总残差会改变旧版本的画面行为；Oklab 与 Legacy HSL 的数值不保证相同观感。
+- 已有测试在极小 DLSSNR 推理尺寸（例如 32×18）观察到设备挂起，旧单层管线也可复现；模型最小尺寸边界尚未确定。详见 [DLSSNR 测试记录](experimental/reviews/20261001-v0.6.9-dlssnr-overhead.md)。
 - 光标最低刷新率是调度目标，不是最高帧率，也不表示所有场景均达到该值。
 - CPU／软件 WARP 自动回归、完整 Release x64 构建与包校验分别记录。真实 NVIDIA GPU 的 NGX 多层调度、性能／画质，以及原生 UI、实际热键、工具栏拖拽和多显示器验收仍需实测。
 - 暂停的 `feature/vrr-presentation-paused` 不属于 0.6.9 功能范围，本包未纳入该分支。
@@ -50,6 +51,7 @@ Local test release integrating all seven 0.6.9 feature branches into `experiment
 ## Compatibility and validation
 
 - Low-resolution multipass chaining and unified total-residual processing change the image behavior of previous versions. Oklab and Legacy HSL values do not guarantee the same appearance.
+- Existing tests observed a device hang at very small DLSSNR inference sizes (for example, 32×18), also reproducible on the earlier single-pass pipeline. The model's minimum supported size remains undetermined; see the [DLSSNR test record](experimental/reviews/20261001-v0.6.9-dlssnr-overhead.md).
 - Minimum cursor refresh is a scheduling target, not a maximum frame rate or a measured guarantee in every scenario.
 - CPU/software-WARP regression checks, the full Release x64 build and package verification are recorded separately. Real NVIDIA NGX multipass scheduling, performance/image quality, native UI, system hotkeys, toolbar dragging and multi-monitor acceptance still require testing.
 - The paused `feature/vrr-presentation-paused` branch is outside the 0.6.9 feature scope and is excluded.

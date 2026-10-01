@@ -132,7 +132,7 @@ struct Profile {
 	ToolbarDockSettings toolbarDocks;
 	// Not serialized/copied by Copy(): survives vector moves and renames, but
 	// a deleted/recreated profile cannot receive an older toolbar save.
-	std::shared_ptr<const uint8_t> runtimeIdentity = std::make_shared<const uint8_t>(0);
+	std::shared_ptr<const uint8_t> runtimeIdentity = std::make_shared<const uint8_t>(uint8_t{0});
 	AutoScale autoScale = AutoScale::Disabled;
 
 	InitialWindowedScaleFactor initialWindowedScaleFactor = InitialWindowedScaleFactor::Auto;
