@@ -371,6 +371,9 @@ std::pair<HCURSOR, POINT> CursorDrawer::_GetCursorState(bool& isActive) const no
 
 	const CursorManager& cursorManager = scalingWindow.CursorManager();
 	HCURSOR cursorHandle = cursorManager.CursorHandle();
+	if (cursorHandle && scalingWindow.Renderer().IsToolbarMoveCursor()) {
+		cursorHandle = LoadCursor(nullptr, IDC_SIZEALL);
+	}
 	POINT cursorPos = cursorManager.CursorPos();
 	// 转换为渲染矩形局部坐标
 	const RECT& rendererRect = scalingWindow.RendererRect();

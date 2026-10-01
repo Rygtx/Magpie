@@ -950,7 +950,11 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 			break;
 		}
 
-		// 鼠标在叠加层工具栏上时可以拖动缩放窗口
+		// The dedicated grip remains client input even at a source resize edge.
+		if (_renderer->IsToolbarHandleAt({ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) })) {
+			return HTCLIENT;
+		}
+		// 工具栏其余空白区域仍可拖动缩放窗口
 		if (_renderer->IsCursorOnOverlayCaptionArea()) {
 			return HTCAPTION;
 		}

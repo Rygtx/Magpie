@@ -59,6 +59,7 @@ static void SetDefaultWindowOptions(
 bool OverlayDrawer::Initialize(DeviceResources& deviceResources, OverlayOptions& overlayOptions) noexcept {
 	_overlayOptions = &overlayOptions;
 	_parameterFocusSwitchingEnabled = ScalingWindow::Get().Options().isParameterFocusSwitchingEnabled;
+	_toolbarPlacement.state.docks = ScalingWindow::Get().Options().toolbarDocks;
 	_imguiImpl.ParameterFocusSwitchingEnabled(_parameterFocusSwitchingEnabled);
 	SetDefaultWindowOptions(overlayOptions.windows);
 
@@ -125,11 +126,15 @@ void OverlayDrawer::Draw(
 
 	const bool oldProfilerVisible = _isProfilerVisible;
 
-	// 为了符合 Fitts 法则，鼠标在工具栏上时稍微下移逻辑位置使得在上边缘可以选中工具栏按钮
+	// Shift edge input inward for both docks. Free dragging uses the real pointer.
 	float fittsLawAdjustment = 0;
 	const char* hoveredWindowId = _imguiImpl.GetHoveredWindowId();
-	if (hoveredWindowId && hoveredWindowId == std::string_view(TOOLBAR_WINDOW_ID)) {
-		fittsLawAdjustment = 4 * _dpiScale;
+	if (!_toolbarPlacement.IsDragging() && hoveredWindowId &&
+		hoveredWindowId == std::string_view(TOOLBAR_WINDOW_ID)) {
+		const SIZE viewport = Win32Helper::GetSizeOfRect(ScalingWindow::Get().Renderer().DestRect());
+		const ToolbarGeometry geometry(float(viewport.cx), float(viewport.cy), _dpiScale);
+		fittsLawAdjustment = 4 * geometry.scale *
+			(_toolbarPlacement.Dock(ScalingWindow::Get().Options().IsWindowedMode()) == ToolbarDock::Top ? 1 : -1);
 	}
 
 	_imguiImpl.NewFrame(_overlayOptions->windows, fittsLawAdjustment, _dpiScale);
@@ -212,6 +217,10 @@ void OverlayDrawer::Draw(
 }
 
 void OverlayDrawer::ClearStates() noexcept {
+	_toolbarPlacement.Cancel();
+	_isToolbarHandleHovered = false;
+	_stagedToolbarHandleRect.reset();
+	_presentedToolbarHandleRect.reset();
 	_isEffectParameterInputActive = false;
 	_parameterResetGesture.Clear();
 	_imguiImpl.ClearStates();
@@ -222,6 +231,7 @@ void OverlayDrawer::ClearStates() noexcept {
 
 void OverlayDrawer::OnPresentSucceeded() noexcept {
 	_imguiImpl.OnPresentSucceeded();
+	_presentedToolbarHandleRect = _stagedToolbarHandleRect;
 	_UpdateParameterPreviewHost();
 }
 
@@ -243,6 +253,10 @@ void OverlayDrawer::ToolbarState(Magpie::ToolbarState value) noexcept {
 	}
 
 	if (value == ToolbarState::Off) {
+		_toolbarPlacement.Cancel();
+		_isToolbarHandleHovered = false;
+		_stagedToolbarHandleRect.reset();
+		_presentedToolbarHandleRect.reset();
 		_isToolbarVisible = false;
 		_ClearStatesIfNoVisibleWindow();
 	} else if (value == ToolbarState::AlwaysShow) {
@@ -257,13 +271,18 @@ void OverlayDrawer::ToolbarState(Magpie::ToolbarState value) noexcept {
 }
 
 OverlaySessionState OverlayDrawer::CaptureSessionState() const noexcept {
-	if (!_parameterFocusSwitchingEnabled)
-		return { _isToolbarVisible, _isToolbarPinned, _isProfilerVisible, _isEffectParametersVisible };
-	const auto state = IsEditingParameters() ? _pendingParameterPanelState : _parameterPanelState;
-	return { _isToolbarVisible, _isToolbarPinned, _isProfilerVisible, state != ParameterPanelState::Closed, state };
+	OverlaySessionState result{ _isToolbarVisible, _isToolbarPinned, _isProfilerVisible, _isEffectParametersVisible };
+	if (_parameterFocusSwitchingEnabled) {
+		result.parameterPanelState = IsEditingParameters() ? _pendingParameterPanelState : _parameterPanelState;
+		result.effectParametersVisible = result.parameterPanelState != ParameterPanelState::Closed;
+	}
+	result.toolbarPosition = _toolbarPlacement.state;
+	return result;
 }
 
 void OverlayDrawer::RestoreSessionState(const OverlaySessionState& state) noexcept {
+	_toolbarPlacement.Cancel();
+	_toolbarPlacement.state = state.toolbarPosition;
 	_isToolbarVisible = state.toolbarVisible;
 	_isToolbarPinned = state.toolbarPinned;
 	_SetParameterPanelState(state.parameterPanelState == ParameterPanelState::Closed && state.effectParametersVisible
@@ -835,26 +854,51 @@ static std::string FormatToolbarTooltip(std::string_view name, std::string_view 
 bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 	bool needRedraw = false;
 
-	const float windowWidth = 392 * _dpiScale;
-	ImGui::SetNextWindowSize({ windowWidth, (CORNER_ROUNDING + 31) * _dpiScale });
-	ImGui::SetNextWindowPos(
-		ImVec2((ImGui::GetIO().DisplaySize.x - windowWidth) / 2, -CORNER_ROUNDING * _dpiScale));
+	const auto& options = ScalingWindow::Get().Options();
+	const bool windowed = options.IsWindowedMode();
+	const ImVec2 viewport = ImGui::GetIO().DisplaySize;
+	const ToolbarGeometry geometry(viewport.x, viewport.y, _dpiScale);
+	const float toolbarScale = geometry.scale;
+	const ImVec2 mouse = _imguiImpl.FrameMousePosition();
+	if (_imguiImpl.FrameInputCanceled()) _toolbarPlacement.Cancel();
+	if (_toolbarPlacement.IsDragging()) {
+		_toolbarPlacement.Update(geometry, mouse.x, mouse.y);
+		if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+			if (const auto changed = _toolbarPlacement.Release(geometry, mouse.x, mouse.y);
+				changed && options.saveToolbarDock) {
+				options.saveToolbarDock(windowed, *changed, ScalingWindow::RunId());
+			}
+			needRedraw = true;
+		} else if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+			_toolbarPlacement.Cancel();
+		}
+	}
+	const bool bottom = _toolbarPlacement.Dock(windowed) == ToolbarDock::Bottom;
+	const float contentTop = bottom ? 0.0f : CORNER_ROUNDING;
+	const auto rect = _toolbarPlacement.Layout(windowed, geometry);
+	ImGui::SetNextWindowSize({ rect.width, rect.height });
+	ImGui::SetNextWindowPos({ rect.x, rect.y });
 
 	_lastToolbarAlpha = _CalcToolbarAlpha();
 	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, _lastToolbarAlpha);
 	ImGui::PushStyleColor(ImGuiCol_WindowBg, (ImU32)ImColor(15, 15, 15, 180));
 	const ImVec2 originalWindowPadding = ImGui::GetStyle().WindowPadding;
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 6 * _dpiScale,0.0f });
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 6 * toolbarScale,0.0f });
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, { 1.0f, 1.0f });
 
 	_isToolbarItemActive = false;
+	_isToolbarHandleHovered = false;
+	_stagedToolbarHandleRect.reset();
 
 	if (ImGui::Begin(StrHelper::Concat("##", TOOLBAR_WINDOW_ID).c_str(), nullptr,
 		ImGuiWindowFlags_NoTitleBar |
 		ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoResize |
 		ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoScrollWithMouse))
+		ImGuiWindowFlags_NoScrollWithMouse |
+		ImGuiWindowFlags_NoSavedSettings))
 	{
+		ImGui::SetWindowFontScale(toolbarScale / _dpiScale);
 		// 通过工具栏拖拽缩放窗口时不要更新 _isCursorOnCaptionArea
 		if (!ScalingWindow::Get().IsResizingOrMoving()) {
 			// 鼠标被 ImGui 捕获时禁止拖拽缩放窗口
@@ -867,13 +911,13 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 			}
 		}
 
-		ImGui::SetCursorPosY((CORNER_ROUNDING + 3) * _dpiScale);
+		ImGui::SetCursorPosY((contentTop + 3) * toolbarScale);
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, originalWindowPadding);
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 4 * _dpiScale,4 * _dpiScale });
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4 * _dpiScale);
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 4 * toolbarScale,4 * toolbarScale });
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4 * toolbarScale);
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0);
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 4 * _dpiScale, 0.0f });
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 4 * toolbarScale, 0.0f });
 		// 禁用仅为阻止交互，不应有视觉改变
 		ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f);
 		ImGui::PushStyleColor(ImGuiCol_Button, { 0,0,0,0 });
@@ -897,7 +941,7 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 			}
 			ImGui::PopFont();
 			if (ImGui::IsItemHovered() || ImGui::IsItemClicked()) {
-				_imguiImpl.Tooltip(tooltip, _dpiScale);
+				_imguiImpl.Tooltip(tooltip, toolbarScale);
 			}
 
 			if (stylePushed) {
@@ -914,13 +958,46 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 			}
 			ImGui::PopFont();
 			if (ImGui::IsItemHovered()) {
-				_imguiImpl.Tooltip(tooltip, _dpiScale);
+				_imguiImpl.Tooltip(tooltip, toolbarScale);
 			}
 			return clicked;
 		};
 
 		// 光标不在缩放窗口上时阻止交互
 		ImGui::BeginDisabled(!IsEditingParameters() && !ScalingWindow::Get().CursorManager().CursorHandle());
+
+		// The grip spans the visible height, including the clipped dock edge.
+		ImGui::SetCursorPosY(contentTop * toolbarScale);
+		ImGui::InvisibleButton("##toolbarDrag", { 24.0f * toolbarScale, 31.0f * toolbarScale });
+		const ImVec2 gripMin = ImGui::GetItemRectMin(), gripMax = ImGui::GetItemRectMax();
+		_stagedToolbarHandleRect = ImVec4(gripMin.x, std::max(0.0f, gripMin.y),
+			gripMax.x, std::min(viewport.y, gripMax.y));
+		_isToolbarHandleHovered = ImGui::IsItemHovered();
+		if (_isToolbarHandleHovered || _toolbarPlacement.IsDragging()) {
+			_isCursorOnCaptionArea = false;
+			_isToolbarItemActive = true;
+			ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+		}
+		if (!_imguiImpl.FrameInputCanceled() && ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+			_toolbarPlacement.Begin(windowed, geometry, mouse.x, mouse.y);
+			needRedraw = true;
+		}
+		ImDrawList* gripDrawList = ImGui::GetWindowDrawList();
+		if (_isToolbarHandleHovered || _toolbarPlacement.IsDragging()) {
+			gripDrawList->AddRectFilled(gripMin, gripMax, IM_COL32(30, 136, 228, 180), 4.0f * toolbarScale);
+		}
+		const ImVec2 gripCenter{ (gripMin.x + gripMax.x) / 2.0f, (gripMin.y + gripMax.y) / 2.0f };
+		for (int row = -1; row <= 1; ++row) {
+			for (int column = -1; column <= 1; column += 2) {
+				gripDrawList->AddCircleFilled({ gripCenter.x + column * 3.0f * toolbarScale,
+					gripCenter.y + row * 5.0f * toolbarScale }, 1.5f * toolbarScale, IM_COL32(220, 220, 220, 255));
+			}
+		}
+		if (_isToolbarHandleHovered && !_toolbarPlacement.IsDragging()) {
+			_imguiImpl.Tooltip(_GetResourceString(L"Overlay_Toolbar_Move").c_str(), toolbarScale);
+		}
+		ImGui::SameLine();
+		ImGui::SetCursorPosY((contentTop + 3) * toolbarScale);
 
 		const auto& shortcuts = ScalingWindow::Get().Options().toolbarShortcutLabels;
 		auto tooltip = [&](std::wstring_view name, std::string_view shortcut) {
@@ -954,14 +1031,20 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		if (drawButton(OverlayHelper::SegoeIcons::Camera, screenshotStr.c_str())) {
 			ScalingWindow::Get().Renderer().TakeDisplayedScreenshot();
 		}
+		const float leftControlsEnd = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x;
+		// Dear ImGui's normal popup placement can prefer the space below the
+		// mouse. Anchor a bottom toolbar's context menu above its visible edge.
+		if (bottom) {
+			ImGui::SetNextWindowPos({ ImGui::GetItemRectMin().x, rect.y }, ImGuiCond_Appearing, { 0.0f, 1.0f });
+		}
 		// 截图按钮右键菜单
 		if (ImGui::BeginPopupContextItem()) {
 			_isCursorOnCaptionArea = false;
 			_isToolbarItemActive = true;
 
 			ImGui::SeparatorText(_GetResourceString(L"Overlay_Toolbar_TakeScreenshot_PopupTitle").c_str());
-			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4.0f * _dpiScale);
-			ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 6.0f * _dpiScale);
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4.0f * toolbarScale);
+			ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 6.0f * toolbarScale);
 
 			const std::vector<const EffectDesc*>& effectDescs =
 				ScalingWindow::Get().Renderer().ActiveEffectDescs();
@@ -1023,20 +1106,24 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		// 居中绘制 FPS
 		ImGui::SameLine();
 		const std::string fpsText = _FormatFrameRate(fps);
-		ImGui::SetCursorPosX((ImGui::GetContentRegionMax().x - ImGui::CalcTextSize(fpsText.c_str()).x) / 2);
-		ImGui::SetCursorPosY((CORNER_ROUNDING + 1) * _dpiScale);
+		const HWND hwndSrc = ScalingWindow::Get().SrcTracker().Handle();
+		const bool canSrcMinimized = GetWindowStyle(hwndSrc) & WS_MINIMIZEBOX;
+		const float rightControlsStart = ImGui::GetContentRegionMax().x -
+			((canSrcMinimized ? 3 : 2) * 28 - 4) * toolbarScale;
 		ImGui::PushFont(_fontMonoNumbers);
+		const float textWidth = ImGui::CalcTextSize(fpsText.c_str()).x;
+		const float textMinX = leftControlsEnd + 4.0f * toolbarScale;
+		ImGui::SetCursorPosX(std::clamp((ImGui::GetContentRegionMax().x - textWidth) / 2,
+			textMinX, std::max(textMinX, rightControlsStart - textWidth - 4.0f * toolbarScale)));
+		ImGui::SetCursorPosY((contentTop + 1) * toolbarScale);
 		ImGui::TextUnformatted(fpsText.c_str());
 		ImGui::PopFont();
 
 		ImGui::SameLine();
-		ImGui::SetCursorPosY((CORNER_ROUNDING + 3) * _dpiScale);
+		ImGui::SetCursorPosY((contentTop + 3) * toolbarScale);
 
 		// 源窗口支持最小化时才显示最小化按钮
-		const HWND hwndSrc = ScalingWindow::Get().SrcTracker().Handle();
-		const bool canSrcMinimized = GetWindowStyle(hwndSrc) & WS_MINIMIZEBOX;
-		ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x -
-			((canSrcMinimized ? 3 : 2) * 28 - 4) * _dpiScale);
+		ImGui::SetCursorPosX(rightControlsStart);
 
 		if (canSrcMinimized) {
 			const std::string& minimizeStr = _GetResourceString(L"Overlay_Toolbar_Minimize");
@@ -1085,6 +1172,7 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		}
 
 		ImGui::EndDisabled();
+		ImGui::SetWindowFontScale(1.0f);
 
 		ImGui::PopStyleColor(5);
 		ImGui::PopStyleVar(6);
@@ -1094,9 +1182,36 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 	ImGui::End();
 
 	ImGui::PopStyleColor();
-	ImGui::PopStyleVar(2);
+	ImGui::PopStyleVar(3);
+	if (_toolbarPlacement.IsDragging()) _DrawToolbarDockHints(geometry);
 
 	return needRedraw;
+}
+
+void OverlayDrawer::_DrawToolbarDockHints(const ToolbarGeometry& geometry) noexcept {
+	// Draw lists have no window/input region, so the strips cannot intercept a
+	// click in the game. The existing paired pointer capture owns this drag.
+	ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+	const auto target = _toolbarPlacement.Target();
+	for (const ToolbarDock dock : { ToolbarDock::Top, ToolbarDock::Bottom }) {
+		const float y = dock == ToolbarDock::Top ? 0.0f : geometry.viewportHeight - geometry.zone;
+		drawList->AddRectFilled({ 0.0f, y }, { geometry.viewportWidth, y + geometry.zone },
+			IM_COL32(30, 136, 228, target == dock ? 115 : 55));
+	}
+	if (target) {
+		const auto preview = _toolbarPlacement.Preview(geometry);
+		drawList->AddRect({ preview.x, preview.y },
+			{ preview.x + preview.width, preview.y + preview.height },
+			IM_COL32(90, 180, 255, 255), geometry.rounding, 0, 2.0f * geometry.scale);
+	}
+}
+
+bool OverlayDrawer::IsToolbarHandleAt(POINT screenPoint) const noexcept {
+	if (!_isToolbarVisible || !_presentedToolbarHandleRect) return false;
+	const auto& dest = ScalingWindow::Get().Renderer().DestRect();
+	const float x = float(screenPoint.x - dest.left), y = float(screenPoint.y - dest.top);
+	const auto& rect = *_presentedToolbarHandleRect;
+	return x >= rect.x && x < rect.z && y >= rect.y && y < rect.w;
 }
 
 #ifdef MP_DEBUG_INFO_ON_OVERLAY
@@ -2264,7 +2379,7 @@ float OverlayDrawer::_CalcToolbarAlpha() const noexcept {
 	}
 
 	// 鼠标被工具栏中的按钮捕获时不要隐藏工具栏
-	if (_isToolbarPinned || _isToolbarItemActive) {
+	if (_isToolbarPinned || _isToolbarItemActive || _toolbarPlacement.IsDragging()) {
 		return 1.0f;
 	}
 
@@ -2273,8 +2388,10 @@ float OverlayDrawer::_CalcToolbarAlpha() const noexcept {
 		return 0.0f;
 	}
 
-	// 为了裁掉圆角，顶部有一部分在屏幕外
-	windowRect->y = 0.0f;
+	// Both docks clip the outer rounded edge. Use only the visible rectangle
+	// for reveal distance, rather than extending the bottom hit zone offscreen.
+	windowRect->y = std::max(0.0f, windowRect->y);
+	windowRect->w = std::min(ImGui::GetIO().DisplaySize.y, windowRect->w);
 
 	// ImGui::GetIO().MousePos 在调整缩放窗口大小或鼠标被前台窗口捕获时不是真实位置，这里应重新计算
 	const POINT cursorPos = ScalingWindow::Get().CursorManager().CursorPos();
