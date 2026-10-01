@@ -2210,7 +2210,18 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 		if (succeeded && !isFrameRateFilter) {
 			// The changed stage publishes an output version after its draw. Later
 			// stages consume that version, including time-driven shader changes.
-			_effectFrameStates[effectIdx].ParametersChanged();
+			bool changesOutput = true;
+			if (_runtimeEffectOptions[effectIdx].name == "DLSSNR\\DLSSNR_AI_Filter") {
+				const auto& values = _runtimeEffectOptions[effectIdx].parameters;
+				const int activePasses = DLSSNRPassCount([&](std::string_view name, float fallback) {
+					const auto it = values.find(std::string(name));
+					return it == values.end() ? fallback : it->second;
+				});
+				changesOutput = std::ranges::any_of(changedNames, [&](const std::string& name) {
+					return DLSSNRParameterPass(name) <= activePasses;
+				});
+			}
+			if (changesOutput) _effectFrameStates[effectIdx].ParametersChanged();
 		}
 	}
 
@@ -3310,8 +3321,6 @@ void Renderer::_BackendRender(
 				_capturedFrameId != 0));
 		}
 		++_captureEffectFrameCount;
-		_activeResourceGeneration.store(
-			_frameSource->ResourceGeneration(), std::memory_order_release);
 		const auto downstreamWait = std::exchange(_captureCadenceQueueWait,
 			std::chrono::steady_clock::duration::zero());
 		if (_captureCadence.Observe(captureTime, downstreamWait)) {
@@ -3458,8 +3467,9 @@ void Renderer::_BackendRender(
 					GetMotionVectorRequest(
 						_nativeEffectBackends[i]->GetFrameGuidanceRequirements()));
 			// Recomputed old colors have no new current-to-previous motion pair.
-			// Diagnostics still display the captured pair; temporal image SDKs
-			// receive Zero plus an explicit reset instead of stale nonzero motion.
+			// Diagnostics still display the captured pair. NR makes its residual-
+			// only cache decision first, then binds Zero for SDK re-evaluation;
+			// other temporal SDKs receive Zero immediately on this redraw.
 			const bool diagnostic = desc.name.starts_with("Diagnostics\\");
 			const bool nr = desc.name == "DLSSNR\\DLSSNR_AI_Filter";
 			const NativeEffectDrawContext drawContext{

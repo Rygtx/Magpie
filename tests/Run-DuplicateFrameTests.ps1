@@ -11,9 +11,12 @@ Enter-VsDevShell -VsInstallPath $duplicateVs -SkipAutomaticLocation -DevCmdArgum
 
 & python "$duplicateRepo/scripts/tests/test_fg_duplicate_filter.py" $duplicateOutput
 if ($LASTEXITCODE) { throw 'Capture duplicate-filter extraction failed' }
+& python "$PSScriptRoot/prepare_duplicate_capture_pipeline_test.py" $duplicateOutput
+if ($LASTEXITCODE) { throw 'Capture pipeline extraction failed' }
 foreach ($duplicateTest in @(
     @{ Source = "$PSScriptRoot/EffectFrameStateTests.cpp"; Name = 'effect-frame-state'; Libs = @() },
     @{ Source = "$duplicateOutput/fg_duplicate.cpp"; Name = 'capture-filter'; Libs = @() },
+    @{ Source = "$duplicateOutput/duplicate_capture_pipeline.cpp"; Name = 'capture-pipeline'; Libs = @() },
     @{ Source = "$PSScriptRoot/DuplicateFrameShaderTests.cpp"; Name = 'duplicate-shader'; Libs = @('d3d11.lib','d3dcompiler.lib') }
 )) {
     & cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX /DNOMINMAX "/I$duplicateRepo/src/Magpie.Core/include" `

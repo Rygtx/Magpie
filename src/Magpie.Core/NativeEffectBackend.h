@@ -14,9 +14,9 @@ struct NativeEffectDrawContext {
 	HdrFrameMetadata inputMetadata{};
 	HdrFrameMetadata outputMetadata{};
 	FrameGuidanceFrameId frameId = 0;
-	// Changes whenever an earlier effect in the chain changes its output for
-	// the same captured frame. Native effects that cache duplicate frames must
-	// include this value in their cache key.
+	// Content version of the actual upstream output, including ordinary new
+	// captures and same-frame edits. Include in cache keys, but use the separate
+	// history epoch/reset below when deciding whether to discard temporal state.
 	uint64_t inputRevision = 0;
 	// Separate from content versions so new captures can accumulate history.
 	uint64_t inputHistoryRevision = 0;
