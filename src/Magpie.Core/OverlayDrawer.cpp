@@ -1080,7 +1080,8 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		}
 
 		// 居中绘制 FPS
-		ImGui::SameLine();
+		// Reset the button line's text baseline before positioning FPS explicitly.
+		ImGui::NewLine();
 		const std::string fpsText = _FormatFrameRate(fps);
 		const HWND hwndSrc = ScalingWindow::Get().SrcTracker().Handle();
 		const bool canSrcMinimized = GetWindowStyle(hwndSrc) & WS_MINIMIZEBOX;

@@ -184,9 +184,10 @@ bool TrackedToolbarButton(const char* label, const ImVec2& size) {
 }
 ImVec4 toolbarText;
 void TrackedToolbarText(const char* text) {
-	const auto min = ImGui::GetCursorScreenPos(), size = ImGui::CalcTextSize(text);
-	toolbarText={min.x,min.y,min.x+size.x,min.y+size.y};
 	ImGui::TextUnformatted(text);
+	// Read the rendered item: TextUnformatted can add the preceding line's baseline offset.
+	const auto min = ImGui::GetItemRectMin(), max = ImGui::GetItemRectMax();
+	toolbarText={min.x,min.y,max.x,max.y};
 }
 #include "ToolbarDragProduction.inc"
 }
@@ -332,7 +333,18 @@ void Frame(OverlayDrawer& drawer, ImVec2 mouse, bool down=false, bool canceled=f
 	drawer._presentedToolbarRect=drawer._stagedToolbarRect;
 	drawer._presentedToolbarButtons=drawer._stagedToolbarButtons;
 	const auto bar=drawer._presentedToolbarRect.value();
-	assert(std::abs((toolbarText.x+toolbarText.z)-(bar.x+bar.z))<.02f);
+	// CalcTextSize rounds the scaled text width to whole pixels.
+	if (std::abs((toolbarText.x+toolbarText.z)-(bar.x+bar.z))>=1.01f) {
+		std::cerr << "FPS horizontal offset: " << (toolbarText.x+toolbarText.z-bar.x-bar.z)/2.f
+			<< " px, dpi=" << drawer._dpiScale << " text=" << drawer.frameRateText << '\n';
+	}
+	assert(std::abs((toolbarText.x+toolbarText.z)-(bar.x+bar.z))<1.01f);
+	const auto button = toolbarButtons.front();
+	const float verticalOffset = (toolbarText.y+toolbarText.w-button.y-button.w)/2.f;
+	if (std::abs(verticalOffset)>=.02f) {
+		std::cerr << "FPS vertical offset: " << verticalOffset << " px, dpi=" << drawer._dpiScale << '\n';
+	}
+	assert(std::abs(verticalOffset)<.02f);
 	assert(toolbarText.x >= toolbarButtons[4].z+1.f*ToolbarGeometry(viewport.x,viewport.y,drawer._dpiScale).scale);
 	assert(toolbarText.z <= toolbarButtons[5].x-1.f*ToolbarGeometry(viewport.x,viewport.y,drawer._dpiScale).scale);
 }
@@ -438,7 +450,13 @@ void ImGuiToolbarTests() {
 			}
 		}
 	}
-	for (bool minimize : {true,false}) for (const char* format : {"60 FPS","120/240 FPS","—/60 FPS","1000/4000 FPS"}) {
+	for (float dpi : {1.f,1.25f,1.5f,2.f}) for (bool windowed : {false,true})
+		for (auto dock : {ToolbarDock::Top,ToolbarDock::Bottom}) for (bool minimize : {true,false})
+			for (const char* format : {"60 FPS","120/240 FPS","—/60 FPS","1000/4000 FPS"}) {
+		drawer._dpiScale=dpi;
+		font->Scale=dpi; iconFont->Scale=dpi;
+		ScalingWindow::Get().options.windowed=windowed;
+		drawer._toolbarPlacement.state.docks.ForMode(windowed)=dock;
 		sourceCanMinimize=minimize; drawer.frameRateText=format;
 		Frame(drawer,{-100,-100});
 	}
@@ -448,5 +466,6 @@ void ImGuiToolbarTests() {
 int main() {
 	PlacementTests(); CenterSnapTests(); SettingsTests(); ImGuiToolbarTests();
 	std::cout << "PASS toolbar drag: real ImGui background/FPS drag, button/drop/cancel/menu, 32 mode/viewport/DPI cases, "
-		"raw grab offset, session recovery/new-run centering, JSON compatibility, profile isolation/reordering/deletion and expired saves.\n";
+		"128 FPS horizontal/vertical alignment cases, raw grab offset, session recovery/new-run centering, "
+		"JSON compatibility, profile isolation/reordering/deletion and expired saves.\n";
 }
