@@ -3,6 +3,7 @@
 #include "CursorDrawer.h"
 #include "DeviceResources.h"
 #include "EffectDrawer.h"
+#include "EffectFrameState.h"
 #include "EffectsProfiler.h"
 #include "FrameGuidanceService.h"
 #include "NgxD3D12Core.h"
@@ -273,7 +274,7 @@ private:
 	bool _DrainNgxConsumers() noexcept;
 	void _ReleaseNgxConsumers() noexcept;
 
-	bool _UpdateDynamicConstants() const noexcept;
+	bool _UpdateDynamicConstants(uint32_t frameCount) const noexcept;
 
 
 	winrt::IAsyncOperation<bool> _TakeScreenshotImpl(
@@ -334,7 +335,8 @@ private:
 	NgxD3D12Core _ngxD3D12Core;
 	std::vector<EffectDrawer> _effectDrawers;
 	std::vector<EffectOption> _runtimeEffectOptions;
-	std::vector<uint64_t> _effectInputRevisions;
+	std::vector<EffectFrameState> _effectFrameStates;
+	uint32_t _captureEffectFrameCount = 0;
 	struct PendingEffectParameterUpdate {
 		uint32_t effectIdx = 0;
 		uint32_t parameterIdx = 0;

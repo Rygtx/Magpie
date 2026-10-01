@@ -674,6 +674,7 @@ struct DLSSNRFilter::Impl {
 	uint64_t evaluateParameterRevision = 0;
 	uint64_t lastEvaluatedParameterRevision = 0;
 	uint64_t lastEvaluatedInputRevision = 0;
+	uint64_t lastEvaluatedInputHistoryRevision = 0;
 	uint64_t duplicateFrameReuseCount = 0;
 	uint32_t sourceWidth = 0;
 	uint32_t sourceHeight = 0;
@@ -2222,7 +2223,9 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 	ID3D11Texture2D* output = context.output;
 	if (impl.lastEvaluatedFrameId == context.frameId &&
 		impl.lastEvaluatedParameterRevision == impl.evaluateParameterRevision &&
-		impl.lastEvaluatedInputRevision == context.inputRevision) {
+		impl.lastEvaluatedInputRevision == context.inputRevision &&
+		impl.lastEvaluatedInputHistoryRevision == context.inputHistoryRevision &&
+		!context.inputHistoryReset) {
 		if (impl.residualParametersDirty && impl.useResolutionScaling) {
 			const bool composited = CompositeResidual(
 				impl, output,
@@ -2245,7 +2248,11 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 	}
 	// A live upstream edit can change this input even for the same capture ID.
 	// Re-evaluate with fresh history instead of mixing it with the old image.
-	if (impl.lastEvaluatedInputRevision != context.inputRevision) {
+	if (context.inputHistoryReset ||
+		impl.lastEvaluatedInputHistoryRevision != context.inputHistoryRevision ||
+		(impl.lastEvaluatedFrameId == context.frameId &&
+			impl.lastEvaluatedInputRevision != context.inputRevision) ||
+		!context.isNewCaptureFrame) {
 		impl.resetHistory = true;
 	}
 	auto fail = [&](std::string_view stage) noexcept {
@@ -2281,6 +2288,7 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 			impl.lastEvaluatedFrameId = context.frameId;
 			impl.lastEvaluatedParameterRevision = impl.evaluateParameterRevision;
 			impl.lastEvaluatedInputRevision = context.inputRevision;
+			impl.lastEvaluatedInputHistoryRevision = context.inputHistoryRevision;
 			impl.residualParametersDirty = false;
 			impl.resetHistory = false;
 		}
@@ -2476,6 +2484,7 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 	impl.lastEvaluatedFrameId = context.frameId;
 	impl.lastEvaluatedParameterRevision = impl.evaluateParameterRevision;
 	impl.lastEvaluatedInputRevision = context.inputRevision;
+	impl.lastEvaluatedInputHistoryRevision = context.inputHistoryRevision;
 	return true;
 }
 

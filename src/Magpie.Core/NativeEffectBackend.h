@@ -18,6 +18,10 @@ struct NativeEffectDrawContext {
 	// the same captured frame. Native effects that cache duplicate frames must
 	// include this value in their cache key.
 	uint64_t inputRevision = 0;
+	// Separate from content versions so new captures can accumulate history.
+	uint64_t inputHistoryRevision = 0;
+	bool inputHistoryReset = false;
+	bool isNewCaptureFrame = true;
 	const FrameGuidanceView& frameGuidance;
 	const FrameGuidanceView& zeroFrameGuidance;
 };

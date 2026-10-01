@@ -100,6 +100,7 @@ public:
 			pass.input = i == 0 ? context.input : _intermediates[i - 1].get();
 			pass.output = i + 1 == _filters.size() ? (_temporal ? _rawOutput.get() : context.output) : _intermediates[i].get();
 			pass.inputRevision += _revisions[i];
+			pass.inputHistoryRevision += _revisions[i];
 			if (!_filters[i]->Draw(pass)) return false;
 			if (_temporal && !_filters[i]->IsHealthy()) _temporal->Reset();
 			if (_filters.size() > 1 && !_filters[i]->IsHealthy()) {

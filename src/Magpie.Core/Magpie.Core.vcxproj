@@ -86,6 +86,7 @@
     <ClInclude Include="include\DirectXHelper.h" />
     <ClInclude Include="include\EffectCompiler.h" />
     <ClInclude Include="include\EffectDesc.h" />
+    <ClInclude Include="include\EffectFrameState.h" />
     <ClInclude Include="include\EffectParameterValue.h" />
     <ClInclude Include="include\ScalingOptions.h" />
     <ClInclude Include="include\SourceWindowGeometry.h" />
