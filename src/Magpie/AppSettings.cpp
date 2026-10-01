@@ -90,6 +90,10 @@ static void WriteProfile(rapidjson::PrettyWriter<rapidjson::StringBuffer>& write
 
 	writer.Key("parameterFocusSwitching");
 	writer.Bool(profile.isParameterFocusSwitchingEnabled);
+	writer.Key("fullscreenToolbarDock");
+	writer.Uint(uint32_t(profile.toolbarDocks.fullscreen));
+	writer.Key("windowedToolbarDock");
+	writer.Uint(uint32_t(profile.toolbarDocks.windowed));
 	writer.Key("scalingMode");
 	writer.Int(profile.scalingMode);
 	writer.Key("captureMethod");
@@ -1197,6 +1201,12 @@ bool AppSettings::_LoadProfile(
 ) const noexcept {
 	profile.isParameterFocusSwitchingEnabled = legacyParameterFocusSwitching;
 	JsonHelper::ReadBool(profileObj, "parameterFocusSwitching", profile.isParameterFocusSwitchingEnabled);
+	{
+		uint32_t fullscreen = 0, windowed = 0;
+		JsonHelper::ReadUInt(profileObj, "fullscreenToolbarDock", fullscreen, true);
+		JsonHelper::ReadUInt(profileObj, "windowedToolbarDock", windowed, true);
+		profile.toolbarDocks = { SanitizeToolbarDock(fullscreen), SanitizeToolbarDock(windowed) };
+	}
 	if (!isDefault) {
 		if (!JsonHelper::ReadString(profileObj, "name", profile.name, true)) {
 			return false;
