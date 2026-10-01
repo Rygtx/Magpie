@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "DLSSNRDetailParameters.h"
 #include "RTXVideoParameters.h"
 #include "XeSSFGParameters.h"
 #include "DlssOpticalFlowParameters.h"
@@ -334,6 +335,7 @@ static V065NormalizationStats NormalizeV065ScalingModes(
 			if (effect.isRecoveryInvalid) continue;
 
 			if (effect.name == L"DLSSNR\\DLSSNR_AI_Filter") {
+				InitializeDLSSNRColorMode(effect.parameters, false);
 				auto guidanceMode = effect.parameters.find(L"guidanceMode");
 				if (guidanceMode != effect.parameters.end()) {
 					const int oldMode = std::clamp(

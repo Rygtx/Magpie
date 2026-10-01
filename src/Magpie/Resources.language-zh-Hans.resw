@@ -1230,9 +1230,9 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Label" xml:space="preserve"><value>局部结构强度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Label" xml:space="preserve"><value>局部色调强度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>反射／辉光控制</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>残差明度倍率</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>残差倍率</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Label" xml:space="preserve"><value>残差饱和度倍率</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>明度变化强度</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>Residual 总强度</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Label" xml:space="preserve"><value>色度变化强度（Oklab）／饱和度（HSL）</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Label" xml:space="preserve"><value>阴影／结构控制</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Label" xml:space="preserve"><value>皮肤结构强度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_style_Label" xml:space="preserve"><value>NR 风格
@@ -1699,4 +1699,32 @@
   <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Option_0" xml:space="preserve"><value>关闭</value></data>
   <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Option_1" xml:space="preserve"><value>开启</value></data>
   <data name="EffectParam_xBR_xBR_NoBlend_3x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 边缘系数</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualColorMode_Label" xml:space="preserve"><value>残差颜色模式</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualShowProtection_Label" xml:space="preserve"><value>展开保护控制</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHueProtection_Label" xml:space="preserve"><value>色相变化保护
+（0 关闭，1 最强）</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDarkProtection_Label" xml:space="preserve"><value>暗部保护
+（0 关闭，1 最强）</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHighlightProtection_Label" xml:space="preserve"><value>高光保护
+（0 关闭，1 最强）</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Label" xml:space="preserve"><value>局部失控压缩
+（0 关闭，1 最强）</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualShowAdvanced_Label" xml:space="preserve"><value>展开进阶控制</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Label" xml:space="preserve"><value>大范围修正强度
+（0 移除，1 保持，2 放大）</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDetailGain_Label" xml:space="preserve"><value>细节修正强度
+（0 移除，1 保持，2 放大）</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualChromaTemporalStrength_Label" xml:space="preserve"><value>色度时域稳定
+（0 关闭，1 最强）</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Label" xml:space="preserve"><value>残差诊断视图</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualColorMode_Option_0" xml:space="preserve"><value>Legacy HSL</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualColorMode_Option_1" xml:space="preserve"><value>Oklab</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_0" xml:space="preserve"><value>最终图</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_1" xml:space="preserve"><value>原始总残差</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_2" xml:space="preserve"><value>受控总残差</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_3" xml:space="preserve"><value>明度变化</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_4" xml:space="preserve"><value>色度变化</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_5" xml:space="preserve"><value>保护权重</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_6" xml:space="preserve"><value>色域压缩比例</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_7" xml:space="preserve"><value>局部压缩比例</value></data>
 </root>

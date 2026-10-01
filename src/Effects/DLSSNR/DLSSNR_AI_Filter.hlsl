@@ -25,16 +25,16 @@ int inputResolutionPercent;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Residual Multiplier
+//!LABEL Residual Strength
 //!DEFAULT 1
-//!MIN 1
+//!MIN 0
 //!MAX 2
 //!STEP 0.05
 float residualMultiplier;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Residual Saturation Multiplier
+//!LABEL Chroma Change Strength (Oklab) / Saturation (HSL)
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
@@ -43,7 +43,7 @@ float residualSaturation;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Residual Lightness Multiplier
+//!LABEL Lightness Change Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
@@ -67,6 +67,109 @@ float shadowStructureMultiplier;
 //!MAX 2
 //!STEP 0.05
 float reflectionGlowMultiplier;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Residual Color Mode
+//!DEFAULT 0
+//!OPTION 0 Legacy HSL
+//!OPTION 1 Oklab
+int residualColorMode;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Show Protection Controls
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 1
+int residualShowProtection;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Hue Change Protection\n(0 Off, 1 Strongest)
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 0.05
+float residualHueProtection;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Dark Protection\n(0 Off, 1 Strongest)
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 0.05
+float residualDarkProtection;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Highlight Protection\n(0 Off, 1 Strongest)
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 0.05
+float residualHighlightProtection;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Local Runaway Compression\n(0 Off, 1 Strongest)
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 0.05
+float residualLocalCompression;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Show Advanced Controls
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 1
+int residualShowAdvanced;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Broad Correction Strength\n(0 Remove, 1 Keep, 2 Amplify)
+//!DEFAULT 1
+//!MIN 0
+//!MAX 2
+//!STEP 0.05
+float residualLowFrequencyGain;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Detail Correction Strength\n(0 Remove, 1 Keep, 2 Amplify)
+//!DEFAULT 1
+//!MIN 0
+//!MAX 2
+//!STEP 0.05
+float residualDetailGain;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Chroma Temporal Stability\n(0 Off, 1 Strongest)
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 0.05
+float residualChromaTemporalStrength;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Residual Diagnostic View
+//!DEFAULT 0
+//!OPTION 0 Final Image
+//!OPTION 1 Raw Total Residual
+//!OPTION 2 Controlled Total Residual
+//!OPTION 3 Lightness Change
+//!OPTION 4 Chroma Change
+//!OPTION 5 Protection Weight
+//!OPTION 6 Gamut Scale
+//!OPTION 7 Compression Scale
+int residualDebugView;
 
 //!PARAMETER
 //!GROUP Detail Control

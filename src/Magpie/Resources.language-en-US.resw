@@ -1230,9 +1230,9 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Label" xml:space="preserve"><value>Local Structure Strength</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Label" xml:space="preserve"><value>Local Tone Strength</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>Reflection / Glow Control</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>Residual Lightness Multiplier</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>Residual Multiplier</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Label" xml:space="preserve"><value>Residual Saturation Multiplier</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>Lightness Change Strength</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>Residual Strength</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Label" xml:space="preserve"><value>Chroma Change (Oklab) / Saturation (HSL)</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Label" xml:space="preserve"><value>Shadow / Structure Control</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Label" xml:space="preserve"><value>Skin Structure Strength</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_style_Label" xml:space="preserve"><value>NR Style
@@ -1699,4 +1699,32 @@
   <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Option_0" xml:space="preserve"><value>Off</value></data>
   <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Option_1" xml:space="preserve"><value>On</value></data>
   <data name="EffectParam_xBR_xBR_NoBlend_3x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 Coefficient</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualColorMode_Label" xml:space="preserve"><value>Residual Color Mode</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualShowProtection_Label" xml:space="preserve"><value>Show Protection Controls</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHueProtection_Label" xml:space="preserve"><value>Hue Change Protection
+(0 Off, 1 Strongest)</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDarkProtection_Label" xml:space="preserve"><value>Dark Protection
+(0 Off, 1 Strongest)</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHighlightProtection_Label" xml:space="preserve"><value>Highlight Protection
+(0 Off, 1 Strongest)</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Label" xml:space="preserve"><value>Local Runaway Compression
+(0 Off, 1 Strongest)</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualShowAdvanced_Label" xml:space="preserve"><value>Show Advanced Controls</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Label" xml:space="preserve"><value>Broad Correction Strength
+(0 Remove, 1 Keep, 2 Amplify)</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDetailGain_Label" xml:space="preserve"><value>Detail Correction Strength
+(0 Remove, 1 Keep, 2 Amplify)</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualChromaTemporalStrength_Label" xml:space="preserve"><value>Chroma Temporal Stability
+(0 Off, 1 Strongest)</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Label" xml:space="preserve"><value>Residual Diagnostic View</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualColorMode_Option_0" xml:space="preserve"><value>Legacy HSL</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualColorMode_Option_1" xml:space="preserve"><value>Oklab</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_0" xml:space="preserve"><value>Final Image</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_1" xml:space="preserve"><value>Raw Total Residual</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_2" xml:space="preserve"><value>Controlled Total Residual</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_3" xml:space="preserve"><value>Lightness Change</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_4" xml:space="preserve"><value>Chroma Change</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_5" xml:space="preserve"><value>Protection Weight</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_6" xml:space="preserve"><value>Gamut Scale</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_7" xml:space="preserve"><value>Compression Scale</value></data>
 </root>

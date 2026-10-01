@@ -14,6 +14,8 @@ struct DLSSNRTemporal::Impl {
 	FrameGuidanceExtent extent{};
 	int mode = 0;
 	bool hdr = false;
+	float chromaStrength = 0;
+	bool enforceZero = false;
 	bool lastMotion = false;
 	uint32_t next = 0;
 	DLSSNRTemporalState state;
@@ -36,6 +38,14 @@ DLSSNRTemporal::DLSSNRTemporal() noexcept = default;
 DLSSNRTemporal::~DLSSNRTemporal() = default;
 void DLSSNRTemporal::Reset() noexcept {
 	if (_impl) _impl->state.valid = false;
+}
+
+void DLSSNRTemporal::ConfigureDetail(float strength, bool enforceZero) noexcept {
+	if (!_impl) return;
+	strength = !_impl->hdr && std::isfinite(strength) ? std::clamp(strength,0.f,1.f) : 0.f;
+	if (_impl->chromaStrength != strength || _impl->enforceZero != enforceZero) Reset();
+	_impl->chromaStrength = strength;
+	_impl->enforceZero = !_impl->hdr && enforceZero;
 }
 
 bool DLSSNRTemporal::Initialize(DeviceResources& resources, ID3D11Texture2D* input,
@@ -65,7 +75,7 @@ bool DLSSNRTemporal::Initialize(DeviceResources& resources, ID3D11Texture2D* inp
 		if (FAILED(impl->device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, impl->reduceShader.put()))) return false;
 	}
 	D3D11_BUFFER_DESC buffer{};
-	buffer.ByteWidth = 48; buffer.Usage = D3D11_USAGE_DEFAULT; buffer.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	buffer.ByteWidth = 64; buffer.Usage = D3D11_USAGE_DEFAULT; buffer.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	if (FAILED(impl->device->CreateBuffer(&buffer, nullptr, impl->constants.put()))) return false;
 	D3D11_SAMPLER_DESC sampler{};
 	sampler.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
@@ -147,10 +157,12 @@ bool DLSSNRTemporal::Draw(const NativeEffectDrawContext& context) noexcept {
 		uint32_t width, height, motion, hdr;
 		float weight; uint32_t route, lowWidth, lowHeight;
 		uint32_t left, top, right, bottom;
+		float chromaStrength; uint32_t enforceZero, padding0, padding1;
 	} constants{impl.extent.width, impl.extent.height, motion ? 1u : 0u, impl.hdr ? 1u : 0u,
 		weight, static_cast<uint32_t>(impl.mode), (impl.extent.width+1)/2, (impl.extent.height+1)/2,
-		region.x, region.y, region.x+region.width, region.y+region.height};
-	static_assert(sizeof(constants) == 48);
+		region.x, region.y, region.x+region.width, region.y+region.height,
+		impl.chromaStrength, impl.enforceZero ? 1u : 0u, 0, 0};
+	static_assert(sizeof(constants) == 64);
 	impl.dc->UpdateSubresource(impl.constants.get(), 0, nullptr, &constants, 0, 0);
 	const auto next = impl.next, previous = next ^ 1u;
 	ID3D11ShaderResourceView* srvs[]{impl.inputs[0].get(), impl.inputs[1].get(), impl.inputs[2].get(),

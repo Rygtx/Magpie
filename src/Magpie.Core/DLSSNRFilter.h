@@ -15,6 +15,15 @@ struct DLSSNRSettings {
 	float residualLightness = 1.0f;
 	float shadowStructureMultiplier = 1.0f;
 	float reflectionGlowMultiplier = 1.0f;
+	int residualColorMode = 0;
+	float residualHueProtection = 0;
+	float residualDarkProtection = 0;
+	float residualHighlightProtection = 0;
+	float residualLocalCompression = 0;
+	float residualLowFrequencyGain = 1;
+	float residualDetailGain = 1;
+	float residualChromaTemporalStrength = 0;
+	int residualDebugView = 0;
 	int style = 0;
 	float intensity = 1.0f;
 	float localToneStrength = 1.0f;

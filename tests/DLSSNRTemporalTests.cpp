@@ -39,6 +39,7 @@ struct Harness {
 		unsigned w = W, h = H, motion = 0, hdr = 0;
 		float weight = .8f; unsigned route = 1, lowWidth = (W+1)/2, lowHeight = (H+1)/2;
 		unsigned left = 0, top = 0, right = W, bottom = H;
+		float chromaStrength = 0; unsigned enforceZero = 0, padding0 = 0, padding1 = 0;
 	} constants;
 	Harness(unsigned w=W, unsigned h=H) : width(w), height(h) {
 		auto create = D3D11CreateDevice(nullptr,D3D_DRIVER_TYPE_WARP,nullptr,D3D11_CREATE_DEVICE_DEBUG,nullptr,0,D3D11_SDK_VERSION,&device,nullptr,&dc);

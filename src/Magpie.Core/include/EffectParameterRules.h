@@ -31,11 +31,19 @@ bool IsEffectParameterVisible(std::string_view effect, std::string_view paramete
 		if (parameter == "amdOpticalFlowMode") return method == 1.0f;
 		if (parameter == "nvidiaOpticalFlowQuality") return method == 2.0f;
 	}
-	if (effect == "DLSSNR\\DLSSNR_AI_Filter" &&
-		(parameter == "inputResolutionPercent" || parameter == "residualMultiplier" ||
-		 parameter == "residualSaturation" || parameter == "residualLightness" ||
-		 parameter == "shadowStructureMultiplier" || parameter == "reflectionGlowMultiplier")) {
-		return getValue("enableInputResolutionScaling", 0.0f) != 0.0f;
+	if (effect == "DLSSNR\\DLSSNR_AI_Filter") {
+		if (parameter == "residualShowProtection" || parameter == "residualShowAdvanced")
+			return getValue("enableInputResolutionScaling", 0.f) != 0 && DLSSNRColorMode(getValue) == 1;
+		if (parameter == "inputResolutionPercent" || IsDLSSNRResidualParameter(parameter)) {
+			if (getValue("enableInputResolutionScaling", 0.f) == 0) return false;
+			if (IsDLSSNROklabParameter(parameter) && DLSSNRColorMode(getValue) == 0) return false;
+			if (parameter == "residualHueProtection" || parameter == "residualDarkProtection" ||
+				parameter == "residualHighlightProtection" || parameter == "residualLocalCompression")
+				return getValue("residualShowProtection", 0.f) != 0;
+			if (parameter == "residualLowFrequencyGain" || parameter == "residualDetailGain" ||
+				parameter == "residualChromaTemporalStrength" || parameter == "residualDebugView")
+				return getValue("residualShowAdvanced", 0.f) != 0;
+		}
 	}
 	return true;
 }
@@ -43,6 +51,8 @@ bool IsEffectParameterVisible(std::string_view effect, std::string_view paramete
 template<class GetValue>
 bool IsEffectParameterEnabled(std::string_view effect, std::string_view parameter,
 	bool frontEdgeSyncEnabled, GetValue&& getValue) noexcept {
+	if (effect == "DLSSNR\\DLSSNR_AI_Filter" && parameter == "residualChromaTemporalStrength")
+		return DLSSNRAntiFlickerMode(getValue) != 0;
 	if (IsFrameRateFilterEffect(effect)) {
 		if (parameter == "frameRateMode") return !frontEdgeSyncEnabled;
 		if (parameter == "targetFrameRate") {
