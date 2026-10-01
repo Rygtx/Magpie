@@ -1,10 +1,10 @@
 # 开发与分发准备 / Development and Distribution Preparation
 
-## 0.6.9 开发：快捷键清除与“未设置”
+## 0.6.9 Beta1 本地整合
 
-工具栏快捷键展开项支持在编辑按钮右侧点击垃圾桶清除；全部八项快捷键的编辑弹窗提供“保存｜清除｜取消”。清除后显示“未设置”，绑定立即解除并跨重启保留；缺失的旧配置字段仍沿用默认值，重新设置仍执行合法性和冲突检查。
+七个 069 功能分支已合入本地 `experimental`：快捷键清除、xBR、DLSSNR 开销优化、工具栏拖拽、重复帧过滤优化、DLSSNR 细节控制、光标刷新与主页常驻选项。
 
-功能与自动回归已完成，真实 UI／系统热键验收仍待执行。此条目不是发布公告；069 beta1 的统一编译部署由单独会话负责。范围及验证边界见 [快捷键清除 TODO](experimental/todos/20261001-v0.6.9-shortcut-clear-TODO.md)。
+[完整中英更新说明](RELEASE_NOTES_v0.6.9-beta1.md) 与 [主线整合核对](experimental/reviews/20261001-v0.6.9-beta1-integration.md) 记录范围和验证边界。运行版本为 `0.6.9-beta1`；本次本地编译部署不修改公开更新入口。构建／部署结果及准确提交以本地版本目录的清单为准，真实 UI／GPU／画质／性能验收仍需实测。
 
 ## 0.6.8 Draft 准备
 
@@ -14,11 +14,11 @@
 
 ---
 
-## 0.6.9 development: clear shortcuts and the “Not set” state
+## 0.6.9 Beta1 local integration
 
-The six expanded toolbar shortcut rows now offer a trash button beside the editor. All eight shortcut dialogs provide Save, Clear and Cancel. Clearing immediately removes the binding, displays “Not set” and survives restarts; missing legacy fields still receive their defaults, and rebinding retains validation and conflict checks.
+All seven 0.6.9 feature branches are merged into local `experimental`: shortcut clearing, xBR, DLSSNR overhead optimization, toolbar dragging, duplicate-frame optimization, DLSSNR detail controls, and cursor refresh/permanent Home options.
 
-Implementation and automated regression checks are complete; native UI and actual system-hotkey acceptance remain pending. This is not a release announcement. The unified 0.6.9 beta1 build and deployment belong to a separate session. See the [shortcut clearing TODO](experimental/todos/20261001-v0.6.9-shortcut-clear-TODO.md) for scope and validation boundaries.
+The [full Chinese/English notes](RELEASE_NOTES_v0.6.9-beta1.md) and [integration audit](experimental/reviews/20261001-v0.6.9-beta1-integration.md) describe scope and validation boundaries. The runtime version is `0.6.9-beta1`; this local build/deployment does not change the public update entry. The local version-directory manifests record build/deployment results and the exact commit. Native UI, GPU, image quality and performance still require testing.
 
 ## 0.6.8 draft preparation
 
