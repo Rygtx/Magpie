@@ -54,7 +54,8 @@ struct OverlayHelper {
 };
 struct StrHelper { template<class... T> static std::string Concat(T&&... t) { std::string s; (s.append(t),...); return s; } };
 struct Win32Helper { struct Version { bool IsWin11() const { return true; } }; static Version GetOSVersion() { return {}; } };
-LONG GetWindowStyle(HWND) { return WS_MINIMIZEBOX; }
+bool sourceCanMinimize=true;
+LONG GetWindowStyle(HWND) { return sourceCanMinimize ? WS_MINIMIZEBOX : 0; }
 struct Options {
 	bool windowed = false;
 	bool IsWindowedMode() const { return windowed; }
@@ -119,15 +120,16 @@ struct OverlayDrawer {
 	float _dpiScale = 1, _lastToolbarAlpha = 1;
 	bool _isToolbarPinned = true, _isToolbarVisible = true, _isProfilerVisible = false;
 	bool _isEffectParametersVisible = false, _parameterFocusSwitchingEnabled = false;
-	bool _isCursorOnCaptionArea = false, _isToolbarItemActive = false, _isToolbarHandleHovered = false, _overlayDirty = false;
+	bool _isCursorOnCaptionArea = false, _isToolbarItemActive = false, _isToolbarDragHovered = false, _overlayDirty = false;
 	ParameterPanelState _parameterPanelState = ParameterPanelState::Closed, _pendingParameterPanelState = ParameterPanelState::Edit;
-	std::optional<ImVec4> _stagedToolbarHandleRect, _presentedToolbarHandleRect;
+	std::optional<ImVec4> _stagedToolbarRect, _presentedToolbarRect;
+	std::vector<ImVec4> _stagedToolbarButtons, _presentedToolbarButtons;
 	ImFont* _fontUI = nullptr;
 	ImFont* _fontIcons = nullptr;
 	ImFont* _fontMonoNumbers = nullptr;
 	bool _DrawToolbar(uint32_t, int&) noexcept;
 	void _DrawToolbarDockHints(const ToolbarGeometry&) noexcept;
-	bool IsToolbarHandleAt(POINT) const noexcept;
+	bool IsToolbarAt(POINT) const noexcept;
 	float _CalcToolbarAlpha() const noexcept;
 	OverlaySessionState CaptureSessionState() const noexcept;
 	void RestoreSessionState(const OverlaySessionState&) noexcept;
@@ -136,7 +138,8 @@ struct OverlayDrawer {
 	void _ClearStatesIfNoVisibleWindow() {}
 	void InvokeAction(OverlayAction action) { if (action == OverlayAction::EffectParameters) _isEffectParametersVisible = !_isEffectParametersVisible; else _isProfilerVisible = !_isProfilerVisible; }
 	std::string _GetResourceString(std::wstring_view) const { return "Hint"; }
-	std::string _FormatFrameRate(uint32_t) const { return "120/240 FPS"; }
+	std::string frameRateText = "120/240 FPS";
+	std::string _FormatFrameRate(uint32_t) const { return frameRateText; }
 	void _ShowComparisonStatus(bool) {}
 	ToolbarState ToolbarState() const { return ToolbarState::AlwaysShow; }
 	void ToolbarState(Magpie::ToolbarState) {}
@@ -178,6 +181,12 @@ bool TrackedToolbarButton(const char* label, const ImVec2& size) {
 	const auto lo=ImGui::GetItemRectMin(), hi=ImGui::GetItemRectMax();
 	toolbarButtons.emplace_back(lo.x,lo.y,hi.x,hi.y);
 	return clicked;
+}
+ImVec4 toolbarText;
+void TrackedToolbarText(const char* text) {
+	const auto min = ImGui::GetCursorScreenPos(), size = ImGui::CalcTextSize(text);
+	toolbarText={min.x,min.y,min.x+size.x,min.y+size.y};
+	ImGui::TextUnformatted(text);
 }
 #include "ToolbarDragProduction.inc"
 }
@@ -311,7 +320,7 @@ void Frame(OverlayDrawer& drawer, ImVec2 mouse, bool down=false, bool canceled=f
 	ImGui::NewFrame(); if(canceled) ImGui::ClearActiveID();
 	toolbarButtons.clear();
 	int id=0; drawer._DrawToolbar(120,id); ImGui::Render();
-	assert(toolbarButtons.size()==8);
+	assert(toolbarButtons.size()==(sourceCanMinimize ? 8 : 7));
 	for (const auto& rect : toolbarButtons) {
 		if (std::abs(rect.y-toolbarButtons.front().y)>=.01f) {
 			std::cerr<<"Button alignment: dpi="<<drawer._dpiScale<<" viewport="<<viewport.x<<','<<viewport.y
@@ -320,7 +329,12 @@ void Frame(OverlayDrawer& drawer, ImVec2 mouse, bool down=false, bool canceled=f
 		assert(std::abs(rect.y-toolbarButtons.front().y)<.01f);
 		assert(std::abs((rect.z-rect.x)-(toolbarButtons.front().z-toolbarButtons.front().x))<.01f);
 	}
-	drawer._presentedToolbarHandleRect=drawer._stagedToolbarHandleRect;
+	drawer._presentedToolbarRect=drawer._stagedToolbarRect;
+	drawer._presentedToolbarButtons=drawer._stagedToolbarButtons;
+	const auto bar=drawer._presentedToolbarRect.value();
+	assert(std::abs((toolbarText.x+toolbarText.z)-(bar.x+bar.z))<.02f);
+	assert(toolbarText.x >= toolbarButtons[4].z+1.f*ToolbarGeometry(viewport.x,viewport.y,drawer._dpiScale).scale);
+	assert(toolbarText.z <= toolbarButtons[5].x-1.f*ToolbarGeometry(viewport.x,viewport.y,drawer._dpiScale).scale);
 }
 
 void ImGuiToolbarTests() {
@@ -340,8 +354,18 @@ void ImGuiToolbarTests() {
 		ScalingWindow::Get().options.windowed=windowed;
 		drawer._toolbarPlacement.state={};
 		Frame(drawer,{-100,-100}); Frame(drawer,{-100,-100});
-		const auto r=drawer._presentedToolbarHandleRect.value();
-		ImVec2 press{r.x+8,10};
+		const auto r=drawer._presentedToolbarRect.value();
+		// Button clicks never begin a drag; the central FPS is a drag surface.
+		const auto pin=drawer._presentedToolbarButtons[0];
+		const ImVec2 pinPoint{(pin.x+pin.z)/2,(pin.y+pin.w)/2};
+		Frame(drawer,pinPoint); Frame(drawer,pinPoint,true);
+		assert(!drawer._toolbarPlacement.IsDragging()); Frame(drawer,pinPoint);
+		drawer._isToolbarPinned=true;
+		const ImVec2 center{(r.x+r.z)/2,10};
+		Frame(drawer,center); Frame(drawer,center,true);
+		assert(drawer._toolbarPlacement.IsDragging()); Frame(drawer,center,false,true);
+		assert(!drawer._toolbarPlacement.IsDragging());
+		ImVec2 press{r.x+2,10};
 		Frame(drawer,press); Frame(drawer,press,true);
 		assert(drawer._toolbarPlacement.IsDragging() && !drawer._isCursorOnCaptionArea);
 		assert(ImGui::GetBackgroundDrawList()->VtxBuffer.Size > 0);
@@ -363,24 +387,25 @@ void ImGuiToolbarTests() {
 		assert(saved.size()==1 && saved.back()==std::make_pair(windowed,ToolbarDock::Bottom));
 		assert(drawer._toolbarPlacement.Dock(windowed)==ToolbarDock::Bottom);
 		Frame(drawer,{350,1079});
-		const auto b=drawer._presentedToolbarHandleRect.value();
-		assert(drawer.IsToolbarHandleAt({LONG(b.x+101),1279}));
-		assert(!drawer.IsToolbarHandleAt({LONG(b.z+101),1279}));
-		press={b.x+8,1070}; Frame(drawer,press); Frame(drawer,press,true);
+		const auto b=drawer._presentedToolbarRect.value();
+		assert(drawer.IsToolbarAt({LONG(b.x+101),1279}));
+		assert(!drawer.IsToolbarAt({LONG(b.z+101),1279}));
+		press={b.x+2,1070}; Frame(drawer,press); Frame(drawer,press,true);
 		Frame(drawer,{800,1079},true); Frame(drawer,{800,1079});
 		assert(saved.size()==1); // horizontal-only move never saves
 		const auto state=drawer.CaptureSessionState();
 		OverlayDrawer restored; restored.RestoreSessionState(state);
 		Near(restored._toolbarPlacement.Layout(windowed,ToolbarGeometry(1920,1080,1)).x,
 			drawer._toolbarPlacement.Layout(windowed,ToolbarGeometry(1920,1080,1)).x);
-		Frame(drawer,{800,1070}); const auto grip=drawer._presentedToolbarHandleRect.value();
-		press={grip.x+8,1070}; Frame(drawer,press); Frame(drawer,press,true);
+		Frame(drawer,{800,1070}); const auto grip=drawer._presentedToolbarRect.value();
+		press={grip.x+2,1070}; Frame(drawer,press); Frame(drawer,press,true);
 		Frame(drawer,{1000,0},true); Frame(drawer,{1000,0},false,true);
 		assert(!drawer._toolbarPlacement.IsDragging() && drawer._toolbarPlacement.Dock(windowed)==ToolbarDock::Bottom && saved.size()==1);
 		// Bottom screenshot menu must fit above the toolbar on its first visible frame.
 		Frame(drawer,{-100,-100});
 		auto toolbar=ImGui::FindWindowByName("##toolbar");
-		ImVec2 camera{toolbar->Pos.x+164,1060};
+		const auto cameraRect=drawer._presentedToolbarButtons[4];
+		ImVec2 camera{(cameraRect.x+cameraRect.z)/2,(cameraRect.y+cameraRect.w)/2};
 		Frame(drawer,camera); Frame(drawer,camera,false,false,true); Frame(drawer,camera);
 		Frame(drawer,camera);
 		bool sawPopup = false;
@@ -408,16 +433,20 @@ void ImGuiToolbarTests() {
 				Frame(drawer,{-100,-100},false,false,false,viewport);
 				auto toolbar=ImGui::FindWindowByName("##toolbar");
 				assert(toolbar->Pos.x>=0 && toolbar->Pos.x+toolbar->Size.x<=viewport.x+1);
-				const auto grip=drawer._presentedToolbarHandleRect.value();
+				const auto grip=drawer._presentedToolbarRect.value();
 				assert(grip.x>=0 && grip.z<=viewport.x+1 && grip.y>=0 && grip.w<=viewport.y+1 && grip.y<grip.w);
 			}
 		}
+	}
+	for (bool minimize : {true,false}) for (const char* format : {"60 FPS","120/240 FPS","—/60 FPS","1000/4000 FPS"}) {
+		sourceCanMinimize=minimize; drawer.frameRateText=format;
+		Frame(drawer,{-100,-100});
 	}
 	ImGui::DestroyContext();
 }
 
 int main() {
 	PlacementTests(); CenterSnapTests(); SettingsTests(); ImGuiToolbarTests();
-	std::cout << "PASS toolbar drag: real ImGui handle/drop/cancel/menu, 32 mode/viewport/DPI cases, "
+	std::cout << "PASS toolbar drag: real ImGui background/FPS drag, button/drop/cancel/menu, 32 mode/viewport/DPI cases, "
 		"raw grab offset, session recovery/new-run centering, JSON compatibility, profile isolation/reordering/deletion and expired saves.\n";
 }

@@ -62,6 +62,12 @@ ProfileViewModel::ProfileViewModel(int profileIdx, bool initializePageData)
 		return;
 	}
 
+	_frameSyncChangedRevoker = ProfileService::Get().FrameSyncChanged(auto_revoke, [this](const Profile& profile) {
+		if (profile.runtimeIdentity != _data->runtimeIdentity) return;
+		RaisePropertyChanged(L"IsFrontEdgeSyncEnabled");
+		RaisePropertyChanged(L"FrontEdgeSyncFrameRate");
+		RaisePropertyChanged(L"FrameSyncModeIndex");
+	});
 	_BuildMonitorOptions();
 
 	_adaptersChangedRevoker = AdaptersService::Get().AdaptersChanged(auto_revoke,
@@ -677,6 +683,30 @@ bool ProfileViewModel::IsShowGraphicsCardSettingsCard() const noexcept {
 
 bool ProfileViewModel::IsNoGraphicsCard() const noexcept {
 	return AdaptersService::Get().AdapterInfos().empty();
+}
+
+bool ProfileViewModel::IsFrontEdgeSyncEnabled() const noexcept { return _data->frameSync.enabled; }
+void ProfileViewModel::IsFrontEdgeSyncEnabled(bool value) {
+	if (_data->frameSync.enabled == value) return;
+	_data->frameSync.enabled = value;
+	ProfileService::Get().FrameSyncChanged.Invoke(*_data);
+	AppSettings::Get().SaveAsync();
+}
+double ProfileViewModel::FrontEdgeSyncFrameRate() const noexcept { return _data->frameSync.frameRate; }
+void ProfileViewModel::FrontEdgeSyncFrameRate(double value) {
+	if (!std::isfinite(value)) return;
+	const float rate = SanitizePresentationFrameRate(float(value));
+	if (_data->frameSync.frameRate == rate) return;
+	_data->frameSync.frameRate = rate;
+	ProfileService::Get().FrameSyncChanged.Invoke(*_data);
+	AppSettings::Get().SaveAsync();
+}
+int32_t ProfileViewModel::FrameSyncModeIndex() const noexcept { return int32_t(_data->frameSync.mode); }
+void ProfileViewModel::FrameSyncModeIndex(int32_t value) {
+	if (value < 0 || !IsValidFrameSyncMode(FrameSyncMode(value)) || _data->frameSync.mode == FrameSyncMode(value)) return;
+	_data->frameSync.mode = FrameSyncMode(value);
+	ProfileService::Get().FrameSyncChanged.Invoke(*_data);
+	AppSettings::Get().SaveAsync();
 }
 
 bool ProfileViewModel::IsFrameRateLimiterEnabled() const noexcept {

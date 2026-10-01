@@ -218,9 +218,11 @@ void OverlayDrawer::Draw(
 
 void OverlayDrawer::ClearStates() noexcept {
 	_toolbarPlacement.Cancel();
-	_isToolbarHandleHovered = false;
-	_stagedToolbarHandleRect.reset();
-	_presentedToolbarHandleRect.reset();
+	_isToolbarDragHovered = false;
+	_stagedToolbarRect.reset();
+	_stagedToolbarButtons.clear();
+	_presentedToolbarRect.reset();
+	_presentedToolbarButtons.clear();
 	_isEffectParameterInputActive = false;
 	_parameterResetGesture.Clear();
 	_imguiImpl.ClearStates();
@@ -231,7 +233,8 @@ void OverlayDrawer::ClearStates() noexcept {
 
 void OverlayDrawer::OnPresentSucceeded() noexcept {
 	_imguiImpl.OnPresentSucceeded();
-	_presentedToolbarHandleRect = _stagedToolbarHandleRect;
+	_presentedToolbarRect = _stagedToolbarRect;
+	_presentedToolbarButtons = _stagedToolbarButtons;
 	_UpdateParameterPreviewHost();
 }
 
@@ -254,9 +257,11 @@ void OverlayDrawer::ToolbarState(Magpie::ToolbarState value) noexcept {
 
 	if (value == ToolbarState::Off) {
 		_toolbarPlacement.Cancel();
-		_isToolbarHandleHovered = false;
-		_stagedToolbarHandleRect.reset();
-		_presentedToolbarHandleRect.reset();
+		_isToolbarDragHovered = false;
+		_stagedToolbarRect.reset();
+	_stagedToolbarButtons.clear();
+		_presentedToolbarRect.reset();
+	_presentedToolbarButtons.clear();
 		_isToolbarVisible = false;
 		_ClearStatesIfNoVisibleWindow();
 	} else if (value == ToolbarState::AlwaysShow) {
@@ -888,8 +893,9 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, geometry.rounding);
 
 	_isToolbarItemActive = false;
-	_isToolbarHandleHovered = false;
-	_stagedToolbarHandleRect.reset();
+	_isToolbarDragHovered = false;
+	_stagedToolbarRect.reset();
+	_stagedToolbarButtons.clear();
 
 	if (ImGui::Begin(StrHelper::Concat("##", TOOLBAR_WINDOW_ID).c_str(), nullptr,
 		ImGuiWindowFlags_NoTitleBar |
@@ -900,17 +906,14 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		ImGuiWindowFlags_NoSavedSettings))
 	{
 		ImGui::SetWindowFontScale(toolbarScale / _dpiScale);
-		// 通过工具栏拖拽缩放窗口时不要更新 _isCursorOnCaptionArea
-		if (!ScalingWindow::Get().IsResizingOrMoving()) {
-			// 鼠标被 ImGui 捕获时禁止拖拽缩放窗口
-			_isCursorOnCaptionArea = !ImGui::IsAnyMouseDown();
-			if (_isCursorOnCaptionArea) {
-				// 检查鼠标是否被其他窗口遮挡
-				const char* hoveredWindowId = _imguiImpl.GetHoveredWindowId();
-				_isCursorOnCaptionArea = hoveredWindowId &&
-					hoveredWindowId == std::string_view(TOOLBAR_WINDOW_ID);
-			}
-		}
+		// All toolbar input is client input; background dragging moves this bar.
+		_isCursorOnCaptionArea = false;
+		_stagedToolbarRect = ImVec4(rect.x, std::max(0.f, rect.y),
+			rect.x + rect.width, std::min(viewport.y, rect.y + rect.height));
+		auto recordButton = [&] {
+			const auto min = ImGui::GetItemRectMin(), max = ImGui::GetItemRectMax();
+			_stagedToolbarButtons.emplace_back(min.x, min.y, max.x, max.y);
+		};
 
 		ImGui::SetCursorPosY((contentTop + 3) * toolbarScale);
 
@@ -938,6 +941,7 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 				value = !value;
 				needRedraw = true;
 			}
+			recordButton();
 			if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
 				_isCursorOnCaptionArea = false;
 				_isToolbarItemActive = true;
@@ -956,6 +960,7 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 			ImGui::SetCursorPosY((contentTop + 3) * toolbarScale);
 			ImGui::PushFont(_fontIcons);
 			const bool clicked = ImGui::Button(IconLabel(icon).c_str(), { 24.0f * toolbarScale, 24.0f * toolbarScale });
+			recordButton();
 			if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
 				_isCursorOnCaptionArea = false;
 				_isToolbarItemActive = true;
@@ -969,39 +974,6 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 
 		// 光标不在缩放窗口上时阻止交互
 		ImGui::BeginDisabled(!IsEditingParameters() && !ScalingWindow::Get().CursorManager().CursorHandle());
-
-		// The grip spans the visible height, including the clipped dock edge.
-		ImGui::SetCursorPosY(contentTop * toolbarScale);
-		ImGui::InvisibleButton("##toolbarDrag", { 24.0f * toolbarScale, 31.0f * toolbarScale });
-		const ImVec2 gripMin = ImGui::GetItemRectMin(), gripMax = ImGui::GetItemRectMax();
-		_stagedToolbarHandleRect = ImVec4(gripMin.x, std::max(0.0f, gripMin.y),
-			gripMax.x, std::min(viewport.y, gripMax.y));
-		_isToolbarHandleHovered = ImGui::IsItemHovered();
-		if (_isToolbarHandleHovered || _toolbarPlacement.IsDragging()) {
-			_isCursorOnCaptionArea = false;
-			_isToolbarItemActive = true;
-			ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
-		}
-		if (!_imguiImpl.FrameInputCanceled() && ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-			_toolbarPlacement.Begin(windowed, geometry, mouse.x, mouse.y);
-			needRedraw = true;
-		}
-		ImDrawList* gripDrawList = ImGui::GetWindowDrawList();
-		if (_isToolbarHandleHovered || _toolbarPlacement.IsDragging()) {
-			gripDrawList->AddRectFilled(gripMin, gripMax, IM_COL32(30, 136, 228, 180), 4.0f * toolbarScale);
-		}
-		const ImVec2 gripCenter{ (gripMin.x + gripMax.x) / 2.0f, (gripMin.y + gripMax.y) / 2.0f };
-		for (int row = -1; row <= 1; ++row) {
-			for (int column = -1; column <= 1; column += 2) {
-				gripDrawList->AddCircleFilled({ gripCenter.x + column * 3.0f * toolbarScale,
-					gripCenter.y + row * 5.0f * toolbarScale }, 1.5f * toolbarScale, IM_COL32(220, 220, 220, 255));
-			}
-		}
-		if (_isToolbarHandleHovered && !_toolbarPlacement.IsDragging()) {
-			_imguiImpl.Tooltip(_GetResourceString(L"Overlay_Toolbar_Move").c_str(), toolbarScale);
-		}
-		ImGui::SameLine();
-		ImGui::SetCursorPosY((contentTop + 3) * toolbarScale);
 
 		const auto& shortcuts = ScalingWindow::Get().Options().toolbarShortcutLabels;
 		auto tooltip = [&](std::wstring_view name, std::string_view shortcut) {
@@ -1117,11 +1089,16 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		ImGui::PushFont(_fontMonoNumbers);
 		const float textWidth = ImGui::CalcTextSize(fpsText.c_str()).x;
 		const float textMinX = leftControlsEnd + 4.0f * toolbarScale;
-		ImGui::SetCursorPosX(std::clamp((leftControlsEnd + rightControlsStart - textWidth) / 2,
-			textMinX, std::max(textMinX, rightControlsStart - textWidth - 4.0f * toolbarScale)));
+		const float center = rect.width / 2.f;
+		const float textRoom = std::max(1.f, 2.f * std::min(center - textMinX,
+			rightControlsStart - center - 4.f * toolbarScale));
+		const float textScale = std::min(1.f, textRoom / std::max(1.f, textWidth));
+		ImGui::SetWindowFontScale(toolbarScale / _dpiScale * textScale);
+		ImGui::SetCursorPosX((rect.width - textWidth * textScale) / 2.f);
 		ImGui::SetCursorPosY((contentTop + 15) * toolbarScale - ImGui::GetFontSize() / 2);
 		ImGui::TextUnformatted(fpsText.c_str());
 		ImGui::PopFont();
+		ImGui::SetWindowFontScale(toolbarScale / _dpiScale);
 
 		ImGui::SameLine();
 		ImGui::SetCursorPosY((contentTop + 3) * toolbarScale);
@@ -1175,6 +1152,29 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 			});
 		}
 
+		// Register the background only outside successfully presented buttons.
+		// An active background item keeps ownership until release/cancellation.
+		const auto contains = [&](const ImVec4& r) {
+			return mouse.x >= r.x && mouse.x < r.z && mouse.y >= r.y && mouse.y < r.w;
+		};
+		const bool presentedBackground = _presentedToolbarRect && contains(*_presentedToolbarRect) &&
+			std::none_of(_presentedToolbarButtons.begin(), _presentedToolbarButtons.end(), contains);
+		const char* hovered = _imguiImpl.GetHoveredWindowId();
+		const bool toolbarHovered = hovered && std::string_view(hovered) == TOOLBAR_WINDOW_ID;
+		if (_toolbarPlacement.IsDragging() || (presentedBackground && toolbarHovered)) {
+			ImGui::SetCursorPos({ 0.f, 0.f });
+			ImGui::InvisibleButton("##toolbarBackgroundDrag", { rect.width, rect.height });
+			_isToolbarDragHovered = ImGui::IsItemHovered();
+			if (_isToolbarDragHovered || _toolbarPlacement.IsDragging()) {
+				_isToolbarItemActive = true;
+				ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+			}
+			if (!_imguiImpl.FrameInputCanceled() && ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+				_toolbarPlacement.Begin(windowed, geometry, mouse.x, mouse.y);
+				needRedraw = true;
+			}
+		}
+
 		ImGui::EndDisabled();
 		ImGui::SetWindowFontScale(1.0f);
 
@@ -1217,11 +1217,11 @@ void OverlayDrawer::_DrawToolbarDockHints(const ToolbarGeometry& geometry) noexc
 	}
 }
 
-bool OverlayDrawer::IsToolbarHandleAt(POINT screenPoint) const noexcept {
-	if (!_isToolbarVisible || !_presentedToolbarHandleRect) return false;
+bool OverlayDrawer::IsToolbarAt(POINT screenPoint) const noexcept {
+	if (!_isToolbarVisible || !_presentedToolbarRect) return false;
 	const auto& dest = ScalingWindow::Get().Renderer().DestRect();
 	const float x = float(screenPoint.x - dest.left), y = float(screenPoint.y - dest.top);
-	const auto& rect = *_presentedToolbarHandleRect;
+	const auto& rect = *_presentedToolbarRect;
 	return x >= rect.x && x < rect.z && y >= rect.y && y < rect.w;
 }
 
@@ -1839,17 +1839,19 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 
 			if (parameterNameHovered) {
 				std::string help = EffectParameterLocalization::Tooltip(effectName, parameter, parameterEnabled);
-				if (!parameterValid) {
-					help += "\n" + _GetResourceString(backendUnavailable
-						? L"Overlay_EffectParameters_BackendUnavailable" : L"Overlay_EffectParameters_Invalid");
-				} else if (info->automaticRestart) {
-					help += "\n" + _GetResourceString(L"Overlay_EffectParameters_Reason_AutoRestart");
-				} else if (!isLive) {
-					help += "\n" + _GetResourceString(L"Overlay_EffectParameters_RestartRequired");
-				}
-				if (parameterValid && parameterEnabled && !isBoolean && !isChoice) {
-					help += "\n" + fmt::format(fmt::runtime(_GetResourceString(
-						L"Overlay_EffectParameters_ResetDefault")), fmt::format("{:.7g}", placeholderValue));
+				if (effectName != "DLSSNR\\DLSSNR_AI_Filter") {
+					if (!parameterValid) {
+						help += "\n" + _GetResourceString(backendUnavailable
+							? L"Overlay_EffectParameters_BackendUnavailable" : L"Overlay_EffectParameters_Invalid");
+					} else if (info->automaticRestart) {
+						help += "\n" + _GetResourceString(L"Overlay_EffectParameters_Reason_AutoRestart");
+					} else if (!isLive) {
+						help += "\n" + _GetResourceString(L"Overlay_EffectParameters_RestartRequired");
+					}
+					if (parameterValid && parameterEnabled && !isBoolean && !isChoice) {
+						help += "\n" + fmt::format(fmt::runtime(_GetResourceString(
+							L"Overlay_EffectParameters_ResetDefault")), fmt::format("{:.7g}", placeholderValue));
+					}
 				}
 				_imguiImpl.Tooltip(help.c_str(), _dpiScale);
 			} else if (parameterHovered) {

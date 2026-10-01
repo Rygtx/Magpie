@@ -57,6 +57,7 @@ int main() {
 	option.parameters["residualHueProtection"] = 2;
 	option.parameters["residualDarkProtection"] = std::numeric_limits<float>::quiet_NaN();
 	option.parameters["residualLowFrequencyGain"] = -1;
+	option.parameters["residualChromaTemporalStrength"] = 1.f;
 	auto detail = ParseDLSSNRSettings(option);
 	assert(detail.residualMultiplier == 0);
 	assert(detail.residualHueProtection == 1 && detail.residualDarkProtection == 0);

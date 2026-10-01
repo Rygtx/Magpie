@@ -6,6 +6,8 @@
 #include "ErrorService.h"
 #include "Logger.h"
 #include "ProfileService.h"
+#include "ProfileIdentity.h"
+#include "DLSSNRDetailParameters.h"
 #include "ScalingMode.h"
 #include "ScalingModesService.h"
 #include "ScalingService.h"
@@ -67,10 +69,9 @@ void ScalingService::Initialize() {
 	_toolbarShortcutsChangedRevoker = AppSettings::Get().ShortcutChanged(auto_revoke, [this](ShortcutAction) {
 		if (_scalingRuntime) _scalingRuntime->UpdateToolbarShortcutLabels(GetToolbarShortcutLabels());
 	});
-	_frameSyncChangedRevoker = AppSettings::Get().FrontEdgeSyncChanged(auto_revoke, [this] {
-		const auto& settings = AppSettings::Get();
-		if (_scalingRuntime) _scalingRuntime->UpdateFrameSyncSettings(
-			{ settings.IsFrontEdgeSyncEnabled(), settings.FrontEdgeSyncFrameRate(), settings.GetFrameSyncMode() });
+	_frameSyncChangedRevoker = ProfileService::Get().FrameSyncChanged(auto_revoke, [this](const Profile& profile) {
+		if (_activeFrameSyncProfile.lock() != profile.runtimeIdentity) return;
+		if (_scalingRuntime) _scalingRuntime->UpdateFrameSyncSettings(profile.frameSync);
 	});
 
 	// 立即检查前台窗口
@@ -549,12 +550,14 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	options.IsStatisticsForDynamicDetectionEnabled(settings.IsStatisticsForDynamicDetectionEnabled());
 	options.IsInlineParams(settings.IsInlineParams());
 	options.IsFP16Disabled(settings.IsFP16Disabled());
-	options.isFrontEdgeSyncEnabled = settings.IsFrontEdgeSyncEnabled();
+	options.frameSyncProfileIdentity = profile.runtimeIdentity;
+	_activeFrameSyncProfile = profile.runtimeIdentity;
+	options.isFrontEdgeSyncEnabled = profile.frameSync.enabled;
 	// VRR is deferred while its settings card is hidden. Ignore an older
 	// saved true value so no session silently enables tearing.
 	options.isVRREnabled = false;
-	options.frontEdgeSyncFrameRate = settings.FrontEdgeSyncFrameRate();
-	options.frameSyncMode = settings.GetFrameSyncMode();
+	options.frontEdgeSyncFrameRate = profile.frameSync.frameRate;
+	options.frameSyncMode = profile.frameSync.mode;
 
 	if (options.maxFrameRate) {
 		// 最小帧数不能大于最大帧数
@@ -760,7 +763,10 @@ void ScalingService::_HandleEffectParametersRequest(
 	}
 
 	auto& settings = AppSettings::Get();
-	FrameSyncSettings mergedFrameSync{ settings.IsFrontEdgeSyncEnabled(), settings.FrontEdgeSyncFrameRate(), settings.GetFrameSyncMode() };
+	Profile* frameSyncProfile = FindProfileByIdentity(settings.DefaultProfile(), settings.Profiles(),
+		sessionOptions.frameSyncProfileIdentity);
+	if (!frameSyncProfile) { fail(EffectParametersSaveError::SessionExpired); return; }
+	FrameSyncSettings mergedFrameSync = frameSyncProfile->frameSync;
 	if (!MergeFrameSyncSettings(mergedFrameSync, request.previousFrameSync, request.frameSync)) {
 		fail(EffectParametersSaveError::Conflict);
 		return;
@@ -797,15 +803,21 @@ void ScalingService::_HandleEffectParametersRequest(
 		for (const auto& [name, value] : request.effects[i].parameters) {
 			after[StrHelper::UTF8ToUTF16(name)] = value;
 		}
+		if (destination.name == L"DLSSNR\\DLSSNR_AI_Filter") {
+			NormalizeDLSSNRDetailParameters(before);
+			NormalizeDLSSNRDetailParameters(after);
+			NormalizeDLSSNRDetailParameters(destination.parameters);
+		}
 		if (!MergeEffectParameterChanges(destination.parameters, before, after)) {
 			fail(EffectParametersSaveError::Conflict);
 			return;
 		}
 	}
 	mode.effects = std::move(merged);
-	settings.IsFrontEdgeSyncEnabled(mergedFrameSync.enabled);
-	settings.FrontEdgeSyncFrameRate(mergedFrameSync.frameRate);
-	settings.SetFrameSyncMode(mergedFrameSync.mode);
+	if (frameSyncProfile->frameSync != mergedFrameSync) {
+		frameSyncProfile->frameSync = mergedFrameSync;
+		ProfileService::Get().FrameSyncChanged.Invoke(*frameSyncProfile);
+	}
 	if (sessionOptions.parameterSession) sessionOptions.parameterSession->DesiredFrameSync(mergedFrameSync);
 	for (uint32_t i = 0; i < mode.effects.size(); ++i) {
 		ScalingModesService::Get().EffectParametersChanged.Invoke(sessionOptions.scalingModeIdx, i);

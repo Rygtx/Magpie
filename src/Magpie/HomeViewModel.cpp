@@ -24,11 +24,6 @@ using namespace Magpie;
 namespace winrt::Magpie::implementation {
 
 HomeViewModel::HomeViewModel() {
-	_frameSyncChangedRevoker = AppSettings::Get().FrontEdgeSyncChanged(auto_revoke, [this] {
-		RaisePropertyChanged(L"IsFrontEdgeSyncEnabled");
-		RaisePropertyChanged(L"FrontEdgeSyncFrameRate");
-		RaisePropertyChanged(L"FrameSyncModeIndex");
-	});
 	_issueChangedRevoker = ErrorService::Get().Changed(auto_revoke, [this] {
 		RaisePropertyChanged(L"ShowRecentIssue");
 		RaisePropertyChanged(L"RecentIssueSummary");
@@ -489,10 +484,6 @@ void HomeViewModel::IsInlineParams(bool value) {
 	RaisePropertyChanged(L"IsInlineParams");
 }
 
-bool HomeViewModel::IsFrontEdgeSyncEnabled() const noexcept {
-	return AppSettings::Get().IsFrontEdgeSyncEnabled();
-}
-
 bool HomeViewModel::IsStopEffectsOnTaskSwitchEnabled() const noexcept {
 	return AppSettings::Get().IsStopEffectsOnTaskSwitchEnabled();
 }
@@ -504,13 +495,6 @@ void HomeViewModel::IsStopEffectsOnTaskSwitchEnabled(bool value) {
 	RaisePropertyChanged(L"IsStopEffectsOnTaskSwitchEnabled");
 }
 
-void HomeViewModel::IsFrontEdgeSyncEnabled(bool value) {
-	auto& settings = AppSettings::Get();
-	if (settings.IsFrontEdgeSyncEnabled() == value) return;
-	settings.IsFrontEdgeSyncEnabled(value);
-	RaisePropertyChanged(L"IsFrontEdgeSyncEnabled");
-}
-
 bool HomeViewModel::IsVRREnabled() const noexcept {
 	return AppSettings::Get().IsVRREnabled();
 }
@@ -520,26 +504,6 @@ void HomeViewModel::IsVRREnabled(bool value) {
 	if (settings.IsVRREnabled() == value) return;
 	settings.IsVRREnabled(value);
 	RaisePropertyChanged(L"IsVRREnabled");
-}
-
-int32_t HomeViewModel::FrameSyncModeIndex() const noexcept {
-	return static_cast<int32_t>(AppSettings::Get().GetFrameSyncMode());
-}
-
-void HomeViewModel::FrameSyncModeIndex(int32_t value) {
-	if (value < 0 || value > static_cast<int32_t>(FrameSyncMode::Reflex)) return;
-	AppSettings::Get().SetFrameSyncMode(static_cast<FrameSyncMode>(value));
-}
-
-double HomeViewModel::FrontEdgeSyncFrameRate() const noexcept {
-	return AppSettings::Get().FrontEdgeSyncFrameRate();
-}
-
-void HomeViewModel::FrontEdgeSyncFrameRate(double value) {
-	// A cleared NumberBox reports NaN; leave the last valid setting intact.
-	if (!std::isfinite(value)) return;
-	AppSettings::Get().FrontEdgeSyncFrameRate(static_cast<float>(value));
-	RaisePropertyChanged(L"FrontEdgeSyncFrameRate");
 }
 
 static constexpr std::array MIN_FRAME_RATE_OPTIONS{ 0,5,10,15,20,30,60 };

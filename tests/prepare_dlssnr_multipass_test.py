@@ -32,7 +32,7 @@ for block in shader.split("//!PARAMETER\n")[1:]:
     match = re.search(r"^(?:int|float) (\w+);", block, re.M)
     assert match and match[1] not in blocks
     blocks[match[1]] = block[:match.end()]
-assert len(blocks) == 42
+assert len(blocks) == 41
 assert "residualColorMode" not in blocks and "residualShowProtection" not in blocks
 anti = blocks["antiFlicker"]
 assert list(blocks).index("antiFlicker") == list(blocks).index("multiPass") + 1

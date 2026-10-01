@@ -81,16 +81,10 @@ struct HomeViewModel : HomeViewModelT<HomeViewModel>, wil::notify_property_chang
 	bool IsInlineParams() const noexcept;
 	void IsInlineParams(bool value);
 
-	bool IsFrontEdgeSyncEnabled() const noexcept;
 	bool IsStopEffectsOnTaskSwitchEnabled() const noexcept;
 	void IsStopEffectsOnTaskSwitchEnabled(bool value);
-	void IsFrontEdgeSyncEnabled(bool value);
 	bool IsVRREnabled() const noexcept;
 	void IsVRREnabled(bool value);
-	double FrontEdgeSyncFrameRate() const noexcept;
-	void FrontEdgeSyncFrameRate(double value);
-	int32_t FrameSyncModeIndex() const noexcept;
-	void FrameSyncModeIndex(int32_t value);
 
 	static IVector<IInspectable> MinFrameRateOptions();
 
@@ -147,7 +141,6 @@ private:
 
 	::Magpie::Event<bool, bool>::EventRevoker _isTimerOnRevoker;
 	::Magpie::Event<>::EventRevoker _issueChangedRevoker;
-	::Magpie::Event<>::EventRevoker _frameSyncChangedRevoker;
 	::Magpie::Event<double>::EventRevoker _timerTickRevoker;
 	::Magpie::Event<bool>::EventRevoker _isScalingChangedRevoker;
 	::Magpie::Event<bool>::EventRevoker _isShowOnHomePageChangedRevoker;

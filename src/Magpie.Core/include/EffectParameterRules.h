@@ -25,7 +25,8 @@ template<class GetValue>
 bool IsEffectParameterVisible(std::string_view effect, std::string_view parameter,
 	GetValue&& getValue) noexcept {
 	if (effect == "DLSSNR\\DLSSNR_AI_Filter" &&
-		DLSSNRParameterPass(parameter) > DLSSNRPassCount(getValue)) return false;
+		(parameter == "residualChromaTemporalStrength" ||
+		 DLSSNRParameterPass(parameter) > DLSSNRPassCount(getValue))) return false;
 	if (HasOpticalFlowSelection(effect)) {
 		const float method = getValue("opticalFlowMethod", effect == "XeSSFG\\XeSS_FrameGeneration" ? 1.0f : 0.0f);
 		if (parameter == "amdOpticalFlowMode") return method == 1.0f;
@@ -46,8 +47,6 @@ bool IsEffectParameterVisible(std::string_view effect, std::string_view paramete
 template<class GetValue>
 bool IsEffectParameterEnabled(std::string_view effect, std::string_view parameter,
 	bool frontEdgeSyncEnabled, GetValue&& getValue) noexcept {
-	if (effect == "DLSSNR\\DLSSNR_AI_Filter" && parameter == "residualChromaTemporalStrength")
-		return DLSSNRAntiFlickerMode(getValue) != 0;
 	if (IsFrameRateFilterEffect(effect)) {
 		if (parameter == "frameRateMode") return !frontEdgeSyncEnabled;
 		if (parameter == "targetFrameRate") {

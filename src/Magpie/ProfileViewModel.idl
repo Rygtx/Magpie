@@ -47,6 +47,10 @@ namespace Magpie {
 		Boolean IsShowGraphicsCardSettingsCard { get; };
 		Boolean IsNoGraphicsCard { get; };
 
+		Boolean IsFrontEdgeSyncEnabled;
+		Double FrontEdgeSyncFrameRate;
+		Int32 FrameSyncModeIndex;
+
 		Boolean IsFrameRateLimiterEnabled;
 		Double MaxFrameRate;
 

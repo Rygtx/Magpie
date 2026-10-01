@@ -98,10 +98,10 @@ foreach ($family in @('Denoise', 'VSR')) {
 }
 # 069 updates the current DLSSNR entry, keeping the source audit historical.
 $detailNr = $effects | Where-Object { $_.id -eq 'DLSSNR\DLSSNR_AI_Filter' }
-$detailNote = ' SDR 细节控制：统一修正算法，旧配置保留参数数值并自动迁移，画面表现可能变化。支持色相变化保护、暗部／高光保护、局部失控压缩、大范围／细节修正与色度时域稳定（需开启 Anti-Flicker）。'
+$detailNote = ' SDR 细节控制：调节总强度、色度和明暗修正。进阶调整包含色相／暗部／亮部保护、过度修正抑制、低频／高频范围强度和诊断视图。抗闪烁稳定连续帧的明暗与颜色。'
 $detailNr.summary += $detailNote
 $detailNr.details += "`n`n" + $detailNote.TrimStart()
-$detailNr.search += ' 进阶调整 色相变化保护 局部失控压缩 色度时域稳定'
+$detailNr.search += ' 进阶调整 色相保护 过度修正抑制 低频范围强度 高频范围强度'
 # 068 merges the two historical XeSSFG entries; retain the original review as evidence.
 $effects = @($effects | Where-Object { $_.id -ne 'XeSSFG\XeSS_MultiFrameGeneration_ZeroMV' })
 $xess = $effects | Where-Object { $_.id -eq 'XeSSFG\XeSS_FrameGeneration_x2_ZeroMV' }

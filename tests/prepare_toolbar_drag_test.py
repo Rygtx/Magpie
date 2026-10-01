@@ -26,7 +26,7 @@ parts = [block(drawer, name) for name in [
     'static std::string FormatToolbarTooltip(',
     'bool OverlayDrawer::_DrawToolbar(',
     'void OverlayDrawer::_DrawToolbarDockHints(',
-    'bool OverlayDrawer::IsToolbarHandleAt(',
+    'bool OverlayDrawer::IsToolbarAt(',
     'float OverlayDrawer::_CalcToolbarAlpha()',
     'OverlaySessionState OverlayDrawer::CaptureSessionState()',
     'void OverlayDrawer::RestoreSessionState(',
@@ -48,7 +48,7 @@ parts.append('std::string SaveDocks(const Profile& profile) {\n'
 # Declare the session before the mock OverlayDrawer declaration uses it.
 (output / 'ToolbarSession.inc').write_text(parts.pop(0), encoding='utf-8')
 # Instrument the real Button calls to validate each resulting item rectangle.
-(output / 'ToolbarDragProduction.inc').write_text('\n\n'.join(parts).replace('ImGui::Button(', 'TrackedToolbarButton('), encoding='utf-8')
+(output / 'ToolbarDragProduction.inc').write_text('\n\n'.join(parts).replace('ImGui::Button(', 'TrackedToolbarButton(').replace('ImGui::TextUnformatted(fpsText.c_str());','TrackedToolbarText(fpsText.c_str());'), encoding='utf-8')
 icons = read('src/Magpie.Core/OverlayHelper.h')
 icons = icons[icons.index('\tstruct SegoeIcons {'):icons.index('\n\tstatic constexpr const ImColor TIMELINE_COLORS')]
 (output / 'ToolbarIcons.inc').write_text(icons, encoding='utf-8')
@@ -57,7 +57,7 @@ for locale in ['en-US', 'zh-Hans', 'zh-Hant']:
     resources = ET.fromstring(read(f'src/Magpie/Resources.language-{locale}.resw'))
     values = {n.get('name'): n.findtext('value') for n in resources.findall('data')}
     assert len(values) == len(resources.findall('data')), locale
-    assert values.get('Overlay_Toolbar_Move'), locale
+    assert 'Overlay_Toolbar_Move' not in values, locale
     assert values.get('Home_Toolbar.Description'), locale
 
 profile = read('src/Magpie/Profile.h')
@@ -65,7 +65,8 @@ assert 'toolbarDocks = other.toolbarDocks;' in block(profile, 'void Copy(')
 assert 'runtimeIdentity' not in block(profile, 'void Copy(')
 assert 'toolbarDocks = profile.toolbarDocks;' in read('src/Magpie/ScalingService.cpp')
 hit = block(read('src/Magpie.Core/ScalingWindow.cpp'), 'case WM_NCHITTEST:')
-assert hit.index('IsToolbarHandleAt') < hit.index('IsCursorOnOverlayCaptionArea') < hit.index('SrcHitTest')
+assert hit.index('IsToolbarAt') < hit.index('SrcHitTest')
+assert 'HTCAPTION' not in hit
 assert 'ImGuiWindowFlags_NoSavedSettings' in block(drawer, 'bool OverlayDrawer::_DrawToolbar(')
 assert 'GetBackgroundDrawList' in block(drawer, 'void OverlayDrawer::_DrawToolbarDockHints(')
 assert 'toolbar' not in block(read('src/Magpie.Core/include/ScalingOptions.h'), 'struct OverlayOptions')

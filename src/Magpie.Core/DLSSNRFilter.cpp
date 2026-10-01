@@ -48,7 +48,7 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) 
 		.residualLocalCompression = getClamped("residualLocalCompression", 0.f, 0.f, 1.f),
 		.residualLowFrequencyGain = getClamped("residualLowFrequencyGain", 1.f, 0.f, 2.f),
 		.residualDetailGain = getClamped("residualDetailGain", 1.f, 0.f, 2.f),
-		.residualChromaTemporalStrength = getClamped("residualChromaTemporalStrength", 0.f, 0.f, 1.f),
+		.residualChromaTemporalStrength = 0.f,
 		.residualDebugView = static_cast<int>(std::lround(getClamped("residualDebugView", 0.f, 0.f, 7.f))),
 		.style = std::clamp(static_cast<int>(std::lround(
 			getParameter("style", 0.0f))), 0, 2),
@@ -1929,7 +1929,7 @@ bool DLSSNRFilter::InitializeChain(DeviceResources& resources, NgxD3D12Core& ngx
 	_settings.residualLocalCompression = ClampFinite(_settings.residualLocalCompression,0.f,1.f,0.f);
 	_settings.residualLowFrequencyGain = ClampFinite(_settings.residualLowFrequencyGain,0.f,2.f,1.f);
 	_settings.residualDetailGain = ClampFinite(_settings.residualDetailGain,0.f,2.f,1.f);
-	_settings.residualChromaTemporalStrength = ClampFinite(_settings.residualChromaTemporalStrength,0.f,1.f,0.f);
+	_settings.residualChromaTemporalStrength = 0.f;
 	_settings.residualDebugView = std::clamp(_settings.residualDebugView,0,7);
 	_settings.intensity = ClampFinite(
 		_settings.intensity, 0.0f, 2.0f, 1.0f);

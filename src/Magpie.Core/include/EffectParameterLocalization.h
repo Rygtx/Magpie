@@ -20,10 +20,10 @@ struct EffectParameterLocalization {
 		return std::string(fallback);
 	}
 
-	// Display-only help shared by XAML and the runtime overlay. Numeric help is
-	// generated from the same descriptor as the control, never duplicated copy.
+	// Display-only help shared by XAML and the runtime overlay. DLSSNR names
+	// show purpose only; other effects retain their descriptor-based numeric help.
 	static std::string Tooltip(std::string_view effect, const EffectParameterDesc& parameter,
-		bool enabled = true) {
+		bool /*enabled*/ = true) {
 		const std::string_view base = effect == "DLSSNR\\DLSSNR_AI_Filter"
 			? DLSSNRBaseParameter(parameter.name) : std::string_view(parameter.name);
 		std::string text = Resource(L"EffectParam_" + KeyPart(effect) + L"_" + KeyPart(base) + L"_Description");
@@ -31,6 +31,7 @@ struct EffectParameterLocalization {
 			const auto newline = parameter.label.find('\n');
 			if (newline != std::string::npos) text = parameter.label.substr(newline + 1);
 		}
+		if (effect == "DLSSNR\\DLSSNR_AI_Filter") return text;
 		auto append = [&](std::string value) {
 			if (!text.empty()) text += '\n';
 			text += value;
@@ -48,9 +49,6 @@ struct EffectParameterLocalization {
 					Resource(L"EffectParameter_Help_Default", "Default"), double(constant.defaultValue),
 					Resource(L"EffectParameter_Help_Step", "Step"), double(constant.step)));
 			}, parameter.constant);
-		}
-		if (!enabled && base == "residualChromaTemporalStrength" && effect == "DLSSNR\\DLSSNR_AI_Filter") {
-			append(Resource(L"EffectParameter_Help_AntiFlickerRequired", "Enable Anti-flicker to adjust this parameter."));
 		}
 		return text;
 	}

@@ -208,10 +208,6 @@ EffectParametersViewModel::EffectParametersViewModel(uint32_t scalingModeIdx, ui
 		_groups = single_threaded_vector(std::move(groups));
 	}
 	_SynchronizeParameters();
-	if (IsFrameRateFilterEffect(StrHelper::UTF16ToUTF8(_effectInfo->name))) {
-		_frontEdgeSyncChangedRevoker = AppSettings::Get().FrontEdgeSyncChanged(
-			auto_revoke, [this] { if (!_IsRemoved()) _SynchronizeParameters(); });
-	}
 	_parameterChangedRevoker = ScalingModesService::Get().EffectParametersChanged(
 		auto_revoke, [this](uint32_t mode, uint32_t effect) {
 			if (!_IsRemoved() && mode == _scalingModeIdx && effect == _effectIdx) _SynchronizeParameters();
@@ -289,7 +285,7 @@ void EffectParametersViewModel::_RefreshConditionalVisibility() {
 		if (descriptor == _effectInfo->params.end()) return fallback;
 		return descriptor->constant.index() == 0 ? std::get<0>(descriptor->constant).defaultValue : float(std::get<1>(descriptor->constant).defaultValue);
 	};
-	const bool frontEdgeSyncEnabled = AppSettings::Get().IsFrontEdgeSyncEnabled();
+	const bool frontEdgeSyncEnabled = false;
 	const bool wasSynchronizing = std::exchange(_synchronizing, true);
 	auto reset = wil::scope_exit([this, wasSynchronizing] { _synchronizing = wasSynchronizing; });
 	for (const auto& parameter : _parameterImpls) {

@@ -297,7 +297,6 @@ private:
 	std::vector<com_ptr<EffectParameterGroupViewModel>> _groupImpls;
 	std::vector<com_ptr<ScalingModeParameter>> _parameterImpls;
 	::Magpie::Event<uint32_t, uint32_t>::EventRevoker _parameterChangedRevoker;
-	::Magpie::Event<>::EventRevoker _frontEdgeSyncChangedRevoker;
 	bool _synchronizing = false;
 	void _SynchronizeParameters();
 

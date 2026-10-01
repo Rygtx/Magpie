@@ -950,13 +950,9 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 			break;
 		}
 
-		// The dedicated grip remains client input even at a source resize edge.
-		if (_renderer->IsToolbarHandleAt({ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) })) {
+		// Toolbar buttons and background remain client input at source resize edges.
+		if (_renderer->IsToolbarAt({ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) })) {
 			return HTCLIENT;
-		}
-		// 工具栏其余空白区域仍可拖动缩放窗口
-		if (_renderer->IsCursorOnOverlayCaptionArea()) {
-			return HTCAPTION;
 		}
 
 		const int16_t srcHitTest = _cursorManager->SrcHitTest();

@@ -478,6 +478,8 @@ struct ScalingOptions {
 	GraphicsCardId graphicsCardId;
 	float minFrameRate = 0.0f;
 	std::optional<float> maxFrameRate;
+	// Stable, weak identity of the profile used to start this session.
+	std::weak_ptr<const uint8_t> frameSyncProfileIdentity;
 	bool isFrontEdgeSyncEnabled = true;
 	bool isParameterFocusSwitchingEnabled = false;
 	bool isVRREnabled = false;

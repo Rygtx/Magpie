@@ -14,6 +14,7 @@
 #include "Logger.h"
 #include "MainWindow.h"
 #include "Profile.h"
+#include "ProfileFrameSync.h"
 #include "resource.h"
 #include "ScalingMode.h"
 #include "ScalingModesService.h"
@@ -88,6 +89,7 @@ static void WriteProfile(rapidjson::PrettyWriter<rapidjson::StringBuffer>& write
 		writer.String(StrHelper::UTF16ToUTF8(profile.launchParameters).c_str());
 	}
 
+	WriteProfileFrameSync(writer, profile.frameSync);
 	writer.Key("parameterFocusSwitching");
 	writer.Bool(profile.isParameterFocusSwitchingEnabled);
 	writer.Key("fullscreenToolbarDock");
@@ -824,16 +826,10 @@ std::string AppSettings::_Serialize(const _AppSettingsData& data) {
 	writer.Uint((uint32_t)data._duplicateFrameDetectionMode);
 	writer.Key("enableStatisticsForDynamicDetection");
 	writer.Bool(data._isStatisticsForDynamicDetectionEnabled);
-	writer.Key("frontEdgeSync");
-	writer.Bool(data._isFrontEdgeSyncEnabled);
 	writer.Key("stopEffectsOnTaskSwitch");
 	writer.Bool(data._isStopEffectsOnTaskSwitchEnabled);
 	writer.Key("vrr");
 	writer.Bool(data._isVRREnabled);
-	writer.Key("frontEdgeSyncFrameRate");
-	writer.Double(data._frontEdgeSyncFrameRate);
-	writer.Key("frameSyncMode");
-	writer.Uint(static_cast<uint32_t>(data._frameSyncMode));
 	writer.Key("minFrameRate");
 	writer.Double(data._minFrameRate);
 	writer.Key("disableFP16");
@@ -851,6 +847,8 @@ std::string AppSettings::_Serialize(const _AppSettingsData& data) {
 
 	ScalingModesService::Export(writer, data._scalingModes);
 
+	writer.Key("experimentalProfileFrameSyncVersion");
+	writer.Uint(1);
 	writer.Key("profiles");
 	writer.StartArray();
 	WriteProfile(writer, data._defaultProfile);
@@ -1036,7 +1034,15 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 	}
 	JsonHelper::ReadBool(root, "enableStatisticsForDynamicDetection", _isStatisticsForDynamicDetectionEnabled);
 	JsonHelper::ReadFloat(root, "minFrameRate", _minFrameRate);
-	JsonHelper::ReadBool(root, "frontEdgeSync", _isFrontEdgeSyncEnabled);
+	const FrameSyncSettings legacyFrameSync = ReadProfileFrameSync(root);
+	_defaultProfile.frameSync = legacyFrameSync;
+	uint32_t profileFrameSyncVersion = 0;
+	JsonHelper::ReadUInt(root, "experimentalProfileFrameSyncVersion", profileFrameSyncVersion);
+	if (profileFrameSyncVersion < 1 || root.HasMember("frontEdgeSync") ||
+		root.HasMember("frontEdgeSyncFrameRate") || root.HasMember("frameSyncMode")) {
+		_isConfigMigrationNeeded = true;
+		Logger::Get().Info("Migrating frame sync settings to independent profiles (version 1)");
+	}
 	// Migrate the former global choice only while loading existing profiles.
 	bool legacyParameterFocusSwitching = false;
 	JsonHelper::ReadBool(root, "parameterFocusSwitching", legacyParameterFocusSwitching);
@@ -1045,12 +1051,6 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 	_isStopEffectsOnTaskSwitchEnabled = false;
 	JsonHelper::ReadBool(root, "stopEffectsOnTaskSwitch", _isStopEffectsOnTaskSwitchEnabled);
 	JsonHelper::ReadBool(root, "vrr", _isVRREnabled);
-	JsonHelper::ReadFloat(root, "frontEdgeSyncFrameRate", _frontEdgeSyncFrameRate);
-	_frontEdgeSyncFrameRate = SanitizePresentationFrameRate(_frontEdgeSyncFrameRate);
-	uint32_t frameSyncMode = 0;
-	JsonHelper::ReadUInt(root, "frameSyncMode", frameSyncMode);
-	_frameSyncMode = IsValidFrameSyncMode(static_cast<FrameSyncMode>(frameSyncMode))
-		? static_cast<FrameSyncMode>(frameSyncMode) : FrameSyncMode::FrontEdge;
 	JsonHelper::ReadBool(root, "disableFP16", _isFP16Disabled);
 
 	[[maybe_unused]] bool result = ScalingModesService::Get().Import(root, true);
@@ -1114,9 +1114,12 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 
 		const rapidjson::SizeType size = scaleProfilesArray.Size();
 		if (size > 0) {
+			for (const auto& item : scaleProfilesArray) {
+				if (item.IsObject() && !HasProfileFrameSync(item.GetObj())) _isConfigMigrationNeeded = true;
+			}
 			if (scaleProfilesArray[0].IsObject()) {
 				// 解析默认缩放配置不会失败
-				_LoadProfile(scaleProfilesArray[0].GetObj(), _defaultProfile, true, legacyParameterFocusSwitching);
+				_LoadProfile(scaleProfilesArray[0].GetObj(), _defaultProfile, true, legacyParameterFocusSwitching, legacyFrameSync);
 			}
 
 			if (size > 1) {
@@ -1127,7 +1130,7 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 					}
 
 					Profile& rule = _profiles.emplace_back();
-					if (!_LoadProfile(scaleProfilesArray[i].GetObj(), rule, false, legacyParameterFocusSwitching)) {
+					if (!_LoadProfile(scaleProfilesArray[i].GetObj(), rule, false, legacyParameterFocusSwitching, legacyFrameSync)) {
 						_profiles.pop_back();
 						continue;
 					}
@@ -1202,8 +1205,10 @@ bool AppSettings::_LoadProfile(
 	const rapidjson::GenericObject<true, rapidjson::Value>& profileObj,
 	Profile& profile,
 	bool isDefault,
-	bool legacyParameterFocusSwitching
+	bool legacyParameterFocusSwitching,
+	const FrameSyncSettings& legacyFrameSync
 ) const noexcept {
+	profile.frameSync = ReadProfileFrameSync(profileObj, legacyFrameSync);
 	profile.isParameterFocusSwitchingEnabled = legacyParameterFocusSwitching;
 	JsonHelper::ReadBool(profileObj, "parameterFocusSwitching", profile.isParameterFocusSwitchingEnabled);
 	{

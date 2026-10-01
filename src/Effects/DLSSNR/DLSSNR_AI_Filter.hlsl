@@ -25,7 +25,7 @@ int inputResolutionPercent;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Overall Correction Strength
+//!LABEL Overall Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
@@ -34,7 +34,7 @@ float residualMultiplier;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Chroma Change Strength
+//!LABEL Chroma Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
@@ -43,7 +43,7 @@ float residualSaturation;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Lightness Change Strength
+//!LABEL Overall Lightness Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
@@ -52,7 +52,7 @@ float residualLightness;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Darkening Correction Strength
+//!LABEL Shadow / Structure Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
@@ -61,7 +61,7 @@ float shadowStructureMultiplier;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Brightening Correction Strength
+//!LABEL Highlight / Glow Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
@@ -88,7 +88,7 @@ int opticalFlowMethod;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL OF Quality
+//!LABEL Optical Flow Quality
 //!DEFAULT 1
 //!OPTION 0 Performance
 //!OPTION 1 Quality
@@ -96,7 +96,7 @@ int amdOpticalFlowMode;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL OF Quality
+//!LABEL Optical Flow Quality
 //!DEFAULT 2
 //!OPTION 1 Performance
 //!OPTION 2 Balanced
@@ -107,7 +107,7 @@ int nvidiaOpticalFlowQuality;
 
 //!PARAMETER
 //!GROUP Advanced Adjustments
-//!LABEL Hue Change Protection
+//!LABEL Hue Protection
 //!DEFAULT 0
 //!MIN 0
 //!MAX 1
@@ -116,7 +116,7 @@ float residualHueProtection;
 
 //!PARAMETER
 //!GROUP Advanced Adjustments
-//!LABEL Dark Protection
+//!LABEL Shadow Protection
 //!DEFAULT 0
 //!MIN 0
 //!MAX 1
@@ -134,7 +134,7 @@ float residualHighlightProtection;
 
 //!PARAMETER
 //!GROUP Advanced Adjustments
-//!LABEL Local Correction Compression
+//!LABEL Overcorrection Suppression
 //!DEFAULT 0
 //!MIN 0
 //!MAX 1
@@ -143,7 +143,7 @@ float residualLocalCompression;
 
 //!PARAMETER
 //!GROUP Advanced Adjustments
-//!LABEL Broad Correction Strength
+//!LABEL Low-frequency Range Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
@@ -152,21 +152,12 @@ float residualLowFrequencyGain;
 
 //!PARAMETER
 //!GROUP Advanced Adjustments
-//!LABEL Detail Correction Strength
+//!LABEL High-frequency Range Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
 //!STEP 0.05
 float residualDetailGain;
-
-//!PARAMETER
-//!GROUP Advanced Adjustments
-//!LABEL Chroma Temporal Stability
-//!DEFAULT 0
-//!MIN 0
-//!MAX 1
-//!STEP 0.05
-float residualChromaTemporalStrength;
 
 //!PARAMETER
 //!GROUP Advanced Adjustments

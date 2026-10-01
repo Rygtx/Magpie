@@ -114,11 +114,11 @@ int main(int argc,char** argv) {
     assert(argc==2);
     // Metadata/migration tests use the same helper as production UI/import.
     for (float mode : {0.f,1.f,.5f,-1.f,std::numeric_limits<float>::quiet_NaN()}) {
-        std::map<std::wstring,float> old{{L"residualColorMode",mode},{L"residualShowProtection",1.f},
+        std::map<std::wstring,float> old{{L"residualChromaTemporalStrength",mode},{L"residualColorMode",mode},{L"residualShowProtection",1.f},
             {L"residualShowAdvanced",0.f},{L"residualSaturation",.65f},{L"residualMultiplier",1.8f},
             {L"residualHueProtection",.35f},{L"pass2_intensity",.7f},{L"multiPass",3.f}};
         assert(Magpie::NormalizeDLSSNRDetailParameters(old));
-        assert(!old.contains(L"residualColorMode") && !old.contains(L"residualShowProtection"));
+        assert(!old.contains(L"residualChromaTemporalStrength") && !old.contains(L"residualColorMode") && !old.contains(L"residualShowProtection"));
         assert(old.at(L"residualShowAdvanced")==1 && old.at(L"residualSaturation")==.65f);
         assert(old.at(L"residualMultiplier")==1.8f && old.at(L"residualHueProtection")==.35f);
         assert(old.at(L"pass2_intensity")==.7f && old.at(L"multiPass")==3);
@@ -138,9 +138,9 @@ int main(int argc,char** argv) {
     assert(Magpie::IsEffectParameterVisible("DLSSNR\\DLSSNR_AI_Filter","residualHueProtection",get));
     values["residualShowAdvanced"]=0;
     assert(!Magpie::IsEffectParameterVisible("DLSSNR\\DLSSNR_AI_Filter","residualDebugView",get));
-    assert(!Magpie::IsEffectParameterEnabled("DLSSNR\\DLSSNR_AI_Filter","residualChromaTemporalStrength",false,get));
+    assert(!Magpie::IsEffectParameterVisible("DLSSNR\\DLSSNR_AI_Filter","residualChromaTemporalStrength",get));
     values["antiFlicker"]=2;
-    assert(Magpie::IsEffectParameterEnabled("DLSSNR\\DLSSNR_AI_Filter","residualChromaTemporalStrength",false,get));
+    assert(!Magpie::IsEffectParameterVisible("DLSSNR\\DLSSNR_AI_Filter","residualChromaTemporalStrength",get));
     Compile(COLOR_CONVERT_HLSL,"ConvertToRgba");
     Compile(COLOR_DOWNSAMPLE_HLSL,"DownsampleColorVertical");
     Compile(COLOR_DOWNSAMPLE_HLSL,"DownsampleColorHorizontal");

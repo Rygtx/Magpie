@@ -109,6 +109,13 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 
 	bool IsNoGraphicsCard() const noexcept;
 
+	bool IsFrontEdgeSyncEnabled() const noexcept;
+	void IsFrontEdgeSyncEnabled(bool value);
+	double FrontEdgeSyncFrameRate() const noexcept;
+	void FrontEdgeSyncFrameRate(double value);
+	int32_t FrameSyncModeIndex() const noexcept;
+	void FrameSyncModeIndex(int32_t value);
+
 	bool IsFrameRateLimiterEnabled() const noexcept;
 	void IsFrameRateLimiterEnabled(bool value);
 
@@ -189,6 +196,7 @@ private:
 	::Magpie::MultithreadEvent<bool>::EventRevoker _appThemeChangedRevoker;
 	::Magpie::Event<uint32_t>::EventRevoker _dpiChangedRevoker;
 	::Magpie::Event<>::EventRevoker _adaptersChangedRevoker;
+	::Magpie::Event<::Magpie::Profile&>::EventRevoker _frameSyncChangedRevoker;
 
 	IconElement _icon{ nullptr };
 	IVector<IInspectable> _monitorOptions{ nullptr };

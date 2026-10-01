@@ -912,9 +912,6 @@
   <data name="Overlay_Toolbar_Demo" xml:space="preserve">
     <value>ImGui 示範視窗</value>
   </data>
-  <data name="Overlay_Toolbar_Move" xml:space="preserve">
-    <value>移動工具列（拖曳到頂部或底部）</value>
-  </data>
   <data name="Overlay_Toolbar_Pin" xml:space="preserve">
     <value>固定工具列</value>
   </data>
@@ -1198,11 +1195,11 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity_Label" xml:space="preserve"><value>NR 強度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Label" xml:space="preserve"><value>局部結構強度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Label" xml:space="preserve"><value>局部色調強度</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>變亮修正強度</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>明度變化強度</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>總修正強度</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Label" xml:space="preserve"><value>色度變化強度</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Label" xml:space="preserve"><value>變暗修正強度</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>亮部/發光強度</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>明度總強度</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>總強度</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Label" xml:space="preserve"><value>色度強度</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Label" xml:space="preserve"><value>暗部/結構強度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Label" xml:space="preserve"><value>皮膚結構強度</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_style_Label" xml:space="preserve"><value>NR 風格</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_uiCorrection_Label" xml:space="preserve"><value>NR 介面修正</value></data>
@@ -1648,15 +1645,14 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_4" xml:space="preserve"><value>低頻時域重建</value></data>
   <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重複影格過濾</value></data>
   <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重複影格過濾</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHueProtection_Label" xml:space="preserve"><value>色相變化保護</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHueProtection_Label" xml:space="preserve"><value>色相保護</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDarkProtection_Label" xml:space="preserve"><value>暗部保護</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHighlightProtection_Label" xml:space="preserve"><value>高光保護</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Label" xml:space="preserve"><value>局部失控壓縮</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHighlightProtection_Label" xml:space="preserve"><value>亮部保護</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Label" xml:space="preserve"><value>過度修正抑制</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualShowAdvanced_Label" xml:space="preserve"><value>進階調整</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Label" xml:space="preserve"><value>大範圍修正強度</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDetailGain_Label" xml:space="preserve"><value>細節修正強度</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualChromaTemporalStrength_Label" xml:space="preserve"><value>色度時域穩定</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Label" xml:space="preserve"><value>診斷檢視</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Label" xml:space="preserve"><value>低頻範圍強度</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDetailGain_Label" xml:space="preserve"><value>高頻範圍強度</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Label" xml:space="preserve"><value>診斷視圖</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_0" xml:space="preserve"><value>最終圖</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_1" xml:space="preserve"><value>原始總殘差</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_2" xml:space="preserve"><value>受控總殘差</value></data>
@@ -1666,42 +1662,41 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_6" xml:space="preserve"><value>色域壓縮比例</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_7" xml:space="preserve"><value>局部壓縮比例</value></data>
   <data name="Profile_Cursor_Refresh.Header" xml:space="preserve"><value>游標重新整理</value></data>
-  <data name="Profile_Cursor_Refresh.Description" xml:space="preserve"><value>控制游標繪製，滑鼠輸入仍正常回應。下次啟動縮放時生效。</value></data>
+  <data name="Profile_Cursor_Refresh.Description" xml:space="preserve"><value>控制游標更新，重新啟動縮放後生效。</value></data>
   <data name="Profile_Cursor_Refresh_Original.Header" xml:space="preserve"><value>優先隨原始內容影格更新</value></data>
-  <data name="Profile_Cursor_Refresh_Original.Description" xml:space="preserve"><value>在新的擷取內容影格之間保持游標狀態。關閉下方最低重新整理後，移動不再要求額外呈現；可見性與游標歸屬切換仍會更新。</value></data>
+  <data name="Profile_Cursor_Refresh_Original.Description" xml:space="preserve"><value>優先隨內容影格更新游標。</value></data>
   <data name="Profile_Cursor_Refresh_Minimum.Header" xml:space="preserve"><value>保持游標最低重新整理率</value></data>
-  <data name="Profile_Cursor_Refresh_Minimum.Description" xml:space="preserve"><value>內容更新緩慢或暫停時，重用已呈現畫面更新變動的游標。此值為目標下限，並非上限，受顯示器與呈現容量限制。</value></data>
+  <data name="Profile_Cursor_Refresh_Minimum.Description" xml:space="preserve"><value>內容更新較慢時，更新變化的游標。</value></data>
   <data name="Profile_Cursor_Refresh_Rate.Header" xml:space="preserve"><value>最低重新整理率</value></data>
-  <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>範圍 1–1000 FPS，預設 60。游標不變時不要求額外呈現。</value></data>
-  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>FG 效果優先使用自身的重複影格設定。無 FG 時採用此全域設定，3D 遊戲模式保留現有略過規則。游標更新在應用程式設定中調整。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description" xml:space="preserve"><value>以較小輸入進行 NR，再將修正重建到原圖尺寸。降低輸入解析度可減少成本，也可能降低品質。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent_Description" xml:space="preserve"><value>NR 輸入寬高佔原圖的百分比。100% 保持原尺寸，仍啟用修正控制。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Description" xml:space="preserve"><value>調節 NR 帶來的整體變化。0 回到原圖，1 保留原始修正，超過 1 放大修正。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Description" xml:space="preserve"><value>調節 NR 帶來的顏色變化幅度；不等同於調整整幅畫面的飽和度。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Description" xml:space="preserve"><value>調節 NR 帶來的明暗變化幅度。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Description" xml:space="preserve"><value>調節使畫面變暗的修正；不等同於保護原圖暗區。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Description" xml:space="preserve"><value>調節使畫面變亮的修正；不表示自動識別反射或光暈。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualShowAdvanced_Description" xml:space="preserve"><value>顯示進階控制和診斷檢視。收起時保留參數數值與效果。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHueProtection_Description" xml:space="preserve"><value>減少 NR 導致的顏色方向偏移；調大時增強保護，不保證完全鎖定色相。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDarkProtection_Description" xml:space="preserve"><value>減少原圖深暗區域受到的修改。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHighlightProtection_Description" xml:space="preserve"><value>減少高亮區域受到的修改，限制過強變化。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Description" xml:space="preserve"><value>收斂局部過大的修正，較小修正受影響較少。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Description" xml:space="preserve"><value>調節修正中平緩變化的部分；目前基於局部鄰域，並非全域調色。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDetailGain_Description" xml:space="preserve"><value>調節修正中的細碎變化；不等同於給原圖額外銳化。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualChromaTemporalStrength_Description" xml:space="preserve"><value>增加連續影格之間的顏色穩定程度。0 不增加額外色度穩定，需要開啟抗閃爍。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Description" xml:space="preserve"><value>觀察修正、明度／色度變化、保護、色域壓縮或局部壓縮；選擇「最終圖」恢復正常輸出。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Description" xml:space="preserve"><value>選擇提供運動引導的光流方法。「無」關閉顯式光流；時域模式可能自行請求運動引導。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Description" xml:space="preserve"><value>選擇 AMD 光流的效能或品質預設。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Description" xml:space="preserve"><value>選擇 NVIDIA 光流的品質／成本預設。更高品質需要更多處理。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_style_Description" xml:space="preserve"><value>選擇 NR 模型風格：0 預設，1 自然，2 電影。請結合實際內容比較觀感。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity_Description" xml:space="preserve"><value>設定傳給本層 NR 模型的處理強度；較大值請求更強處理。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Description" xml:space="preserve"><value>設定本層模型的局部色調處理強度。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Description" xml:space="preserve"><value>設定本層模型的局部結構處理強度。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Description" xml:space="preserve"><value>設定本層模型的皮膚結構控制值；這是模型輸入，不是獨立的人臉辨識功能。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_useAutoMask_Description" xml:space="preserve"><value>啟用本層模型的自動遮罩選項。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_uiCorrection_Description" xml:space="preserve"><value>啟用本層模型的介面修正選項；請對比實際內容中的文字與介面細節。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_multiPass_Description" xml:space="preserve"><value>選擇 1–3 層順序執行的 NR，每層獨立調節。增加層數會增加處理成本。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Description" xml:space="preserve"><value>穩定連續影格的最終圖。靜態累積適合靜止內容，運動引導模式使用光流；請對比運動與殘影。</value></data>
+  <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>游標的目標最低更新率。</value></data>
+  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>跳過相同畫面。補幀使用效果器設定；3D 模式下無補幀時不偵測。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description" xml:space="preserve"><value>調整送入 NR 的輸入解析度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent_Description" xml:space="preserve"><value>設定 NR 輸入解析度佔原圖的比例。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Description" xml:space="preserve"><value>調節 NR 處理效果的整體強度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Description" xml:space="preserve"><value>調節 NR 帶來的顏色變化強度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Description" xml:space="preserve"><value>調節 NR 明暗變化的總強度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Description" xml:space="preserve"><value>調節 NR 變暗修正的強度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Description" xml:space="preserve"><value>調節 NR 變亮修正的強度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualShowAdvanced_Description" xml:space="preserve"><value>展開進階調整參數。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHueProtection_Description" xml:space="preserve"><value>減少 NR 對原畫面的色相變化。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDarkProtection_Description" xml:space="preserve"><value>減少 NR 對原畫面暗部的改動。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHighlightProtection_Description" xml:space="preserve"><value>減少 NR 對原畫面亮部的改動。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Description" xml:space="preserve"><value>減弱局部過強的修正。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Description" xml:space="preserve"><value>調節修正中平緩變化部分的強度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDetailGain_Description" xml:space="preserve"><value>調節修正中細節變化部分的強度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Description" xml:space="preserve"><value>查看各類修正和保護效果。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Description" xml:space="preserve"><value>選擇 NR 使用的光流方法。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Description" xml:space="preserve"><value>設定 AMD 光流品質。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Description" xml:space="preserve"><value>設定 NVIDIA 光流品質。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_style_Description" xml:space="preserve"><value>選擇本層 NR 的處理風格。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity_Description" xml:space="preserve"><value>調節本層 NR 的處理強度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Description" xml:space="preserve"><value>調節本層的局部色調處理強度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Description" xml:space="preserve"><value>調節本層的局部結構處理強度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Description" xml:space="preserve"><value>調節本層的皮膚結構處理強度。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_useAutoMask_Description" xml:space="preserve"><value>啟用本層 NR 的自動遮罩。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_uiCorrection_Description" xml:space="preserve"><value>改善本層 NR 處理後的介面與文字。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_multiPass_Description" xml:space="preserve"><value>設定連續執行的 NR 層數。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Description" xml:space="preserve"><value>穩定連續影格的畫面。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_Group_Advanced_Adjustments" xml:space="preserve"><value>進階調整</value></data>
   <data name="EffectParameter_Help_Range" xml:space="preserve"><value>範圍</value></data>
   <data name="EffectParameter_Help_Default" xml:space="preserve"><value>預設</value></data>

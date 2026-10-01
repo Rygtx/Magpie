@@ -88,7 +88,8 @@ private:
 
 	Event<winrt::Magpie::ShortcutAction>::EventRevoker _shortcutActivatedRevoker;
 	Event<winrt::Magpie::ShortcutAction>::EventRevoker _toolbarShortcutsChangedRevoker;
-	Event<>::EventRevoker _frameSyncChangedRevoker;
+	Event<Profile&>::EventRevoker _frameSyncChangedRevoker;
+	std::weak_ptr<const uint8_t> _activeFrameSyncProfile;
 
 	std::chrono::steady_clock::time_point _timerStartTimePoint;
 

@@ -939,9 +939,6 @@
   <data name="Overlay_Toolbar_Demo" xml:space="preserve">
     <value>ImGui Demo Window</value>
   </data>
-  <data name="Overlay_Toolbar_Move" xml:space="preserve">
-    <value>Move toolbar (drag to the top or bottom)</value>
-  </data>
   <data name="Overlay_Toolbar_Pin" xml:space="preserve">
     <value>Pin Toolbar</value>
   </data>
@@ -1231,11 +1228,11 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity_Label" xml:space="preserve"><value>NR Intensity</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Label" xml:space="preserve"><value>Local Structure Strength</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Label" xml:space="preserve"><value>Local Tone Strength</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>Brightening Correction Strength</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>Lightness Change Strength</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>Overall Correction Strength</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Label" xml:space="preserve"><value>Chroma Change Strength</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Label" xml:space="preserve"><value>Darkening Correction Strength</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Label" xml:space="preserve"><value>Highlight / Glow Strength</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Label" xml:space="preserve"><value>Overall Lightness Strength</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Label" xml:space="preserve"><value>Overall Strength</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Label" xml:space="preserve"><value>Chroma Strength</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Label" xml:space="preserve"><value>Shadow / Structure Strength</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Label" xml:space="preserve"><value>Skin Structure Strength</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_style_Label" xml:space="preserve"><value>NR Style</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_uiCorrection_Label" xml:space="preserve"><value>NR UI Correction</value></data>
@@ -1575,10 +1572,10 @@
   <data name="Home_FrameSync_Mode.Header" xml:space="preserve"><value>Pacing mode</value></data>
   <data name="Home_FrameSync_Mode.Description" xml:space="preserve"><value>Front Edge: steady submissions; Async: capture intervals; Reflex: driver base pacing, including DLSS FG.</value></data>
   <data name="Overlay_FrameSync_Enable" xml:space="preserve"><value>Enable frame synchronization</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Label" xml:space="preserve"><value>OF Quality</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Label" xml:space="preserve"><value>Optical Flow Quality</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Option_0" xml:space="preserve"><value>Performance</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>Quality</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>OF Quality</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>Optical Flow Quality</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_1" xml:space="preserve"><value>Performance</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>Balanced</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>Quality</value></data>
@@ -1700,14 +1697,13 @@
   <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Option_0" xml:space="preserve"><value>Off</value></data>
   <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Option_1" xml:space="preserve"><value>On</value></data>
   <data name="EffectParam_xBR_xBR_NoBlend_3x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 Coefficient</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHueProtection_Label" xml:space="preserve"><value>Hue Change Protection</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDarkProtection_Label" xml:space="preserve"><value>Dark Protection</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHueProtection_Label" xml:space="preserve"><value>Hue Protection</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDarkProtection_Label" xml:space="preserve"><value>Shadow Protection</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHighlightProtection_Label" xml:space="preserve"><value>Highlight Protection</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Label" xml:space="preserve"><value>Local Correction Compression</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Label" xml:space="preserve"><value>Overcorrection Suppression</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualShowAdvanced_Label" xml:space="preserve"><value>Advanced Adjustments</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Label" xml:space="preserve"><value>Broad Correction Strength</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDetailGain_Label" xml:space="preserve"><value>Detail Correction Strength</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualChromaTemporalStrength_Label" xml:space="preserve"><value>Chroma Temporal Stability</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Label" xml:space="preserve"><value>Low-frequency Range Strength</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDetailGain_Label" xml:space="preserve"><value>High-frequency Range Strength</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Label" xml:space="preserve"><value>Diagnostic View</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_0" xml:space="preserve"><value>Final Image</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_1" xml:space="preserve"><value>Raw Total Residual</value></data>
@@ -1718,42 +1714,41 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_6" xml:space="preserve"><value>Gamut Scale</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_7" xml:space="preserve"><value>Compression Scale</value></data>
   <data name="Profile_Cursor_Refresh.Header" xml:space="preserve"><value>Cursor refresh</value></data>
-  <data name="Profile_Cursor_Refresh.Description" xml:space="preserve"><value>Controls cursor drawing. Mouse input remains responsive. Applies the next time scaling starts.</value></data>
+  <data name="Profile_Cursor_Refresh.Description" xml:space="preserve"><value>Control cursor refresh; changes apply after restarting scaling.</value></data>
   <data name="Profile_Cursor_Refresh_Original.Header" xml:space="preserve"><value>Prefer original content frames</value></data>
-  <data name="Profile_Cursor_Refresh_Original.Description" xml:space="preserve"><value>Hold the cursor between new captured content frames. Turn off minimum refresh below to prevent extra presentations caused by movement; visibility and cursor ownership changes still update.</value></data>
+  <data name="Profile_Cursor_Refresh_Original.Description" xml:space="preserve"><value>Prefer refreshing the cursor with content frames.</value></data>
   <data name="Profile_Cursor_Refresh_Minimum.Header" xml:space="preserve"><value>Keep a minimum cursor refresh rate</value></data>
-  <data name="Profile_Cursor_Refresh_Minimum.Description" xml:space="preserve"><value>Refresh a changed cursor when content is slow or paused, reusing the last image. This target is not a maximum and is limited by display and presentation capacity.</value></data>
+  <data name="Profile_Cursor_Refresh_Minimum.Description" xml:space="preserve"><value>Refresh a changing cursor when content updates slowly.</value></data>
   <data name="Profile_Cursor_Refresh_Rate.Header" xml:space="preserve"><value>Minimum refresh rate</value></data>
-  <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>1–1000 FPS. The default is 60. An unchanged cursor does not request extra presentations.</value></data>
-  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>FG effects use their own duplicate frame setting. Without FG, this global setting applies except in 3D game mode. Cursor refresh is configured per application.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description" xml:space="preserve"><value>Use a smaller input for NR and reconstruct its correction at the original size. Lower input resolution reduces cost and can reduce quality.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent_Description" xml:space="preserve"><value>Percentage of each input dimension used for NR. 100% keeps the original input size and still enables correction controls.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Description" xml:space="preserve"><value>Scale the overall change produced by NR. 0 returns to the original image, 1 keeps the original correction, and values above 1 amplify it.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Description" xml:space="preserve"><value>Scale the color change produced by NR; this does not adjust the saturation of the entire image.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Description" xml:space="preserve"><value>Scale the lightness change produced by NR.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Description" xml:space="preserve"><value>Scale correction that darkens the image. This differs from protecting dark areas of the original image.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Description" xml:space="preserve"><value>Scale correction that brightens the image. This does not automatically identify reflections or glow.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualShowAdvanced_Description" xml:space="preserve"><value>Show advanced controls and diagnostics. Hiding them preserves their values and effects.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHueProtection_Description" xml:space="preserve"><value>Reduce shifts in color direction caused by NR. Larger values increase protection without guaranteeing a completely fixed hue.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDarkProtection_Description" xml:space="preserve"><value>Reduce changes in deep dark areas of the original image.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHighlightProtection_Description" xml:space="preserve"><value>Reduce changes in bright areas and limit excessive correction.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Description" xml:space="preserve"><value>Compress excessive local correction while affecting smaller changes less.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Description" xml:space="preserve"><value>Scale smoothly varying correction computed from local neighbors. This is not global color grading.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDetailGain_Description" xml:space="preserve"><value>Scale fine changes in the correction. This does not add sharpening to the original image.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualChromaTemporalStrength_Description" xml:space="preserve"><value>Increase color stability across frames. 0 disables extra chroma stabilization. Requires Anti-flicker.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Description" xml:space="preserve"><value>Inspect correction, lightness/chroma changes, protection, gamut mapping or compression. Final Image returns to normal output.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Description" xml:space="preserve"><value>Choose the optical flow provider used for motion guidance. None disables the explicit provider. Temporal modes may request their own guidance.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Description" xml:space="preserve"><value>Select the performance or quality preset for AMD optical flow.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Description" xml:space="preserve"><value>Choose the NVIDIA optical flow quality/cost preset. Higher quality requires more processing.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_style_Description" xml:space="preserve"><value>Select the NR model style: 0 Default, 1 Natural, 2 Cinematic. Compare the result on your content.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity_Description" xml:space="preserve"><value>Set the intensity passed to this NR layer. Larger values ask the model for stronger processing.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Description" xml:space="preserve"><value>Set this layer’s model control for local tone processing.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Description" xml:space="preserve"><value>Set this layer’s model control for local structure processing.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Description" xml:space="preserve"><value>Set the model’s skin structure control for this layer. This is a model input, not a separate face detection feature.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_useAutoMask_Description" xml:space="preserve"><value>Enable this layer’s model automatic mask option.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_uiCorrection_Description" xml:space="preserve"><value>Enable this layer’s model UI correction option; compare text and interface details on your content.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_multiPass_Description" xml:space="preserve"><value>Choose 1–3 sequential NR layers, each with independent controls. More layers increase processing cost.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Description" xml:space="preserve"><value>Stabilize the final image across frames. Static accumulation suits still content; motion-guided modes follow optical flow. Compare motion and ghosting.</value></data>
+  <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>Target minimum cursor refresh rate.</value></data>
+  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>Skip identical frames. Frame generation uses effect settings; detection is bypassed in 3D mode without frame generation.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description" xml:space="preserve"><value>Adjust the input resolution sent to NR.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent_Description" xml:space="preserve"><value>Set the NR input resolution as a percentage of the original image.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Description" xml:space="preserve"><value>Adjust the overall strength of NR processing.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Description" xml:space="preserve"><value>Adjust the strength of color changes from NR.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Description" xml:space="preserve"><value>Adjust the overall strength of lightness changes from NR.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_shadowStructureMultiplier_Description" xml:space="preserve"><value>Adjust the strength of darkening corrections from NR.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_reflectionGlowMultiplier_Description" xml:space="preserve"><value>Adjust the strength of brightening corrections from NR.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualShowAdvanced_Description" xml:space="preserve"><value>Show advanced adjustment parameters.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHueProtection_Description" xml:space="preserve"><value>Reduce NR changes to the hue of the original image.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDarkProtection_Description" xml:space="preserve"><value>Reduce NR changes to dark areas of the original image.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHighlightProtection_Description" xml:space="preserve"><value>Reduce NR changes to bright areas of the original image.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLocalCompression_Description" xml:space="preserve"><value>Reduce excessive local corrections.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Description" xml:space="preserve"><value>Adjust the strength of smoothly varying corrections.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDetailGain_Description" xml:space="preserve"><value>Adjust the strength of detailed corrections.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Description" xml:space="preserve"><value>View correction and protection effects.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Description" xml:space="preserve"><value>Select the optical flow method used by NR.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Description" xml:space="preserve"><value>Set AMD optical flow quality.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Description" xml:space="preserve"><value>Set NVIDIA optical flow quality.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_style_Description" xml:space="preserve"><value>Select the NR processing style for this pass.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity_Description" xml:space="preserve"><value>Adjust the NR processing strength for this pass.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Description" xml:space="preserve"><value>Adjust local tone processing for this pass.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localStructureStrength_Description" xml:space="preserve"><value>Adjust local structure processing for this pass.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Description" xml:space="preserve"><value>Adjust skin structure processing for this pass.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_useAutoMask_Description" xml:space="preserve"><value>Enable automatic masking for this pass.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_uiCorrection_Description" xml:space="preserve"><value>Improve interface elements and text after NR processing.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_multiPass_Description" xml:space="preserve"><value>Set the number of consecutive NR passes.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Description" xml:space="preserve"><value>Stabilize the image across consecutive frames.</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_Group_Advanced_Adjustments" xml:space="preserve"><value>Advanced Adjustments</value></data>
   <data name="EffectParameter_Help_Range" xml:space="preserve"><value>Range</value></data>
   <data name="EffectParameter_Help_Default" xml:space="preserve"><value>Default</value></data>

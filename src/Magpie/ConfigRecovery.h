@@ -10,7 +10,7 @@
 namespace Magpie::ConfigRecovery {
 
 // Increment when the recovery policy changes, independently of release versions.
-inline constexpr uint32_t POLICY_VERSION = 3;
+inline constexpr uint32_t POLICY_VERSION = 4;
 enum class Kind { None, Backup, Partial, Defaults, Repaired };
 struct Plan {
 	rapidjson::Document document;
@@ -241,6 +241,18 @@ inline Plan Prepare(std::string_view source, std::string_view backup,
 			if (plan.defaultModes || (i == 0 && previousRepairs != plan.fields.size() && modeCount)) {
 				profile.RemoveMember("scalingMode");
 				profile.AddMember("scalingMode", i == 0 ? 0 : -1, allocator);
+			}
+			if (profile.HasMember("frontEdgeSync") && !profile["frontEdgeSync"].IsBool()) {
+				note(path + "/frontEdgeSync"); profile["frontEdgeSync"].SetBool(true);
+			}
+			if (profile.HasMember("frontEdgeSyncFrameRate") &&
+				(!FloatInRange(profile["frontEdgeSyncFrameRate"], 0, 1000) ||
+				 (profile["frontEdgeSyncFrameRate"].GetDouble() > 0 && profile["frontEdgeSyncFrameRate"].GetDouble() < 1))) {
+				note(path + "/frontEdgeSyncFrameRate"); profile["frontEdgeSyncFrameRate"].SetDouble(60);
+			}
+			if (profile.HasMember("frameSyncMode") &&
+				(!profile["frameSyncMode"].IsUint() || profile["frameSyncMode"].GetUint() > 2)) {
+				note(path + "/frameSyncMode"); profile["frameSyncMode"].SetUint(0);
 			}
 			number(profile, "maxFrameRate", path, 10, 1000);
 			number(profile, "customInitialWindowedScaleFactor", path, 1, 1e4);

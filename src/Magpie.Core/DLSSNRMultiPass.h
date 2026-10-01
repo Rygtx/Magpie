@@ -126,7 +126,7 @@ private:
 	}
 	bool DebugEnabled() const noexcept { return DetailEnabled() && Value("residualDebugView") >= .5f; }
 	void ConfigureDetail() noexcept {
-		if (_temporal) _temporal->ConfigureDetail(DetailEnabled() ? Value("residualChromaTemporalStrength") : 0,
+		if (_temporal) _temporal->ConfigureDetail(0.f,
 				!_hdr && Value("enableInputResolutionScaling") >= .5f);
 	}
 	ID3D11DeviceContext* _context = nullptr;

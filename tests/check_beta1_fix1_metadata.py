@@ -7,7 +7,7 @@ repo = Path(__file__).resolve().parents[1]
 read = lambda path: (repo / path).read_text(encoding='utf-8-sig')
 shader = read('src/Effects/DLSSNR/DLSSNR_AI_Filter.hlsl')
 blocks = re.findall(r'//!PARAMETER\n(.*?^(?:float|int) (\w+);)', shader, re.S | re.M)
-assert len(blocks) == 42
+assert len(blocks) == 41
 order = list(dict.fromkeys(re.search(r'//!GROUP (.+)', block)[1] for block, name in blocks))
 assert order == ['Detail Control', 'Advanced Adjustments', 'DLSSNR · Pass 1', 'DLSSNR · Pass 2', 'DLSSNR · Pass 3']
 assert all('\\n' not in re.search(r'//!LABEL (.+)', block)[1] for block, name in blocks)
@@ -35,4 +35,4 @@ assert 'DLSSNRColorMode' not in rules and 'IsDLSSNRAdvancedParameter' in rules
 filter_source = read('src/Magpie.Core/DLSSNRFilter.cpp')
 assert 'RGBToHSL' not in filter_source and 'ApplyResidualControls' not in filter_source
 assert 'residualColorMode' not in filter_source
-print('PASS fix1 metadata: 42 compact labels, five ordered groups, 3-language descriptions, name-only wrapped XAML help, desktop popup and unique residual path.')
+print('PASS fix1 metadata: 41 compact labels, five ordered groups, 3-language descriptions, name-only wrapped XAML help, desktop popup and unique residual path.')

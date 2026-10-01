@@ -98,6 +98,7 @@ struct Profile {
 		captureMethod = other.captureMethod;
 		graphicsCardId = other.graphicsCardId;
 		maxFrameRate = other.maxFrameRate;
+		frameSync = other.frameSync;
 		multiMonitorUsage = other.multiMonitorUsage;
 		preferredMonitorId = other.preferredMonitorId;
 		preferredMonitorName = other.preferredMonitorName;
@@ -130,6 +131,7 @@ struct Profile {
 
 	bool isParameterFocusSwitchingEnabled = false;
 	ToolbarDockSettings toolbarDocks;
+	FrameSyncSettings frameSync;
 	// Not serialized/copied by Copy(): survives vector moves and renames, but
 	// a deleted/recreated profile cannot receive an older toolbar save.
 	std::shared_ptr<const uint8_t> runtimeIdentity = std::make_shared<const uint8_t>(uint8_t{0});
