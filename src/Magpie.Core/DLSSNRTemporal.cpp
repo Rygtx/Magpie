@@ -17,6 +17,7 @@ struct DLSSNRTemporal::Impl {
 	bool lastMotion = false;
 	uint32_t next = 0;
 	DLSSNRTemporalState state;
+	uint64_t lastInputRevision = 0;
 	winrt::com_ptr<ID3D11ComputeShader> shader;
 	winrt::com_ptr<ID3D11ComputeShader> reduceShader;
 	std::array<winrt::com_ptr<ID3D11ShaderResourceView>, 2> low;
@@ -116,21 +117,22 @@ bool DLSSNRTemporal::Draw(const NativeEffectDrawContext& context) noexcept {
 	auto& impl = *_impl;
 	const auto& zero = context.zeroFrameGuidance.motion.metadata;
 	const auto& guidance = context.frameGuidance;
-	bool motion = impl.mode >= 2 &&
+	bool motion = context.isNewCaptureFrame && impl.mode >= 2 &&
 		guidance.motion.IsValid(DXGI_FORMAT_R16G16_FLOAT, context.frameId, impl.extent) &&
 		!guidance.motion.metadata.isZero &&
 		guidance.motionDirection == FrameGuidanceMotionDirection::CurrentToPrevious &&
 		guidance.motionUnit == FrameGuidanceMotionUnit::SourcePixels;
 	const auto& meta = motion ? guidance.motion.metadata : zero;
-	const bool reset = context.zeroFrameGuidance.requiresHistoryReset || zero.requiresHistoryReset ||
+	const bool reset = context.inputHistoryReset || context.zeroFrameGuidance.requiresHistoryReset || zero.requiresHistoryReset ||
 		(motion && (guidance.requiresHistoryReset || meta.requiresHistoryReset)) ||
 		(motion && impl.state.valid && context.frameId != impl.state.frame && context.frameId != impl.state.frame + 1) ||
 		motion != impl.lastMotion || meta.validRegion != impl.region;
 	// Duplicate draws leave both ping-pong indices and EMA time untouched.
-	if (!reset && impl.state.Duplicate(context.frameId, context.inputRevision)) return true;
+	if (!reset && impl.lastInputRevision == context.inputRevision &&
+		impl.state.Duplicate(context.frameId, context.inputHistoryRevision)) return true;
 	const bool metadataValid = meta.valid && meta.frameId == context.frameId &&
 		meta.sourceExtent == impl.extent && meta.validRegion.IsInside(impl.extent);
-	const float weight = impl.state.Weight(context.frameId, context.inputRevision,
+	const float weight = impl.state.Weight(context.frameId, context.inputHistoryRevision,
 		meta.resourceGeneration, meta.timestamp100ns, reset || !metadataValid);
 	if (motion) {
 		const auto sync = meta.sync;
@@ -179,7 +181,8 @@ bool DLSSNRTemporal::Draw(const NativeEffectDrawContext& context) noexcept {
 	impl.dc->CSSetShaderResources(0, 8, nullSrvs); impl.dc->CSSetUnorderedAccessViews(0, 3, nullUavs, nullptr);
 	impl.dc->CSSetConstantBuffers(0, 1, &cb); impl.dc->CSSetSamplers(0, 1, &sampler);
 	impl.dc->CSSetShader(nullptr, nullptr, 0);
-	impl.state.Commit(context.frameId, context.inputRevision, meta.resourceGeneration, meta.timestamp100ns);
+	impl.state.Commit(context.frameId, context.inputHistoryRevision, meta.resourceGeneration, meta.timestamp100ns);
+	impl.lastInputRevision = context.inputRevision;
 	impl.lastMotion = motion; impl.region = meta.validRegion; impl.next ^= 1u;
 	return true;
 }
