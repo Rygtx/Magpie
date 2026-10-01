@@ -2358,7 +2358,9 @@ ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
 		// Resize only reallocates provider resources. Re-seed them from the
 		// last real capture instead of manufacturing a color-less pseudo-frame.
 		if (_capturedFrameId != 0 && !_frameGuidanceService.BeginFrame(
-			_capturedFrameId, inOutTexture, guidanceRequirements
+			_capturedFrameId, inOutTexture, guidanceRequirements,
+			_captureSequence, _frameSource->ResourceGeneration(),
+			_acceptedCaptureTimestamp100ns, _frameSource->GetHdrFrameMetadata().color
 		).IsValidFor(_capturedFrameId, sourceExtent)) {
 			Logger::Get().Error("Produce Frame Guidance after resize failed");
 			return nullptr;
@@ -3337,6 +3339,7 @@ void Renderer::_BackendRender(
 		// A cancelled Reflex candidate may leave a gap. Keep NGX's
 		// BackbufferFrameID, guidance and Reflex on the same monotonic base ID.
 		_capturedFrameId = std::max(_capturedFrameId + 1, _reflex.CaptureFrameId());
+		_acceptedCaptureTimestamp100ns = _frameSource->CaptureTimestamp100ns();
 		FrameTrace::SetFrame(_capturedFrameId);
 		FrameTrace::Mark(FrameTrace::Event::CaptureAccepted, _frameSource->CaptureTimestamp100ns(), sequence);
 		const FrameGuidanceRequirements guidanceRequirements =
@@ -3347,7 +3350,7 @@ void Renderer::_BackendRender(
 			_frameGuidanceService.BeginFrame(
 			_capturedFrameId, _frameSource->GetPipelineTexture(), guidanceRequirements,
 			_frameSource->CaptureSequence(), _frameSource->ResourceGeneration(),
-			_frameSource->CaptureTimestamp100ns(),
+				_acceptedCaptureTimestamp100ns,
 			_frameSource->GetHdrFrameMetadata().color);
 		}
 	}
