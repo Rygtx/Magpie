@@ -76,6 +76,10 @@ public:
 		ID3D11Texture2D* input,
 		ID3D11Texture2D* output
 	) noexcept override;
+	// One scheduling/resource owner, with independent features and cached outputs.
+	bool InitializeChain(DeviceResources& resources, NgxD3D12Core& ngxCore,
+		ID3D11Texture2D* input, ID3D11Texture2D* output,
+		std::span<const DLSSNRSettings> passes) noexcept;
 
 	bool Draw(const NativeEffectDrawContext& context) noexcept override;
 	// A failed evaluation may retain legacy pass-through behavior for one pass.
@@ -86,6 +90,7 @@ private:
 	// 仅在 MP_ENABLE_DLSSNR 构建中使用；无 SDK 的 CI 构建里 ClangCL -Werror 会报未使用
 	[[maybe_unused]] std::unique_ptr<Impl> _impl;
 	[[maybe_unused]] DLSSNRSettings _settings;
+	[[maybe_unused]] std::vector<DLSSNRSettings> _passSettings;
 	[[maybe_unused]] NgxD3D12Core* _ngxCore = nullptr;
 };
 
