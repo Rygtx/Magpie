@@ -78,6 +78,9 @@
     <ClInclude Include="include\ScalingOptions.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="include\ToolbarPlacement.h">
+      <Filter>Include</Filter>
+    </ClInclude>
     <ClInclude Include="include\ScalingRuntime.h">
       <Filter>Include</Filter>
     </ClInclude>

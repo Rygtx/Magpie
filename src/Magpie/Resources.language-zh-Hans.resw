@@ -904,7 +904,7 @@
     <value>仅适用于全屏模式</value>
   </data>
   <data name="Home_Toolbar.Description" xml:space="preserve">
-    <value>工具栏位于输出窗口顶部，提供帧率显示、截图等功能；窗口模式下还可拖动工具栏移动输出窗口。</value>
+    <value>拖动专用拖拽柄，可将工具栏停靠在顶部或底部并左右移动。工具栏提供帧率显示、截图等功能；窗口模式下，拖动工具栏空白区域可移动输出窗口。</value>
   </data>
   <data name="Home_Toolbar.Header" xml:space="preserve">
     <value>工具栏</value>
@@ -938,6 +938,9 @@
   </data>
   <data name="Overlay_Toolbar_Demo" xml:space="preserve">
     <value>ImGui 演示窗口</value>
+  </data>
+  <data name="Overlay_Toolbar_Move" xml:space="preserve">
+    <value>移动工具栏（拖拽到顶部或底部）</value>
   </data>
   <data name="Overlay_Toolbar_Pin" xml:space="preserve">
     <value>固定工具栏</value>

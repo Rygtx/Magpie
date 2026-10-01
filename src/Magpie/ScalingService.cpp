@@ -358,6 +358,31 @@ void ScalingService::_StartScale(HWND hWnd, const Profile& profile, bool windowe
 	}
 }
 
+void ScalingService::_SaveToolbarDock(std::weak_ptr<const uint8_t> profileIdentity,
+	bool windowed, ToolbarDock dock, uint32_t runId) {
+	// Run and identity checks happen on the settings/UI thread. Never retain a
+	// Profile pointer or vector index across the asynchronous handoff.
+	if (!_scalingRuntime || _scalingRuntime->State() != ScalingState::Scaling ||
+		_scalingRuntime->RunId() != runId) return;
+	const auto identity = profileIdentity.lock();
+	if (!identity) return;
+	auto& settings = AppSettings::Get();
+	Profile* target = nullptr;
+	if (settings.DefaultProfile().runtimeIdentity == identity) {
+		target = &settings.DefaultProfile();
+	} else {
+		for (auto& profile : settings.Profiles()) {
+			if (profile.runtimeIdentity == identity) { target = &profile; break; }
+		}
+	}
+	if (!target) return;
+	auto& current = target->toolbarDocks.ForMode(windowed);
+	dock = SanitizeToolbarDock(uint32_t(dock));
+	if (current == dock) return;
+	current = dock;
+	settings.SaveAsync();
+}
+
 ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, bool windowedMode, bool force) {
 	// ScalingRuntime::Start 会检查是否正在缩放，这里提前检查以避免无效操作
 	if (!force && _scalingRuntime->State() == ScalingState::Scaling) {
@@ -537,6 +562,13 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 
 	options.fullscreenInitialToolbarState = settings.FullscreenInitialToolbarState();
 	options.windowedInitialToolbarState = settings.WindowedInitialToolbarState();
+	options.toolbarDocks = profile.toolbarDocks;
+	options.saveToolbarDock = [identity = std::weak_ptr<const uint8_t>(profile.runtimeIdentity)](
+		bool windowed, ToolbarDock dock, uint32_t runId) noexcept {
+		App::Get().Dispatcher().TryEnqueue([identity, windowed, dock, runId] {
+			ScalingService::Get()._SaveToolbarDock(identity, windowed, dock, runId);
+		});
+	};
 	options.screenshotsDir = settings.ScreenshotsDir();
 	if (options.screenshotsDir.empty()) {
 		// 回落到使用当前目录
