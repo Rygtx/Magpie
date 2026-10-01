@@ -20,7 +20,7 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
-- [0.6.9 Beta1 fix2 TODO](todos/20261001-v0.6.9-beta1-fix2-TODO.md)：已完成对齐并准备执行清单，涵盖浮窗真实布局、DLSSNR 最终名称与简短提示、额外色度稳定暴露移除、帧同步按配置迁移、光标／重复帧说明和图标、工具栏直接拖动与整栏 FPS 居中。尚未实施；[最终文案 Review](reviews/20261001-v0.6.9-beta1-fix1-dlssnr-parameter-copy-review.md)保留详细作用说明。
+- **0.6.9 Beta1 fix2 已部署**：[TODO](todos/20261001-v0.6.9-beta1-fix2-TODO.md)、[实施与验证](reviews/20261001-v0.6.9-beta1-fix2.md)、[参数文案 Review](reviews/20261001-v0.6.9-beta1-fix1-dlssnr-parameter-copy-review.md)。原生主窗口与配置迁移通过；完整 GUI／实际捕获验收待实测，保留两项快捷键注册冲突。
 
 - [0.6.9 Beta1 fix1 TODO](todos/20261001-v0.6.9-beta1-fix1-TODO.md)：参数浮层、DLSSNR 进阶／名称提示与数值迁移、工具栏样式及居中吸附已部署到 Beta1。21 项完成，完整原生 GUI 与实际内容验收仍待完成；[实施与部署记录](reviews/20261001-v0.6.9-beta1-fix1.md)记录版本、包哈希、真实启动、三语提示、45 组 GPU 合成验证和恢复路径。
 
