@@ -135,6 +135,11 @@
   <data name="Home_Activation_Timer_Delay.Header" xml:space="preserve">
     <value>倒计时时长（秒）</value>
   </data>
+  <data name="ShortcutDialog_Clear" xml:space="preserve"><value>清除</value></data>
+  <data name="ShortcutControl_ClearButton.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>清除快捷键</value></data>
+  <data name="ShortcutControl_NotSet.Text" xml:space="preserve"><value>未设置</value></data>
+  <data name="ShortcutControl_ClearAutomationName" xml:space="preserve"><value>清除：{0}</value></data>
+  <data name="Overlay_Parameters_InputHintWithoutShortcut" xml:space="preserve"><value>Ctrl+单击滑条输入数值。Esc：编辑→预览→关闭；点击预览面板继续编辑。</value></data>
   <data name="ShortcutDialog_Cancel" xml:space="preserve">
     <value>取消</value>
   </data>

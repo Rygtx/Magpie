@@ -344,6 +344,7 @@ bool AppSettings::Initialize() noexcept {
 			}
 		}
 		if (plan.defaultModes) _SetDefaultScalingModes();
+		const bool shortcutsChanged = _LoadShortcuts(static_cast<const rapidjson::Document&>(plan.document).GetObj());
 		_LoadSettings(static_cast<const rapidjson::Document&>(plan.document).GetObj());
 		_isConfigMigrationNeeded |= ApplyOpticalFlowDefaultsMigration(
 			_scalingModes, _experimentalOpticalFlowDefaultsVersion);
@@ -358,7 +359,6 @@ bool AppSettings::Initialize() noexcept {
 		disableHdr(_defaultProfile);
 		for (Profile& profile : _profiles) disableHdr(profile);
 		if (hdrSettingsChanged) logger.Info("HDR compatibility temporarily disabled in saved profiles");
-		const bool shortcutsChanged = _SetDefaultShortcuts();
 		// Existing versioned migrations also preserve the input before their first write.
 		if (_isConfigMigrationNeeded && !recovered) {
 			if (!ConfigRecovery::Preserve(existingConfigPath, configText, files))
@@ -981,56 +981,6 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 		JsonHelper::ReadBool(windowPosObj, "maximized", _isMainWindowMaximized);
 	}
 
-	auto shortcutsNode = root.FindMember("shortcuts");
-	if (shortcutsNode == root.MemberEnd()) {
-		// v0.10.0-preview1 使用 hotkeys
-		shortcutsNode= root.FindMember("hotkeys");
-	}
-	if (shortcutsNode != root.MemberEnd() && shortcutsNode->value.IsObject()) {
-		auto shortcutsObj = shortcutsNode->value.GetObj();
-
-		if (auto node = shortcutsObj.FindMember("profiler");
-			node != shortcutsObj.MemberEnd() && node->value.IsUint()) {
-			DecodeShortcut(node->value.GetUint(), _shortcuts[(size_t)ShortcutAction::Profiler]);
-		}
-		if (auto node = shortcutsObj.FindMember("effectParameters");
-			node != shortcutsObj.MemberEnd() && node->value.IsUint()) {
-			DecodeShortcut(node->value.GetUint(), _shortcuts[(size_t)ShortcutAction::EffectParameters]);
-		}
-		if (auto node = shortcutsObj.FindMember("screenshot");
-			node != shortcutsObj.MemberEnd() && node->value.IsUint()) {
-			DecodeShortcut(node->value.GetUint(), _shortcuts[(size_t)ShortcutAction::Screenshot]);
-		}
-		if (auto node = shortcutsObj.FindMember("toolbarPin");
-			node != shortcutsObj.MemberEnd() && node->value.IsUint()) {
-			DecodeShortcut(node->value.GetUint(), _shortcuts[(size_t)ShortcutAction::ToolbarPin]);
-		}
-		if (auto node = shortcutsObj.FindMember("comparison");
-			node != shortcutsObj.MemberEnd() && node->value.IsUint()) {
-			DecodeShortcut(node->value.GetUint(), _shortcuts[(size_t)ShortcutAction::Comparison]);
-		}
-
-		auto scaleNode = shortcutsObj.FindMember("scale");
-		if (scaleNode != shortcutsObj.MemberEnd() && scaleNode->value.IsUint()) {
-			DecodeShortcut(scaleNode->value.GetUint(), _shortcuts[(size_t)ShortcutAction::Scale]);
-		}
-
-		auto windowedModeScaleNode = shortcutsObj.FindMember("windowedModeScale");
-		if (windowedModeScaleNode != shortcutsObj.MemberEnd() && windowedModeScaleNode->value.IsUint()) {
-			DecodeShortcut(windowedModeScaleNode->value.GetUint(), _shortcuts[(size_t)ShortcutAction::WindowedModeScale]);
-		}
-
-		auto toolbarNode = shortcutsObj.FindMember("toolbar");
-		if (toolbarNode == shortcutsObj.MemberEnd()) {
-			// v0.12 前使用 overlay
-			toolbarNode = shortcutsObj.FindMember("overlay");
-		}
-		
-		if (toolbarNode != shortcutsObj.MemberEnd() && toolbarNode->value.IsUint()) {
-			DecodeShortcut(toolbarNode->value.GetUint(), _shortcuts[(size_t)ShortcutAction::Toolbar]);
-		}
-	}
-
 	if (!JsonHelper::ReadUInt(root, "countdownSeconds", _countdownSeconds, true)) {
 		// v0.10.0-preview1 使用 downCount
 		JsonHelper::ReadUInt(root, "downCount", _countdownSeconds);
@@ -1468,67 +1418,49 @@ bool AppSettings::_LoadProfile(
 	return true;
 }
 
-bool AppSettings::_SetDefaultShortcuts() noexcept {
+bool AppSettings::_LoadShortcuts(const rapidjson::GenericObject<true, rapidjson::Value>& root) noexcept {
+	// Missing fields inherit defaults; present zero values explicitly remove them.
+	_SetDefaultShortcuts();
+	auto node = root.FindMember("shortcuts");
+	if (node == root.MemberEnd()) node = root.FindMember("hotkeys");
+	if (node == root.MemberEnd() || !node->value.IsObject()) return true;
+
+	const auto shortcuts = static_cast<const rapidjson::Value&>(node->value).GetObj();
 	bool changed = false;
-
-	Shortcut& scaleShortcut = _shortcuts[(size_t)ShortcutAction::Scale];
-	if (scaleShortcut.IsEmpty()) {
-		scaleShortcut.alt = true;
-		scaleShortcut.shift = true;
-		scaleShortcut.code = 'A';
-
-		changed = true;
-	}
-
-	Shortcut& windowedModeScaleShortcut = _shortcuts[(size_t)ShortcutAction::WindowedModeScale];
-	if (windowedModeScaleShortcut.IsEmpty()) {
-		windowedModeScaleShortcut.alt = true;
-		windowedModeScaleShortcut.shift = true;
-		windowedModeScaleShortcut.code = 'Q';
-
-		changed = true;
-	}
-
-	Shortcut& overlayShortcut = _shortcuts[(size_t)ShortcutAction::Toolbar];
-	if (overlayShortcut.IsEmpty()) {
-		overlayShortcut.alt = true;
-		overlayShortcut.shift = true;
-		overlayShortcut.code = 'D';
-
-		changed = true;
-	}
-
-    if (Shortcut& shortcut = _shortcuts[(size_t)ShortcutAction::Profiler]; shortcut.IsEmpty()) {
-        shortcut.alt = true;
-        shortcut.shift = true;
-        shortcut.code = 'P';
-        changed = true;
-    }
-    if (Shortcut& shortcut = _shortcuts[(size_t)ShortcutAction::EffectParameters]; shortcut.IsEmpty()) {
-        shortcut.alt = true;
-        shortcut.shift = true;
-        shortcut.code = 'E';
-        changed = true;
-    }
-    if (Shortcut& shortcut = _shortcuts[(size_t)ShortcutAction::Screenshot]; shortcut.IsEmpty()) {
-        shortcut.alt = true;
-        shortcut.shift = true;
-        shortcut.code = 'S';
-        changed = true;
-    }
-    if (Shortcut& shortcut = _shortcuts[(size_t)ShortcutAction::ToolbarPin]; shortcut.IsEmpty()) {
-        shortcut.alt = true;
-        shortcut.shift = true;
-        shortcut.code = 'F';
-        changed = true;
-    }
-    if (Shortcut& shortcut = _shortcuts[(size_t)ShortcutAction::Comparison]; shortcut.IsEmpty()) {
-        shortcut.alt = true;
-        shortcut.shift = true;
-        shortcut.code = 'C';
-        changed = true;
-    }
+	auto read = [&](const char* key, ShortcutAction action, const char* legacyKey = nullptr) {
+		auto field = shortcuts.FindMember(key);
+		if (field == shortcuts.MemberEnd() && legacyKey) field = shortcuts.FindMember(legacyKey);
+		if (field == shortcuts.MemberEnd() || !field->value.IsUint() || field->value.GetUint() > 0xfff) {
+			changed = true;
+			return;
+		}
+		DecodeShortcut(field->value.GetUint(), _shortcuts[(size_t)action]);
+	};
+	read("scale", ShortcutAction::Scale);
+	read("windowedModeScale", ShortcutAction::WindowedModeScale);
+	read("toolbar", ShortcutAction::Toolbar, "overlay");
+	read("profiler", ShortcutAction::Profiler);
+	read("effectParameters", ShortcutAction::EffectParameters);
+	read("screenshot", ShortcutAction::Screenshot);
+	read("toolbarPin", ShortcutAction::ToolbarPin);
+	read("comparison", ShortcutAction::Comparison);
 	return changed;
+}
+
+void AppSettings::_SetDefaultShortcuts() noexcept {
+	constexpr std::pair<ShortcutAction, uint8_t> defaults[] = {
+		{ ShortcutAction::Scale, 'A' },
+		{ ShortcutAction::WindowedModeScale, 'Q' },
+		{ ShortcutAction::Toolbar, 'D' },
+		{ ShortcutAction::Profiler, 'P' },
+		{ ShortcutAction::EffectParameters, 'E' },
+		{ ShortcutAction::Screenshot, 'S' },
+		{ ShortcutAction::ToolbarPin, 'F' },
+		{ ShortcutAction::Comparison, 'C' }
+	};
+	for (const auto& [action, code] : defaults) {
+		_shortcuts[(size_t)action] = { .code = code, .alt = true, .shift = true };
+	}
 }
 
 void AppSettings::_SetDefaultScalingModes() noexcept {
