@@ -335,7 +335,7 @@ static V065NormalizationStats NormalizeV065ScalingModes(
 			if (effect.isRecoveryInvalid) continue;
 
 			if (effect.name == L"DLSSNR\\DLSSNR_AI_Filter") {
-				if (InitializeDLSSNRColorMode(effect.parameters, false)) ++stats.insertedFallbacks;
+				if (NormalizeDLSSNRDetailParameters(effect.parameters)) ++stats.insertedFallbacks;
 				auto guidanceMode = effect.parameters.find(L"guidanceMode");
 				if (guidanceMode != effect.parameters.end()) {
 					const int oldMode = std::clamp(

@@ -873,7 +873,7 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 			_toolbarPlacement.Cancel();
 		}
 	}
-	const bool bottom = _toolbarPlacement.Dock(windowed) == ToolbarDock::Bottom;
+	const bool bottom = _toolbarPlacement.Target().value_or(_toolbarPlacement.Dock(windowed)) == ToolbarDock::Bottom;
 	const float contentTop = bottom ? 0.0f : CORNER_ROUNDING;
 	const auto rect = _toolbarPlacement.Layout(windowed, geometry);
 	ImGui::SetNextWindowSize({ rect.width, rect.height });
@@ -885,6 +885,7 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 	const ImVec2 originalWindowPadding = ImGui::GetStyle().WindowPadding;
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 6 * toolbarScale,0.0f });
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, { 1.0f, 1.0f });
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, geometry.rounding);
 
 	_isToolbarItemActive = false;
 	_isToolbarHandleHovered = false;
@@ -920,18 +921,20 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 4 * toolbarScale, 0.0f });
 		// 禁用仅为阻止交互，不应有视觉改变
 		ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, { 0.5f, 0.5f });
 		ImGui::PushStyleColor(ImGuiCol_Button, { 0,0,0,0 });
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.118f, 0.533f, 0.894f, 1.0f });
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.118f, 0.533f, 0.894f, 0.8f });
 
 		auto drawToggleButton = [&](bool& value, ImWchar icon, const char* tooltip) {
+			ImGui::SetCursorPosY((contentTop + 3) * toolbarScale);
 			bool stylePushed = value;
 			if (stylePushed) {
 				ImGui::PushStyleColor(ImGuiCol_Button, { 0.118f, 0.533f, 0.894f, 0.8f });
 			}
 
 			ImGui::PushFont(_fontIcons);
-			if (ImGui::Button(IconLabel(icon).c_str())) {
+			if (ImGui::Button(IconLabel(icon).c_str(), { 24.0f * toolbarScale, 24.0f * toolbarScale })) {
 				value = !value;
 				needRedraw = true;
 			}
@@ -950,8 +953,9 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		};
 
 		auto drawButton = [&](ImWchar icon, const char* tooltip) {
+			ImGui::SetCursorPosY((contentTop + 3) * toolbarScale);
 			ImGui::PushFont(_fontIcons);
-			const bool clicked = ImGui::Button(IconLabel(icon).c_str());
+			const bool clicked = ImGui::Button(IconLabel(icon).c_str(), { 24.0f * toolbarScale, 24.0f * toolbarScale });
 			if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
 				_isCursorOnCaptionArea = false;
 				_isToolbarItemActive = true;
@@ -1113,9 +1117,9 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		ImGui::PushFont(_fontMonoNumbers);
 		const float textWidth = ImGui::CalcTextSize(fpsText.c_str()).x;
 		const float textMinX = leftControlsEnd + 4.0f * toolbarScale;
-		ImGui::SetCursorPosX(std::clamp((ImGui::GetContentRegionMax().x - textWidth) / 2,
+		ImGui::SetCursorPosX(std::clamp((leftControlsEnd + rightControlsStart - textWidth) / 2,
 			textMinX, std::max(textMinX, rightControlsStart - textWidth - 4.0f * toolbarScale)));
-		ImGui::SetCursorPosY((contentTop + 1) * toolbarScale);
+		ImGui::SetCursorPosY((contentTop + 15) * toolbarScale - ImGui::GetFontSize() / 2);
 		ImGui::TextUnformatted(fpsText.c_str());
 		ImGui::PopFont();
 
@@ -1175,14 +1179,14 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		ImGui::SetWindowFontScale(1.0f);
 
 		ImGui::PopStyleColor(5);
-		ImGui::PopStyleVar(6);
+		ImGui::PopStyleVar(7);
 	} else {
 		_isCursorOnCaptionArea = false;
 	}
 	ImGui::End();
 
 	ImGui::PopStyleColor();
-	ImGui::PopStyleVar(3);
+	ImGui::PopStyleVar(4);
 	if (_toolbarPlacement.IsDragging()) _DrawToolbarDockHints(geometry);
 
 	return needRedraw;
@@ -1198,6 +1202,13 @@ void OverlayDrawer::_DrawToolbarDockHints(const ToolbarGeometry& geometry) noexc
 		drawList->AddRectFilled({ 0.0f, y }, { geometry.viewportWidth, y + geometry.zone },
 			IM_COL32(30, 136, 228, target == dock ? 115 : 55));
 	}
+	if (_toolbarPlacement.IsCenterSnapped()) {
+		// Integer-aligned filled rectangle: exactly two physical output pixels.
+		const float x = std::floor(geometry.viewportWidth / 2.0f) - 1.0f;
+		drawList->AddRectFilled({ x, 0.0f }, { x + 2.0f, geometry.viewportHeight },
+			IM_COL32(0, 255, 255, 255));
+	}
+
 	if (target) {
 		const auto preview = _toolbarPlacement.Preview(geometry);
 		drawList->AddRect({ preview.x, preview.y },
@@ -1728,20 +1739,30 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 			ImGui::BeginDisabled(!parameterValid || !parameterEnabled);
 			bool changed = false;
 			bool parameterHovered = false;
+			bool parameterNameHovered = false;
+			auto drawParameterName = [&]() {
+				ImGui::TextWrapped("%s", label.c_str());
+				parameterNameHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_AllowWhenDisabled | ImGuiHoveredFlags_DelayNone);
+				parameterHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled);
+				ImGui::SameLine();
+				ImGui::TextDisabled("%s", badge.c_str());
+			};
+
 			if (isBoolean) {
 				bool boolValue = std::lround(value) != 0;
 				changed = ImGui::Checkbox("##value", &boolValue);
 				parameterHovered |= ImGui::IsItemHovered(
 					ImGuiHoveredFlags_AllowWhenDisabled);
 				ImGui::SameLine();
-				ImGui::TextWrapped("%s  %s", label.c_str(), badge.c_str());
+				drawParameterName();
 				parameterHovered |= ImGui::IsItemHovered(
 					ImGuiHoveredFlags_AllowWhenDisabled);
 				if (changed) {
 					value = boolValue ? 1.0f : 0.0f;
 				}
 			} else if (isChoice) {
-				ImGui::TextWrapped("%s  %s", label.c_str(), badge.c_str());
+				drawParameterName();
 				parameterHovered |= ImGui::IsItemHovered(
 					ImGuiHoveredFlags_AllowWhenDisabled);
 				ImGui::SetNextItemWidth(-FLT_MIN);
@@ -1766,7 +1787,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 				parameterHovered |= ImGui::IsItemHovered(
 					ImGuiHoveredFlags_AllowWhenDisabled);
 			} else {
-				ImGui::TextWrapped("%s  %s", label.c_str(), badge.c_str());
+				drawParameterName();
 				parameterHovered |= ImGui::IsItemHovered(
 					ImGuiHoveredFlags_AllowWhenDisabled);
 				ImGui::SetNextItemWidth(-FLT_MIN);
@@ -1816,7 +1837,22 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 				needRedraw = true;
 			}
 
-			if (parameterHovered) {
+			if (parameterNameHovered) {
+				std::string help = EffectParameterLocalization::Tooltip(effectName, parameter, parameterEnabled);
+				if (!parameterValid) {
+					help += "\n" + _GetResourceString(backendUnavailable
+						? L"Overlay_EffectParameters_BackendUnavailable" : L"Overlay_EffectParameters_Invalid");
+				} else if (info->automaticRestart) {
+					help += "\n" + _GetResourceString(L"Overlay_EffectParameters_Reason_AutoRestart");
+				} else if (!isLive) {
+					help += "\n" + _GetResourceString(L"Overlay_EffectParameters_RestartRequired");
+				}
+				if (parameterValid && parameterEnabled && !isBoolean && !isChoice) {
+					help += "\n" + fmt::format(fmt::runtime(_GetResourceString(
+						L"Overlay_EffectParameters_ResetDefault")), fmt::format("{:.7g}", placeholderValue));
+				}
+				_imguiImpl.Tooltip(help.c_str(), _dpiScale);
+			} else if (parameterHovered) {
 				std::string resetHint;
 				if (parameterValid && parameterEnabled && !isBoolean && !isChoice) {
 					resetHint = fmt::format(fmt::runtime(_GetResourceString(

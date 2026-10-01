@@ -147,11 +147,10 @@ int main() {
 					Require(impl.fenceValue == fenceBefore + 2);
 					for (int i=0; i<count; ++i) Require(pass(i).evaluateCount == frame);
 					// All new controls share the cached total NR result on real hardware.
-					option.parameters["residualColorMode"] = 1;
 					for (auto key : {"residualHueProtection","residualDarkProtection","residualHighlightProtection",
 						"residualLocalCompression","residualLowFrequencyGain","residualDetailGain","residualDebugView"}) {
 						option.parameters[key] = std::string_view(key) == "residualDebugView" ? 5.f : .5f;
-						names={"residualColorMode",key};
+						names={key};
 						Require(chain.ApplyLiveParameters(option,names) && chain.Draw(context));
 						for (int i=0;i<count;++i) Require(pass(i).evaluateCount == frame);
 					}

@@ -32,8 +32,8 @@ for block in shader.split("//!PARAMETER\n")[1:]:
     match = re.search(r"^(?:int|float) (\w+);", block, re.M)
     assert match and match[1] not in blocks
     blocks[match[1]] = block[:match.end()]
-assert len(blocks) == 44
-assert "//!DEFAULT 1" in blocks["residualColorMode"]
+assert len(blocks) == 42
+assert "residualColorMode" not in blocks and "residualShowProtection" not in blocks
 anti = blocks["antiFlicker"]
 assert list(blocks).index("antiFlicker") == list(blocks).index("multiPass") + 1
 assert "//!GROUP DLSSNR · Pass 1" in anti and "//!DEFAULT 0" in anti
@@ -55,7 +55,7 @@ for name in names:
             pattern = rf"//!{field} (.*)"
             assert re.search(pattern, original)[1] == re.search(pattern, later)[1]
 vm = read("src/Magpie/EffectParametersViewModel.cpp")
-assert '240.0 : 120.0' in vm
+assert 'GetEffectParameterColumnLayout(visibleGroupCount, _availableLayoutWidth)' in vm
 xaml = ET.fromstring(read("src/Magpie/ScalingModesPage.xaml"))
 namespace = "{http://schemas.microsoft.com/winfx/2006/xaml/presentation}"
 template = next(element for element in xaml.iter(namespace + "DataTemplate")
@@ -71,4 +71,4 @@ for lang in ("en-US", "zh-Hans", "zh-Hant"):
         assert entries[f"EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_{i}"]
     for i in (1, 2, 3):
         assert entries[f"EffectParam_DLSSNR_DLSSNR_AI_Filter_Group_DLSSNR____Pass_{i}"] == f"DLSSNR · Pass {i}"
-print("Multi Pass shader defaults/ranges, 44 unique keys, dynamic-column viewport and localization contracts passed.")
+print("Multi Pass shader defaults/ranges, 42 unique keys, dynamic-column viewport and localization contracts passed.")

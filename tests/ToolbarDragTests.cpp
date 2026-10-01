@@ -1,4 +1,4 @@
-// Production toolbar code with real Dear ImGui; no native windows or GPU.
+// Production toolbar with real ImGui and installed Segoe icons; no native windows or GPU.
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -44,12 +44,13 @@ struct EffectDesc {
 	std::vector<Texture> textures{{}};
 };
 std::string_view GetEffectDisplayName(const EffectDesc& desc) { return desc.name; }
-std::string IconLabel(ImWchar icon) { return std::string(1, char(icon)); }
+std::string IconLabel(ImWchar icon) {
+	const wchar_t value = wchar_t(icon); char bytes[4];
+	const int size = WideCharToMultiByte(CP_UTF8, 0, &value, 1, bytes, 4, nullptr, nullptr);
+	return std::string(bytes, size);
+}
 struct OverlayHelper {
-	struct SegoeIcons {
-		static constexpr ImWchar Pinned='P', Diagnostic='D', Parameters='E', View='V',
-			Camera='S', CheckboxIndeterminate='M', Remove='M', FullScreen='F', Favicon='W', Cancel='X';
-	};
+#include "ToolbarIcons.inc"
 };
 struct StrHelper { template<class... T> static std::string Concat(T&&... t) { std::string s; (s.append(t),...); return s; } };
 struct Win32Helper { struct Version { bool IsWin11() const { return true; } }; static Version GetOSVersion() { return {}; } };
@@ -168,6 +169,16 @@ struct JsonHelper {
 	static bool ReadUInt(const rapidjson::GenericObject<true, rapidjson::Value>&,
 		const char*, uint32_t&, bool required = false) noexcept;
 };
+std::vector<ImVec4> toolbarButtons;
+bool TrackedToolbarButton(const char* label, const ImVec2& size) {
+	const bool clicked = ImGui::Button(label, size);
+	const auto actual = ImGui::GetItemRectSize();
+	assert(std::abs(actual.x-size.x)<.01f && std::abs(actual.y-size.y)<.01f);
+	assert(ImGui::GetStyle().ButtonTextAlign.x==.5f && ImGui::GetStyle().ButtonTextAlign.y==.5f);
+	const auto lo=ImGui::GetItemRectMin(), hi=ImGui::GetItemRectMax();
+	toolbarButtons.emplace_back(lo.x,lo.y,hi.x,hi.y);
+	return clicked;
+}
 #include "ToolbarDragProduction.inc"
 }
 using namespace Magpie;
@@ -224,6 +235,35 @@ void PlacementTests() {
 	Near(fresh.Layout(false,geometry).x,732);
 }
 
+void CenterSnapTests() {
+    for (float dpi : {1.f,1.25f,1.5f,2.f}) for (float width : {1920.f,1921.f}) {
+        ToolbarGeometry g(width,1080,dpi);
+        const float center=(g.viewportWidth-g.width)/2;
+        for (bool windowed : {false,true}) for (auto dock : {ToolbarDock::Top,ToolbarDock::Bottom}) {
+            for (float grab : {2.f,18.f,23.f}) {
+                ToolbarPlacement p; p.state.docks.ForMode(windowed)=dock;
+                const float y=dock==ToolbarDock::Top ? 1.f : 1079.f;
+                p.Begin(windowed,g,center+grab,y);
+                for (float delta : {-13.f,-12.f,-11.f,0.f,11.f,12.f,13.f,0.f,-13.f}) {
+                    p.Update(g,center+grab+delta,y);
+                    assert(p.IsCenterSnapped()==(std::abs(delta)<=12));
+                    const auto shown=p.Layout(windowed,g), preview=p.Preview(g);
+                    assert(std::abs(shown.x-preview.x)<1e-5f);
+                    assert(std::abs(shown.x-(std::abs(delta)<=12 ? center : center+delta))<1e-5f);
+                }
+                p.Update(g,center+grab,500); assert(!p.IsCenterSnapped() && !p.Target());
+                p.Update(g,center+grab,y); assert(p.IsCenterSnapped());
+                assert(!p.Release(g,center+grab+12,y));
+                assert(!p.IsCenterSnapped() && !p.IsDragging());
+                assert(std::abs(p.Layout(windowed,g).x-center)<1e-5f);
+                p.Begin(windowed,g,center+grab,y); p.Update(g,center+grab+20,y);
+                p.Cancel(); assert(!p.IsCenterSnapped());
+                assert(std::abs(p.Layout(windowed,g).x-center)<1e-5f);
+            }
+        }
+    }
+}
+
 void SettingsTests() {
 	Profile p;
 	for (const char* text : {"{}", R"({"fullscreenToolbarDock":null,"windowedToolbarDock":false})",
@@ -269,7 +309,17 @@ void Frame(OverlayDrawer& drawer, ImVec2 mouse, bool down=false, bool canceled=f
 	drawer._imguiImpl.raw=mouse; drawer._imguiImpl.canceled=canceled;
 	ScalingWindow::Get().cursor.position={LONG(mouse.x+100),LONG(mouse.y+200)};
 	ImGui::NewFrame(); if(canceled) ImGui::ClearActiveID();
+	toolbarButtons.clear();
 	int id=0; drawer._DrawToolbar(120,id); ImGui::Render();
+	assert(toolbarButtons.size()==8);
+	for (const auto& rect : toolbarButtons) {
+		if (std::abs(rect.y-toolbarButtons.front().y)>=.01f) {
+			std::cerr<<"Button alignment: dpi="<<drawer._dpiScale<<" viewport="<<viewport.x<<','<<viewport.y
+				<<" firstY="<<toolbarButtons.front().y<<" otherY="<<rect.y<<'\n';
+		}
+		assert(std::abs(rect.y-toolbarButtons.front().y)<.01f);
+		assert(std::abs((rect.z-rect.x)-(toolbarButtons.front().z-toolbarButtons.front().x))<.01f);
+	}
 	drawer._presentedToolbarHandleRect=drawer._stagedToolbarHandleRect;
 }
 
@@ -277,8 +327,10 @@ void ImGuiToolbarTests() {
 	ImGui::CreateContext();
 	auto& io=ImGui::GetIO(); io.IniFilename=nullptr; io.ConfigInputTrickleEventQueue=false;
 	ImFontConfig ui; ui.SizePixels=18; auto font=io.Fonts->AddFontDefault(&ui);
-	ImFontConfig icons; icons.SizePixels=16; icons.GlyphMinAdvanceX=icons.GlyphMaxAdvanceX=16;
-	auto iconFont=io.Fonts->AddFontDefault(&icons);
+	char windows[MAX_PATH]; assert(GetWindowsDirectoryA(windows,MAX_PATH));
+	const std::string iconPath=std::string(windows)+"/Fonts/SegoeIcons.ttf";
+	auto iconFont=io.Fonts->AddFontFromFileTTF(iconPath.c_str(),16,nullptr,OverlayHelper::ICON_RANGES);
+	assert(iconFont);
 	unsigned char* pixels; int w,h; io.Fonts->GetTexDataAsRGBA32(&pixels,&w,&h);
 	ImGui::GetStyle().WindowMinSize={1,1};
 	OverlayDrawer drawer; drawer._fontUI=font; drawer._fontMonoNumbers=font; drawer._fontIcons=iconFont;
@@ -293,6 +345,12 @@ void ImGuiToolbarTests() {
 		Frame(drawer,press); Frame(drawer,press,true);
 		assert(drawer._toolbarPlacement.IsDragging() && !drawer._isCursorOnCaptionArea);
 		assert(ImGui::GetBackgroundDrawList()->VtxBuffer.Size > 0);
+		std::vector<ImVec2> cyan;
+		for (const auto& vertex : ImGui::GetBackgroundDrawList()->VtxBuffer)
+			if (vertex.col == IM_COL32(0,255,255,255)) cyan.push_back(vertex.pos);
+		assert(cyan.size()==4);
+		assert(cyan[1].x-cyan[0].x==2 && cyan[2].y-cyan[0].y==1080);
+		assert(cyan[0].x==959 && cyan[0].y==0);
 		Near(ImGui::FindWindowByName("##toolbar")->Pos.x,732);
 		Frame(drawer,{500,700},true); assert(!drawer._toolbarPlacement.Target());
 		Frame(drawer,{500,700}); assert(!drawer._toolbarPlacement.IsDragging() && saved.empty());
@@ -359,7 +417,7 @@ void ImGuiToolbarTests() {
 }
 
 int main() {
-	PlacementTests(); SettingsTests(); ImGuiToolbarTests();
+	PlacementTests(); CenterSnapTests(); SettingsTests(); ImGuiToolbarTests();
 	std::cout << "PASS toolbar drag: real ImGui handle/drop/cancel/menu, 32 mode/viewport/DPI cases, "
 		"raw grab offset, session recovery/new-run centering, JSON compatibility, profile isolation/reordering/deletion and expired saves.\n";
 }

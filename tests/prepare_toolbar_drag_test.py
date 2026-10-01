@@ -47,7 +47,11 @@ parts.append('std::string SaveDocks(const Profile& profile) {\n'
              'writer.StartObject();\n' + save + '\nwriter.EndObject(); return buffer.GetString();\n}')
 # Declare the session before the mock OverlayDrawer declaration uses it.
 (output / 'ToolbarSession.inc').write_text(parts.pop(0), encoding='utf-8')
-(output / 'ToolbarDragProduction.inc').write_text('\n\n'.join(parts), encoding='utf-8')
+# Instrument the real Button calls to validate each resulting item rectangle.
+(output / 'ToolbarDragProduction.inc').write_text('\n\n'.join(parts).replace('ImGui::Button(', 'TrackedToolbarButton('), encoding='utf-8')
+icons = read('src/Magpie.Core/OverlayHelper.h')
+icons = icons[icons.index('\tstruct SegoeIcons {'):icons.index('\n\tstatic constexpr const ImColor TIMELINE_COLORS')]
+(output / 'ToolbarIcons.inc').write_text(icons, encoding='utf-8')
 
 for locale in ['en-US', 'zh-Hans', 'zh-Hant']:
     resources = ET.fromstring(read(f'src/Magpie/Resources.language-{locale}.resw'))

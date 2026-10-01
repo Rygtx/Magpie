@@ -2,7 +2,7 @@
 #include <string_view>
 
 namespace Magpie {
-// Appended after the resample cbuffer and legacy functions. Working textures
+// Appended after the resample cbuffer declaration. Working textures
 // stay signed RGB FP16; Lab deltas are never added directly to stored RGB.
 inline constexpr std::string_view DLSSNR_DETAIL_HLSL = R"hlsl(
 float3 ApplyOklabControls(float3 original, float3 denoised, out float4 metrics) {
@@ -51,7 +51,6 @@ float3 ControlledColor(int2 p, out float4 metrics) {
     metrics = float4(0,1,1,1);
     if (!all(isfinite(o))) return 0;
     if (!all(isfinite(n))) return o;
-    if (ColorMode == 0) return ApplyResidualControls(o,n-o);
     // Exact neutral output, no conversion work. Near-neutral values converge
     // to this candidate because the gamut map is identity on in-gamut RGB.
     if (ResidualMultiplier == 1 && ResidualSaturation == 1 && ResidualLightness == 1 &&
@@ -71,7 +70,7 @@ void PrepareResidual(uint3 tid : SV_DispatchThreadID) {
     float3 residual = color-o;
     // Edge-aware 3x3 (radius 1) complementary split of controlled RGB deltas.
     // Neutral frequency gains bypass every neighbor load and conversion.
-    if (ColorMode == 1 && (LowFrequencyGain != 1 || DetailGain != 1) && ResidualMultiplier != 0) {
+    if ((LowFrequencyGain != 1 || DetailGain != 1) && ResidualMultiplier != 0) {
         float3 low = 0;
         float mass = 0;
         [unroll] for (int y=-1;y<=1;++y) {
@@ -97,7 +96,7 @@ void PrepareResidual(uint3 tid : SV_DispatchThreadID) {
     }
     // Views are opt-in; no extra NR evaluation. Temporal output is bypassed
     // while viewing diagnostics, preserving the NR chain's raw observations.
-    if (ColorMode == 1 && DebugView != 0) {
+    if (DebugView != 0) {
         float3 raw = ReducedDenoised.Load(int3(p,0)).rgb-o;
         if (DebugView == 1) color = saturate(.5+raw*4);
         else if (DebugView == 2) color = saturate(.5+residual*4);
@@ -108,7 +107,7 @@ void PrepareResidual(uint3 tid : SV_DispatchThreadID) {
         else if (DebugView == 7) color = metrics.z;
         residual = color-o;
     }
-    ControlledResidual[p] = float4(ColorMode == 1 && DebugView != 0 ? color : residual,0);
+    ControlledResidual[p] = float4(DebugView != 0 ? color : residual,0);
 }
 )hlsl";
 }

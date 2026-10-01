@@ -32,7 +32,7 @@ namespace Nr {
 struct DLSSNRSettings {
 	float residualMultiplier = 1, residualSaturation = 1, residualLightness = 1;
 	float shadowStructureMultiplier = 1, reflectionGlowMultiplier = 1;
-	int residualColorMode = 0, residualDebugView = 0;
+	int residualDebugView = 0;
 	float residualHueProtection = 0, residualDarkProtection = 0, residualHighlightProtection = 0, residualLocalCompression = 0;
 	float residualLowFrequencyGain = 1, residualDetailGain = 1;
 };

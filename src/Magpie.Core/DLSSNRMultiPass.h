@@ -108,7 +108,7 @@ public:
 		for (const auto& name : names) {
 			if (GetParameterApplyMode(name) != EffectParameterApplyMode::Live) return false;
 			activeEdit |= DLSSNRParameterPass(name) <= _count &&
-				name != "residualShowProtection" && name != "residualShowAdvanced";
+				name != "residualShowAdvanced";
 		}
 		if (!_filter->ApplyLiveParameters(option, names)) return false;
 		_option = option;
@@ -122,7 +122,7 @@ private:
 		return it == _option.parameters.end() ? fallback : it->second;
 	}
 	bool DetailEnabled() const noexcept {
-		return !_hdr && Value("enableInputResolutionScaling") >= .5f && Value("residualColorMode") == 1;
+		return !_hdr && Value("enableInputResolutionScaling") >= .5f;
 	}
 	bool DebugEnabled() const noexcept { return DetailEnabled() && Value("residualDebugView") >= .5f; }
 	void ConfigureDetail() noexcept {

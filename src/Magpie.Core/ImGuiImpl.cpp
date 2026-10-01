@@ -350,6 +350,10 @@ void ImGuiImpl::Tooltip(
 	const char* description,
 	float maxWidth
 ) noexcept {
+	const SIZE outputSize = Win32Helper::GetSizeOfRect(ScalingWindow::Get().Renderer().DestRect());
+	const float availableWidth = std::max(1.0f, float(outputSize.cx));
+	maxWidth = maxWidth > 0 ? std::min(maxWidth, availableWidth) : std::min(360.0f * dpiScale, availableWidth);
+
 	static constexpr float DESCRIPTION_SCALE = 0.9f;
 
 	ImVec2 padding = ImGui::GetStyle().WindowPadding;
@@ -374,7 +378,6 @@ void ImGuiImpl::Tooltip(
 	windowPos.x += 16.0f * dpiScale * ImGui::GetStyle().MouseCursorScale;
 	windowPos.y += 8.0f * dpiScale * ImGui::GetStyle().MouseCursorScale;
 
-	SIZE outputSize = Win32Helper::GetSizeOfRect(ScalingWindow::Get().Renderer().DestRect());
 	windowPos.x = std::clamp(windowPos.x, 0.0f, std::max(0.0f, outputSize.cx - windowSize.x));
 	if (_fittsLawAdjustment < 0.0f) {
 		// A bottom-docked toolbar opens its hints toward the viewport interior.

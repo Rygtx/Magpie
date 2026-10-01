@@ -59,6 +59,7 @@ public:
 
 	bool IsDragging() const noexcept { return _dragging; }
 	std::optional<ToolbarDock> Target() const noexcept { return _target; }
+	bool IsCenterSnapped() const noexcept { return _dragging && _centerSnapped; }
 	ToolbarDock Dock(bool windowed) const noexcept { return state.docks.ForMode(windowed); }
 
 	OverlayWindowRect Layout(bool windowed, const ToolbarGeometry& geometry) noexcept {
@@ -88,6 +89,11 @@ public:
 		_dragY = std::clamp(mouseY - _grabY * geometry.dpiScale,
 			-geometry.rounding, geometry.viewportHeight - geometry.height + geometry.rounding);
 		_target = geometry.Target(mouseX, mouseY);
+		// Test the fresh, unsnapped bar center every frame, in output pixels.
+		// Reusing the previous snapped coordinate would trap a drag at center.
+		const float centeredX = (geometry.viewportWidth - geometry.width) / 2.0f;
+		_centerSnapped = _target.has_value() && std::abs(_dragX - centeredX) <= 12.0f;
+		if (_centerSnapped) _dragX = centeredX;
 	}
 
 	OverlayWindowRect Preview(const ToolbarGeometry& geometry) const noexcept {
@@ -110,11 +116,12 @@ public:
 
 	void Cancel() noexcept {
 		_dragging = false;
+		_centerSnapped = false;
 		_target.reset();
 	}
 
 private:
-	bool _dragging = false, _windowed = false;
+	bool _dragging = false, _windowed = false, _centerSnapped = false;
 	float _grabX = 0.0f, _grabY = 0.0f, _dragX = 0.0f, _dragY = 0.0f;
 	std::optional<ToolbarDock> _target;
 };

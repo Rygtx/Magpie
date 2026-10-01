@@ -14,6 +14,7 @@
 #include <cmath>
 #include <map>
 #include <cstddef>
+#include <limits>
 #include "DLSSNRDetailParameters.h"
 #include "EffectParameterRules.h"
 #include "DLSSNRResidualUnderTest.h"
@@ -50,8 +51,8 @@ struct Harness {
         D3D11_SHADER_BUFFER_DESC reflected{};
         Check(reflection->GetConstantBufferByName("ResampleParams")->GetDesc(&reflected));
         assert(reflected.Size==sizeof(ResampleConstants));
-        for (auto [name,offset] : std::array<std::pair<const char*,size_t>,8>{{
-            {"ColorMode",offsetof(ResampleConstants,colorMode)}, {"HueProtection",offsetof(ResampleConstants,hueProtection)},
+        for (auto [name,offset] : std::array<std::pair<const char*,size_t>,7>{{
+            {"HueProtection",offsetof(ResampleConstants,hueProtection)},
             {"DarkProtection",offsetof(ResampleConstants,darkProtection)}, {"HighlightProtection",offsetof(ResampleConstants,highlightProtection)},
             {"LocalCompression",offsetof(ResampleConstants,localCompression)}, {"LowFrequencyGain",offsetof(ResampleConstants,lowFrequencyGain)},
             {"DetailGain",offsetof(ResampleConstants,detailGain)}, {"DebugView",offsetof(ResampleConstants,debugView)}}}) {
@@ -112,17 +113,31 @@ float MaxAdjacent(const Image& data) { float m=0; for (unsigned i=1;i<W;++i) m=s
 int main(int argc,char** argv) {
     assert(argc==2);
     // Metadata/migration tests use the same helper as production UI/import.
-    std::map<std::wstring,float> old,created;
-    Magpie::InitializeDLSSNRColorMode(old,false); Magpie::InitializeDLSSNRColorMode(created,true);
-    assert(old.at(L"residualColorMode")==0 && created.at(L"residualColorMode")==1);
-    Magpie::InitializeDLSSNRColorMode(old,true); assert(old.at(L"residualColorMode")==0);
-    std::map<std::string,float> values{{"enableInputResolutionScaling",1.f},{"residualColorMode",1.f}};
+    for (float mode : {0.f,1.f,.5f,-1.f,std::numeric_limits<float>::quiet_NaN()}) {
+        std::map<std::wstring,float> old{{L"residualColorMode",mode},{L"residualShowProtection",1.f},
+            {L"residualShowAdvanced",0.f},{L"residualSaturation",.65f},{L"residualMultiplier",1.8f},
+            {L"residualHueProtection",.35f},{L"pass2_intensity",.7f},{L"multiPass",3.f}};
+        assert(Magpie::NormalizeDLSSNRDetailParameters(old));
+        assert(!old.contains(L"residualColorMode") && !old.contains(L"residualShowProtection"));
+        assert(old.at(L"residualShowAdvanced")==1 && old.at(L"residualSaturation")==.65f);
+        assert(old.at(L"residualMultiplier")==1.8f && old.at(L"residualHueProtection")==.35f);
+        assert(old.at(L"pass2_intensity")==.7f && old.at(L"multiPass")==3);
+        auto copy=old; assert(!Magpie::NormalizeDLSSNRDetailParameters(copy) && copy==old);
+    }
+    std::map<std::wstring,float> empty;
+    assert(!Magpie::NormalizeDLSSNRDetailParameters(empty) && empty.empty());
+    std::map<std::string,float> values{{"enableInputResolutionScaling",1.f}};
     auto get=[&](std::string_view name,float fallback) { auto i=values.find(std::string(name)); return i==values.end() ? fallback : i->second; };
-    assert(!Magpie::IsEffectParameterVisible("DLSSNR\\DLSSNR_AI_Filter","residualHueProtection",get));
-    values["residualShowProtection"]=1;
+    for (auto name : Magpie::DLSSNR_RESIDUAL_PARAMETERS) {
+        assert(Magpie::IsEffectParameterVisible("DLSSNR\\DLSSNR_AI_Filter",name,get) == !Magpie::IsDLSSNRAdvancedParameter(name));
+    }
+    values["residualShowAdvanced"]=1;
+    for (auto name : Magpie::DLSSNR_RESIDUAL_PARAMETERS)
+        assert(Magpie::IsEffectParameterVisible("DLSSNR\\DLSSNR_AI_Filter",name,get));
+    values["residualColorMode"]=0; // Obsolete selectors cannot hide advanced controls.
     assert(Magpie::IsEffectParameterVisible("DLSSNR\\DLSSNR_AI_Filter","residualHueProtection",get));
-    values["residualColorMode"]=0;
-    assert(!Magpie::IsEffectParameterVisible("DLSSNR\\DLSSNR_AI_Filter","residualHueProtection",get));
+    values["residualShowAdvanced"]=0;
+    assert(!Magpie::IsEffectParameterVisible("DLSSNR\\DLSSNR_AI_Filter","residualDebugView",get));
     assert(!Magpie::IsEffectParameterEnabled("DLSSNR\\DLSSNR_AI_Filter","residualChromaTemporalStrength",false,get));
     values["antiFlicker"]=2;
     assert(Magpie::IsEffectParameterEnabled("DLSSNR\\DLSSNR_AI_Filter","residualChromaTemporalStrength",false,get));
@@ -134,19 +149,17 @@ int main(int argc,char** argv) {
     Compile(RESIDUAL_VERTICAL_COMPOSITE_HLSL,"CompositeResidualVertical");
     Harness h(false), half(true);
     auto o=Filled({.2f,.4f,.8f,1}), n=Filled({.5f,.5f,.5f,1});
-    ResampleConstants p; p.colorMode=1;
+    ResampleConstants p;
     auto neutral=h.Run(o,n,p);
     assert(Difference(neutral[0],n[0])<1e-7f);
     p.residualMultiplier=0; p.hueProtection=p.darkProtection=p.highlightProtection=p.localCompression=1;
     p.lowFrequencyGain=2; p.detailGain=0;
     auto zero=h.Run(o,n,p); assert(Difference(zero[0],o[0])==0);
     p.residualMultiplier=2; zero=h.Run(o,o,p); assert(Difference(zero[0],o[0])<1e-6f);
-    // Exact grayscale and its two sides: current HSL must reproduce the old bug;
-    // production Oklab must remain continuous through the same boundary.
+    // Exact grayscale and its two sides stay continuous for every configuration.
     for (unsigned i=0;i<W;++i) { float t=(static_cast<int>(i)-128)*1e-5f; n[i]={.5f+t,.5f,.5f-t,1}; }
     p={}; p.residualSaturation=.5f;
-    auto legacy=h.Run(o,n,p); assert(MaxAdjacent(legacy)>.25f);
-    p.colorMode=1; auto gray=h.Run(o,n,p); assert(MaxAdjacent(gray)<.001f);
+    auto gray=h.Run(o,n,p); assert(MaxAdjacent(gray)<.001f);
     auto grayHalf=half.Run(o,n,p); assert(MaxAdjacent(grayHalf)<.001f);
     auto cpuOriginal=ColorReference::ToLab({.2,.4,.8}), cpuGray=ColorReference::ToLab({.5,.5,.5});
     for (int c=1;c<3;++c) cpuGray[c]=cpuOriginal[c]+.5*(cpuGray[c]-cpuOriginal[c]);
@@ -160,17 +173,17 @@ int main(int argc,char** argv) {
     for (int k=0;k<50;++k) { double mid=(greenLo+greenHi)*.5; if (ColorReference::ToLab({.47,mid,.335})[0]<originalL) greenLo=mid; else greenHi=mid; }
     const float greenCross=static_cast<float>((greenLo+greenHi)*.5);
     for (unsigned i=0;i<W;++i) { float t=(static_cast<int>(i)-128)*1e-6f; n[i]={.47f,greenCross+t,.335f,1}; }
-    p={}; p.colorMode=1; p.shadowStructureMultiplier=0; p.reflectionGlowMultiplier=2;
+    p={}; p.shadowStructureMultiplier=0; p.reflectionGlowMultiplier=2;
     auto signScan=h.Run(o,n,p); assert(MaxAdjacent(signScan)<.001f);
     // Near-neutral fast path matches the converted path to float error.
-    p={}; p.colorMode=1; auto exact=h.Run(o,n,p); p.residualSaturation=1.000001f;
+    p={}; auto exact=h.Run(o,n,p); p.residualSaturation=1.000001f;
     auto converted=h.Run(o,n,p); assert(Difference(exact[128],converted[128])<2e-5f);
     // Parameter scans and finite/bounded adversarial input incl. black/white.
     std::mt19937 random(69); std::uniform_real_distribution<float> unit(0,1);
     for (unsigned i=0;i<W;++i) { o[i]={unit(random),unit(random),unit(random),1}; n[i]={unit(random),unit(random),unit(random),1}; }
     o[0]={0,0,0,1}; n[0]={1,1,1,1}; o[1]=n[0]; n[1]=o[0];
     for (int k=0;k<=20;++k) {
-        p={}; p.colorMode=1; p.residualMultiplier=k*.1f;
+        p={}; p.residualMultiplier=k*.1f;
         p.residualSaturation=2; p.residualLightness=2; p.shadowStructureMultiplier=0;
         p.hueProtection=p.darkProtection=p.highlightProtection=p.localCompression=k*.05f;
         auto result=half.Run(o,n,p);
@@ -187,7 +200,7 @@ int main(int argc,char** argv) {
         &ResampleConstants::localCompression,&ResampleConstants::lowFrequencyGain,&ResampleConstants::detailGain};
     o=Filled({.9f,.2f,.05f,1}); n=Filled({.98f,.12f,.35f,1});
     for (auto slider:sliders) for (float boundary:{0.f,.04f,.5f,1.f,1.5f,2.f}) {
-        p={}; p.colorMode=1; p.residualMultiplier=1.6f;
+        p={}; p.residualMultiplier=1.6f;
         p.*slider=std::max(boundary-1e-5f,0.f); auto before=h.Run(o,n,p);
         p.*slider=boundary; auto at=h.Run(o,n,p);
         p.*slider=boundary+1e-5f; auto after=h.Run(o,n,p);
@@ -198,11 +211,11 @@ int main(int argc,char** argv) {
     // CPU-independent direction property: full hue protection keeps red on its
     // original ray even when the NR candidate crosses the chroma origin.
     o=Filled({.8f,.2f,.2f,1}); n=Filled({.2f,.8f,.8f,1});
-    p={}; p.colorMode=1; p.hueProtection=1;
+    p={}; p.hueProtection=1;
     auto protectedColor=h.Run(o,n,p); assert(protectedColor[0][0]>=protectedColor[0][1]-1e-5f);
     // A constant residual lies entirely in the low band; high-only output is 0.
     o=Filled({.4f,.3f,.6f,1}); n=Filled({.5f,.4f,.7f,1});
-    p={}; p.colorMode=1; p.lowFrequencyGain=0;
+    p={}; p.lowFrequencyGain=0;
     auto highOnly=h.Run(o,n,p); assert(Difference(highOnly[100],o[100])<2e-5f);
     p.lowFrequencyGain=1; p.detailGain=0;
     auto lowOnly=h.Run(o,n,p); assert(Difference(lowOnly[100],n[100])<2e-5f);
@@ -210,13 +223,13 @@ int main(int argc,char** argv) {
     // advanced slider really controls detail even though the L/S axis sample
     // above mostly contains a constant, low-frequency residual.
     for (unsigned i=0;i<W;++i) { float delta=i%2 ? .03f : -.03f; n[i]={o[i][0]+delta,o[i][1]+delta,o[i][2]+delta,1}; }
-    p={}; p.colorMode=1; p.lowFrequencyGain=0;
+    p={}; p.lowFrequencyGain=0;
     highOnly=h.Run(o,n,p); assert(Difference(highOnly[100],n[100])<2e-5f);
     p.lowFrequencyGain=1; p.detailGain=0;
     lowOnly=h.Run(o,n,p); assert(Difference(lowOnly[100],o[100])<2e-5f);
     // No broad correction leaking across a strongly different guide edge.
     for (unsigned i=0;i<W;++i) { o[i]=i<128 ? Pixel{.2f,.2f,.2f,1} : Pixel{.8f,.1f,.8f,1}; n[i]=o[i]; if (i>=128) n[i][1]+=.05f; }
-    p={}; p.colorMode=1; p.lowFrequencyGain=2; p.detailGain=0;
+    p={}; p.lowFrequencyGain=2; p.detailGain=0;
     auto guided=h.Run(o,n,p); assert(Difference(guided[127],o[127])<2e-5f);
     // Export actual shader responses on lightness/saturation axes (HSV here
     // is only a source color grid; processing remains Oklab).
@@ -232,7 +245,7 @@ int main(int argc,char** argv) {
             o[i]={base,base+chroma/3,base+chroma,1};
             n[i]={std::clamp(o[i][0]+.03f,0.f,1.f),std::clamp(o[i][1]-.01f,0.f,1.f),std::clamp(o[i][2]-.02f,0.f,1.f),1};
         }
-        p={}; p.colorMode=1;
+        p={};
         switch(control) {
         case 0:p.residualMultiplier=1.5f;break; case 1:p.residualSaturation=1.5f;break;
         case 2:p.residualLightness=1.5f;break; case 3:p.shadowStructureMultiplier=1.5f;break;

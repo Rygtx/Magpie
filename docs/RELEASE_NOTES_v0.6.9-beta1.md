@@ -16,11 +16,11 @@
 - **五个 xBR 效果**：新增 xBR 2x、3x、4x、NoBlend 3x 和 Hybrid 2x，适用于像素画和低分辨率 2D 画面；保留各算法的授权说明。
 - **重复帧处理优化**：重复输入复用已有结果，通过输入／输出修订传播避免重复执行后续效果；兼顾同帧调参、HDR 和捕获尺寸变化，保留已接受捕获帧的时间与身份信息。
 - **DLSSNR Multi Pass 优化**：共用引导、外围资源和 D3D12 调度。SDR 输入分辨率调整路径只在入口降采样一次，多层在推理尺寸串联，出口统一控制并重建总残差；各层 NR 参数和模型历史仍独立。
-- **DLSSNR 细节控制**：新配置使用 Oklab 总残差控制，旧配置保留 Legacy HSL 解释。总强度支持 0–2；新增色相变化保护、暗部保护、高光保护、局部失控压缩、大范围／细节修正强度、色度时域稳定及诊断视图。中性频率设置跳过额外分解，纯后处理调参复用 NR 结果。
+- **DLSSNR 细节控制**：统一使用总残差控制，旧配置保留参数数值并自动迁移。总强度支持 0–2；新增色相变化保护、暗部保护、高光保护、局部失控压缩、大范围／细节修正强度、色度时域稳定及诊断视图。中性频率设置跳过额外分解，纯后处理调参复用 NR 结果。
 
 ## 使用与验证边界
 
-- 多层低分辨率串联与统一总残差会改变旧版本的画面行为；Oklab 与 Legacy HSL 的数值不保证相同观感。
+- 多层低分辨率串联与统一总残差会改变旧版本的画面行为；旧非默认颜色参数迁移后可能呈现不同观感。
 - 已有测试在极小 DLSSNR 推理尺寸（例如 32×18）观察到设备挂起，旧单层管线也可复现；模型最小尺寸边界尚未确定。详见 [DLSSNR 测试记录](experimental/reviews/20261001-v0.6.9-dlssnr-overhead.md)。
 - 光标最低刷新率是调度目标，不是最高帧率，也不表示所有场景均达到该值。
 - CPU／软件 WARP 自动回归、完整 Release x64 构建与包校验分别记录。真实 NVIDIA GPU 的 NGX 多层调度、性能／画质，以及原生 UI、实际热键、工具栏拖拽和多显示器验收仍需实测。
@@ -46,11 +46,11 @@ Local test release integrating all seven 0.6.9 feature branches into `experiment
 - **Five xBR effects**: xBR 2x, 3x, 4x, NoBlend 3x and Hybrid 2x for pixel art and low-resolution 2D content, with the original license notices retained.
 - **Duplicate-frame optimization**: reuse existing results for duplicate inputs and propagate input/output revisions to avoid repeated downstream work. Same-frame parameter updates, HDR and capture resizing retain the accepted capture identity and timing.
 - **DLSSNR Multi Pass optimization**: share guidance, surrounding resources and D3D12 scheduling. The SDR input-resolution-adjustment path downsamples once at entry, chains passes at inference resolution, and controls/reconstructs the total residual once at exit; NR parameters and model history remain independent per pass.
-- **DLSSNR detail controls**: new configurations use Oklab total-residual controls, while existing configurations retain Legacy HSL interpretation. Total strength supports 0–2. New controls include hue-change protection, dark/highlight protection, local correction compression, broad/detail correction strength, chroma temporal stabilization and diagnostic views. Neutral frequency settings skip the extra decomposition; postprocessing-only changes reuse NR results.
+- **DLSSNR detail controls**: all configurations use unified total-residual controls; existing numeric values are preserved during automatic migration. Total strength supports 0–2. New controls include hue-change protection, dark/highlight protection, local correction compression, broad/detail correction strength, chroma temporal stabilization and diagnostic views. Neutral frequency settings skip the extra decomposition; postprocessing-only changes reuse NR results.
 
 ## Compatibility and validation
 
-- Low-resolution multipass chaining and unified total-residual processing change the image behavior of previous versions. Oklab and Legacy HSL values do not guarantee the same appearance.
+- Low-resolution multipass chaining and unified total-residual processing change the image behavior of previous versions. Existing nondefault color settings may look different after migration.
 - Existing tests observed a device hang at very small DLSSNR inference sizes (for example, 32×18), also reproducible on the earlier single-pass pipeline. The model's minimum supported size remains undetermined; see the [DLSSNR test record](experimental/reviews/20261001-v0.6.9-dlssnr-overhead.md).
 - Minimum cursor refresh is a scheduling target, not a maximum frame rate or a measured guarantee in every scenario.
 - CPU/software-WARP regression checks, the full Release x64 build and package verification are recorded separately. Real NVIDIA NGX multipass scheduling, performance/image quality, native UI, system hotkeys, toolbar dragging and multi-monitor acceptance still require testing.

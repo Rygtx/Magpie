@@ -42,7 +42,6 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) 
 			"shadowStructureMultiplier", 1.0f, 0.0f, 2.0f),
 		.reflectionGlowMultiplier = getClamped(
 			"reflectionGlowMultiplier", 1.0f, 0.0f, 2.0f),
-		.residualColorMode = getParameter("residualColorMode", 0.f) == 1.f ? 1 : 0,
 		.residualHueProtection = getClamped("residualHueProtection", 0.f, 0.f, 1.f),
 		.residualDarkProtection = getClamped("residualDarkProtection", 0.f, 0.f, 1.f),
 		.residualHighlightProtection = getClamped("residualHighlightProtection", 0.f, 0.f, 1.f),
@@ -182,7 +181,7 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
-    uint ColorMode;
+    uint Reserved1;
     float HueProtection;
     float DarkProtection;
     float HighlightProtection;
@@ -262,7 +261,7 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
-    uint ColorMode;
+    uint Reserved1;
     float HueProtection;
     float DarkProtection;
     float HighlightProtection;
@@ -333,7 +332,7 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
-    uint ColorMode;
+    uint Reserved1;
     float HueProtection;
     float DarkProtection;
     float HighlightProtection;
@@ -342,94 +341,6 @@ cbuffer ResampleParams : register(b0) {
     float DetailGain;
     uint DebugView;
 };
-
-float3 RGBToHSL(float3 color) {
-    float maximum = max(color.r, max(color.g, color.b));
-    float minimum = min(color.r, min(color.g, color.b));
-    float delta = maximum - minimum;
-    float lightness = (maximum + minimum) * 0.5;
-    if (delta <= 1e-6) {
-        return float3(0.0, 0.0, lightness);
-    }
-
-    float hue = 0.0;
-    if (maximum == color.r) {
-        hue = (color.g - color.b) / delta;
-        if (hue < 0.0) hue += 6.0;
-    } else if (maximum == color.g) {
-        hue = (color.b - color.r) / delta + 2.0;
-    } else {
-        hue = (color.r - color.g) / delta + 4.0;
-    }
-    float saturation = delta / max(1.0 - abs(2.0 * lightness - 1.0), 1e-6);
-    return float3(hue / 6.0, saturate(saturation), saturate(lightness));
-}
-
-float HueToRGB(float p, float q, float hue) {
-    hue = frac(hue);
-    if (hue < 1.0 / 6.0) return p + (q - p) * 6.0 * hue;
-    if (hue < 1.0 / 2.0) return q;
-    if (hue < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - hue) * 6.0;
-    return p;
-}
-
-float3 HSLToRGB(float3 hsl) {
-    if (hsl.y <= 1e-6) {
-        return float3(hsl.z, hsl.z, hsl.z);
-    }
-    float q = hsl.z < 0.5 ?
-        hsl.z * (1.0 + hsl.y) : hsl.z + hsl.y - hsl.z * hsl.y;
-    float p = 2.0 * hsl.z - q;
-    return saturate(float3(
-        HueToRGB(p, q, hsl.x + 1.0 / 3.0),
-        HueToRGB(p, q, hsl.x),
-        HueToRGB(p, q, hsl.x - 1.0 / 3.0)));
-}
-
-float3 ToLinear(float3 color) {
-    return float3(
-        color.r <= 0.04045 ? color.r / 12.92 : pow(max(color.r + 0.055, 0.0) / 1.055, 2.4),
-        color.g <= 0.04045 ? color.g / 12.92 : pow(max(color.g + 0.055, 0.0) / 1.055, 2.4),
-        color.b <= 0.04045 ? color.b / 12.92 : pow(max(color.b + 0.055, 0.0) / 1.055, 2.4));
-}
-
-float3 ApplyResidualControls(float3 original, float3 residual) {
-    residual *= ResidualMultiplier;
-    if (all(residual == 0.0)) return original;
-    float4 fineControls = float4(
-        ResidualSaturation, ResidualLightness,
-        ShadowStructureMultiplier, ReflectionGlowMultiplier);
-    // Neutral fine controls preserve the multiplied residual in this low-resolution domain.
-    float3 output = saturate(original + residual);
-    [branch]
-    if (any(abs(fineControls - 1.0) >= 1e-6)) {
-        // Classify the whole pixel before directional/HSL controls. The
-        // reference cannot depend on the multiplier selected by this branch.
-        float deltaY = dot(ToLinear(output) - ToLinear(original),
-            float3(0.2126, 0.7152, 0.0722));
-        float directionalMultiplier = deltaY < 0.0 ? ShadowStructureMultiplier :
-            (deltaY > 0.0 ? ReflectionGlowMultiplier : 1.0);
-        float3 controlledResidual = residual * directionalMultiplier;
-        float3 candidate = saturate(original + controlledResidual);
-        [branch]
-        if (abs(ResidualSaturation - 1.0) >= 1e-6 ||
-            abs(ResidualLightness - 1.0) >= 1e-6) {
-            // The SRVs are non-sRGB UNORM views, so HSL operates on normalized
-            // stored SDR RGB values without an implicit transfer conversion.
-            float3 originalHSL = RGBToHSL(original);
-            float3 candidateHSL = RGBToHSL(candidate);
-            candidateHSL.y = saturate(originalHSL.y +
-                (candidateHSL.y - originalHSL.y) * ResidualSaturation);
-            candidateHSL.z = saturate(originalHSL.z +
-                (candidateHSL.z - originalHSL.z) * ResidualLightness);
-            candidate = HSLToRGB(candidateHSL);
-        }
-        output = candidate;
-    }
-    return output;
-}
-
-
 )";
 
 constexpr char RESIDUAL_HORIZONTAL_HLSL[] = R"(
@@ -446,7 +357,7 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
-    uint ColorMode;
+    uint Reserved1;
     float HueProtection;
     float DarkProtection;
     float HighlightProtection;
@@ -504,7 +415,7 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
-    uint ColorMode;
+    uint Reserved1;
     float HueProtection;
     float DarkProtection;
     float HighlightProtection;
@@ -547,7 +458,7 @@ void CompositeResidualVertical(uint3 tid : SV_DispatchThreadID) {
         residual /= abs(totalWeight) > 1e-6 ? totalWeight : 1.0;
     }
     OutputColor[tid.xy] = float4(
-        saturate(ColorMode == 1 && DebugView != 0 ? residual : original + residual), storedOriginal.a);
+        saturate(DebugView != 0 ? residual : original + residual), storedOriginal.a);
 }
 )";
 
@@ -567,7 +478,7 @@ struct ResampleConstants {
 	float residualLightness = 1.0f;
 	float shadowStructureMultiplier = 1.0f;
 	float reflectionGlowMultiplier = 1.0f;
-	uint32_t colorMode = 0;
+	uint32_t reserved1 = 0;
 	float hueProtection = 0;
 	float darkProtection = 0;
 	float highlightProtection = 0;
@@ -1813,7 +1724,6 @@ static bool CompositeResidual(
 		.residualLightness = settings.residualLightness,
 		.shadowStructureMultiplier = settings.shadowStructureMultiplier,
 		.reflectionGlowMultiplier = settings.reflectionGlowMultiplier,
-		.colorMode = static_cast<uint32_t>(settings.residualColorMode),
 		.hueProtection = settings.residualHueProtection,
 		.darkProtection = settings.residualDarkProtection,
 		.highlightProtection = settings.residualHighlightProtection,
@@ -1900,7 +1810,7 @@ DLSSNRFilter::GetFrameGuidanceRequirements() const noexcept {
 EffectParameterApplyMode DLSSNRFilter::GetParameterApplyMode(
 	std::string_view parameterName
 ) const noexcept {
-	if (parameterName == "residualShowProtection" || parameterName == "residualShowAdvanced")
+	if (parameterName == "residualShowAdvanced")
 		return EffectParameterApplyMode::Live;
 	if (_settings.experimentalHdr.enabled &&
 		(parameterName == "enableInputResolutionScaling" || parameterName == "inputResolutionPercent" ||
@@ -1959,7 +1869,6 @@ bool DLSSNRFilter::ApplyLiveParameters(
 		post.residualSaturation != _settings.residualSaturation || post.residualLightness != _settings.residualLightness ||
 		post.shadowStructureMultiplier != _settings.shadowStructureMultiplier ||
 		post.reflectionGlowMultiplier != _settings.reflectionGlowMultiplier ||
-		post.residualColorMode != _settings.residualColorMode ||
 		post.residualHueProtection != _settings.residualHueProtection ||
 		post.residualDarkProtection != _settings.residualDarkProtection ||
 		post.residualHighlightProtection != _settings.residualHighlightProtection ||
@@ -2014,7 +1923,6 @@ bool DLSSNRFilter::InitializeChain(DeviceResources& resources, NgxD3D12Core& ngx
 		_settings.shadowStructureMultiplier, 0.0f, 2.0f, 1.0f);
 	_settings.reflectionGlowMultiplier = ClampFinite(
 		_settings.reflectionGlowMultiplier, 0.0f, 2.0f, 1.0f);
-	_settings.residualColorMode = _settings.residualColorMode == 1 ? 1 : 0;
 	_settings.residualHueProtection = ClampFinite(_settings.residualHueProtection,0.f,1.f,0.f);
 	_settings.residualDarkProtection = ClampFinite(_settings.residualDarkProtection,0.f,1.f,0.f);
 	_settings.residualHighlightProtection = ClampFinite(_settings.residualHighlightProtection,0.f,1.f,0.f);

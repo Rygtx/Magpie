@@ -8,14 +8,17 @@
 #include "EffectsService.h"
 #include "EffectHelper.h"
 #include "EffectParametersViewModel.h"
+#include "EffectParameterPopupLayout.h"
 #include "App.h"
 #include "CommonSharedConstants.h"
+#include "MainWindow.h"
 #include "Logger.h"
 #include "ToastService.h"
 #include <cmath>
 #include <parallel_hashmap/phmap.h>
 #include <winrt/Windows.Devices.Input.h>
 #include <winrt/Windows.UI.Input.h>
+#include <shellscalingapi.h>
 
 using namespace ::Magpie;
 using namespace winrt;
@@ -176,12 +179,27 @@ void ScalingModesPage::EffectParametersFlyout_Opening(
 		content.Content().try_as<winrt::Magpie::EffectParametersViewModel>() : nullptr;
 	if (!parameters || !XamlRoot()) return;
 
-	// Leave room for presenter chrome and the root-bound popup margins. The
-	// view model sizes the viewport to the root. DLSSNR columns retain a
-	// readable minimum width and scroll horizontally when they cannot fit.
-	constexpr double FLYOUT_CHROME_AND_MARGIN = 72.0;
-	get_self<EffectParametersViewModel>(parameters)->UpdateLayoutWidth(
-		std::max(0.0, XamlRoot().Size().Width - FLYOUT_CHROME_AND_MARGIN));
+	const auto anchor = flyout.Target();
+	const auto& window = App::Get().MainWindow();
+	POINT position{};
+	if (anchor) {
+		const auto center = anchor.TransformToVisual(XamlRoot().Content()).TransformPoint(
+			{ float(anchor.ActualWidth() / 2), float(anchor.ActualHeight() / 2) });
+		position = window.XamlRootPointToScreen(center);
+	} else {
+		position = window.XamlRootPointToScreen({ 0, 0 });
+	}
+	const auto monitor = MonitorFromPoint(position, MONITOR_DEFAULTTONEAREST);
+	MONITORINFO info{ sizeof(info) };
+	if (!GetMonitorInfo(monitor, &info)) return;
+	UINT dpiX = window.CurrentDpi(), dpiY = dpiX;
+	GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+	const auto size = GetEffectParameterPopupSize(info.rcWork.right - info.rcWork.left,
+		info.rcWork.bottom - info.rcWork.top, dpiX / 96.0, XamlRoot().RasterizationScale());
+	// The native desktop popup chooses/flips its position at the screen edge.
+	// Leave room for its chrome while sizing against this monitor's work area.
+	get_self<EffectParametersViewModel>(parameters)->UpdateLayoutSize(
+		size.width, size.height);
 }
 
 void ScalingModesPage::AddEffectButton_Click(IInspectable const& sender, RoutedEventArgs const&) {

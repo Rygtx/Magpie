@@ -230,7 +230,7 @@ int main() {
 			std::vector<std::string> names{"residualMultiplier"};
 			assert(chain.ApplyLiveParameters(option, names));
 			assert(DLSSNRTemporal::resets == resets + 1);
-			names = {"residualShowProtection", "residualShowAdvanced"};
+			names = {"residualShowAdvanced"};
 			assert(chain.ApplyLiveParameters(option,names));
 			assert(DLSSNRTemporal::resets == resets + 1);
 			if (count == 1) {

@@ -105,6 +105,7 @@
 		<DataTemplate x:Key="EffectParametersFlyout"
 		              x:DataType="local:EffectParametersViewModel">
 			<ScrollViewer Width="{x:Bind ContentWidth, Mode=OneWay}"
+			              MaxHeight="{x:Bind ContentMaxHeight, Mode=OneWay}"
 			              HorizontalScrollBarVisibility="Auto"
 			              HorizontalScrollMode="Enabled"
 			              VerticalScrollBarVisibility="Auto"
@@ -147,7 +148,13 @@
 												          IsChecked="{x:Bind BooleanValue, Mode=TwoWay}"
 												          Visibility="{x:Bind IsBoolean, Mode=OneTime}">
 													<TextBlock Text="{x:Bind Label, Mode=OneTime}"
-													           TextWrapping="WrapWholeWords" />
+													           TextWrapping="WrapWholeWords" AutomationProperties.HelpText="{x:Bind Tooltip, Mode=OneWay}">
+														<ToolTipService.ToolTip>
+															<ToolTip MaxWidth="360" Placement="Top">
+																<TextBlock MaxWidth="328" Text="{x:Bind Tooltip, Mode=OneWay}" TextWrapping="Wrap" />
+															</ToolTip>
+														</ToolTipService.ToolTip>
+													</TextBlock>
 												</CheckBox>
 												<local:SimpleStackPanel Visibility="{x:Bind IsFloat, Mode=OneTime}">
 													<Grid ColumnSpacing="4"
@@ -159,7 +166,13 @@
 														<TextBlock Grid.Column="0"
 														           VerticalAlignment="Center"
 														           Text="{x:Bind Label, Mode=OneTime}"
-														           TextWrapping="WrapWholeWords" />
+														           TextWrapping="WrapWholeWords" AutomationProperties.HelpText="{x:Bind Tooltip, Mode=OneWay}">
+															<ToolTipService.ToolTip>
+																<ToolTip MaxWidth="360" Placement="Top">
+																	<TextBlock MaxWidth="328" Text="{x:Bind Tooltip, Mode=OneWay}" TextWrapping="Wrap" />
+																</ToolTip>
+															</ToolTipService.ToolTip>
+														</TextBlock>
 														<TextBlock Grid.Column="1"
 														           HorizontalAlignment="Right"
 														           VerticalAlignment="Center"
@@ -178,7 +191,13 @@
 														           Grid.Column="0"
 														           VerticalAlignment="Center"
 														           Text="{x:Bind PrimaryLabel, Mode=OneTime}"
-														           TextWrapping="WrapWholeWords" />
+														           TextWrapping="WrapWholeWords" AutomationProperties.HelpText="{x:Bind Tooltip, Mode=OneWay}">
+															<ToolTipService.ToolTip>
+																<ToolTip MaxWidth="360" Placement="Top">
+																	<TextBlock MaxWidth="328" Text="{x:Bind Tooltip, Mode=OneWay}" TextWrapping="Wrap" />
+																</ToolTip>
+															</ToolTipService.ToolTip>
+														</TextBlock>
 														<TextBlock Grid.Row="0"
 														           Grid.Column="1"
 														           HorizontalAlignment="Right"
@@ -205,7 +224,13 @@
 								<local:SimpleStackPanel Spacing="4"
 								                        Visibility="{x:Bind IsChoice, Mode=OneTime}">
 									<TextBlock Text="{x:Bind Label, Mode=OneTime}"
-									           TextWrapping="WrapWholeWords" />
+									           TextWrapping="WrapWholeWords" AutomationProperties.HelpText="{x:Bind Tooltip, Mode=OneWay}">
+										<ToolTipService.ToolTip>
+											<ToolTip MaxWidth="360" Placement="Top">
+												<TextBlock MaxWidth="328" Text="{x:Bind Tooltip, Mode=OneWay}" TextWrapping="Wrap" />
+											</ToolTip>
+										</ToolTipService.ToolTip>
+									</TextBlock>
 									<ComboBox HorizontalAlignment="Stretch"
 									          IsEnabled="{x:Bind IsEnabled, Mode=OneWay}"
 									          ItemsSource="{x:Bind Choices, Mode=OneWay}"
@@ -571,11 +596,11 @@
 															<FontIcon Glyph="&#xE9E9;" />
 														</Button.Content>
 													<Button.Flyout>
-														<Flyout Opening="EffectParametersFlyout_Opening">
+														<Flyout Opening="EffectParametersFlyout_Opening" ShouldConstrainToRootBounds="False">
 															<Flyout.FlyoutPresenterStyle>
 																<Style BasedOn="{StaticResource DefaultFlyoutPresenterStyle}"
 																       TargetType="FlyoutPresenter">
-																	<Setter Property="MaxHeight" Value="650" />
+																	<Setter Property="MaxHeight" Value="10000" />
 																	<Setter Property="MaxWidth" Value="10000" />
 																</Style>
 															</Flyout.FlyoutPresenterStyle>
