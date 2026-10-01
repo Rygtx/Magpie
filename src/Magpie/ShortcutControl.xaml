@@ -78,7 +78,9 @@
 	        Margin="8,-6,0,-6"
 	        Padding="8"
 	        Click="ClearButton_Click"
-	        Style="{StaticResource SubtleButtonStyle}"
+	        Background="Transparent"
+	        BorderBrush="Transparent"
+	        BorderThickness="0"
 	        Visibility="Collapsed">
 		<FontIcon FontSize="16" Glyph="&#xE74D;" />
 	</Button>
