@@ -333,6 +333,7 @@ private:
 	bool _hasFrameGeneration = false;
 	mutable PresentationFrameRate _presentationRate;
 	FrameGuidanceFrameId _capturedFrameId = 0;
+	int64_t _acceptedCaptureTimestamp100ns = 0;
 	std::chrono::steady_clock::time_point _lastCapturedFrameTime{};
 	NgxD3D12Core _ngxD3D12Core;
 	std::vector<EffectDrawer> _effectDrawers;
