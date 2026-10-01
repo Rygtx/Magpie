@@ -634,6 +634,7 @@ struct DLSSNRFilter::Impl {
 	std::shared_ptr<ShaderSet> shaders;
 	std::vector<std::unique_ptr<Impl>> laterPasses;
 	DLSSNRChainCache cache;
+	uint64_t cachedInputHistoryRevision = 0;
 	FrameGuidanceView cachedGuidance{};
 	FrameGuidanceView preparedGuidance{};
 	bool guidancePrepared = false;
@@ -2413,14 +2414,17 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 		if (count > 1 || !Drain() || !PrepareInput(impl, context.input)) return false;
 		return composite(); // preserve the legacy single-feature pass-through
 	}
-	const FrameGuidanceView guidance = SelectGuidance(context, _settings,
+	FrameGuidanceView guidance = SelectGuidance(context, _settings,
 		{ impl.sourceWidth, impl.sourceHeight });
 	if (!guidance.IsValidFor(context.frameId, { impl.sourceWidth, impl.sourceHeight }))
 		return fail("invalid-guidance");
 	std::array<uint64_t, 3> revisions{};
 	for (size_t i = 0; i < count; ++i) revisions[i] = passAt(i).evaluateParameterRevision;
 	const std::span<const uint64_t> activeRevisions{ revisions.data(), count };
-	const bool sameGuidance = SameGuidance(impl.cachedGuidance, guidance);
+	const FrameGuidanceView sourceGuidance = guidance;
+	const bool sameGuidance = !context.inputHistoryReset &&
+		impl.cachedInputHistoryRevision == context.inputHistoryRevision &&
+		SameGuidance(impl.cachedGuidance, guidance);
 	const size_t first = impl.cache.FirstDirty(context.frameId, context.inputRevision,
 		sameGuidance, activeRevisions);
 	if (first == count) {
@@ -2441,9 +2445,20 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 		impl.cachedGuidance.depth.metadata.resourceGeneration != guidance.depth.metadata.resourceGeneration ||
 		impl.cachedGuidance.confidence.metadata.resourceGeneration != guidance.confidence.metadata.resourceGeneration ||
 		impl.cachedGuidance.motion.metadata.validRegion != guidance.motion.metadata.validRegion);
-	if (resourcesChanged || (impl.cache.valid && (impl.cache.inputRevision != context.inputRevision ||
-		context.frameId < impl.cache.frame))) {
+	if (resourcesChanged || context.inputHistoryReset ||
+		impl.cachedInputHistoryRevision != context.inputHistoryRevision ||
+		!context.isNewCaptureFrame || (impl.cache.valid && (
+			(impl.cache.frame == context.frameId && impl.cache.inputRevision != context.inputRevision) ||
+			context.frameId < impl.cache.frame))) {
 		for (size_t i = 0; i < count; ++i) passAt(i).resetHistory = true;
+	}
+	if (!context.isNewCaptureFrame) {
+		// Perform the reuse/residual decision against the captured guidance first.
+		// Only a real SDK re-evaluation needs Zero and reset for this old frame.
+		guidance = SelectFrameGuidanceChannels(context.zeroFrameGuidance, context.zeroFrameGuidance,
+			context.frameId, { impl.sourceWidth, impl.sourceHeight }, false);
+		if (!guidance.IsValidFor(context.frameId, { impl.sourceWidth, impl.sourceHeight }))
+			return fail("invalid-redraw-zero-guidance");
 	}
 	Impl::CommandSlot& slot = impl.commandSlots[impl.nextCommandSlot++ % Impl::COMMAND_SLOT_COUNT];
 	const auto waitStart = NativeBackendTiming::Now();
@@ -2547,7 +2562,8 @@ bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
 	if (!success) return fail("evaluate");
 	if (!composite()) return fail("composite");
 	impl.residualParametersDirty = false;
-	impl.cachedGuidance = guidance;
+	impl.cachedGuidance = sourceGuidance;
+	impl.cachedInputHistoryRevision = context.inputHistoryRevision;
 	impl.cache.Commit(context.frameId, context.inputRevision, activeRevisions);
 	if constexpr (NativeBackendTiming::Enabled) {
 		impl.slotWaitTimings.Add(waitMs);

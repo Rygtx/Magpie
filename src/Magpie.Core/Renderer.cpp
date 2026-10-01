@@ -1519,6 +1519,7 @@ bool Renderer::OnResize() noexcept {
 		}
 
 		// 渲染完成再通知前端防止黑屏。前端会自动执行渲染，因此无需发送 WM_FRONTEND_RENDER
+		FrameTrace::Mark(FrameTrace::Event::RenderReason, 3); // Resize.
 		_BackendRender(outputTexture, false);
 
 		_sharedTextureHandle.store(sharedHandle, std::memory_order_release);
@@ -1913,7 +1914,6 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 	}
 
 	_BuildEffectParameterRuntimeInfos();
-	_effectInputRevisions.assign(effectCount, 0);
 
 	if (_ShouldAppendBicubic(inOutTexture)) {
 		if (!_AppendBicubic(&inOutTexture)) {
@@ -1930,6 +1930,7 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 
 	_UpdateActiveEffectDescs();
 	_UpdateHdrEffectBoundaryContexts();
+	_effectFrameStates.assign(_effectDrawers.size(), {});
 
 	// 初始化所有效果共用的动态常量缓冲区
 	for (const EffectDesc& effectDesc : _effectDescs) {
@@ -2207,12 +2208,20 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 		}
 		anySucceeded |= succeeded;
 		if (succeeded && !isFrameRateFilter) {
-			// A forced render can reuse the same captured frame ID. Tell every
-			// later native effect that its actual input changed so a duplicate-
-			// frame cache cannot hide an upstream live shader/backend update.
-			for (size_t i = effectIdx + 1; i < _effectInputRevisions.size(); ++i) {
-				++_effectInputRevisions[i];
+			// The changed stage publishes an output version after its draw. Later
+			// stages consume that version, including time-driven shader changes.
+			bool changesOutput = true;
+			if (_runtimeEffectOptions[effectIdx].name == "DLSSNR\\DLSSNR_AI_Filter") {
+				const auto& values = _runtimeEffectOptions[effectIdx].parameters;
+				const int activePasses = DLSSNRPassCount([&](std::string_view name, float fallback) {
+					const auto it = values.find(std::string(name));
+					return it == values.end() ? fallback : it->second;
+				});
+				changesOutput = std::ranges::any_of(changedNames, [&](const std::string& name) {
+					return DLSSNRParameterPass(name) <= activePasses;
+				});
 			}
+			if (changesOutput) _effectFrameStates[effectIdx].ParametersChanged();
 		}
 	}
 
@@ -2316,6 +2325,8 @@ bool Renderer::_AppendBicubic(ID3D11Texture2D** inOutTexture) noexcept {
 }
 
 ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
+	// Invalidate before resources are touched, even if a later resize fails.
+	for (auto& state : _effectFrameStates) state.Invalidate();
 	const auto priorityCheck = wil::scope_exit([this] { _EnsureGpuPriority(true); });
 	const std::vector<EffectOption>& effects = _runtimeEffectOptions;
 	assert(!effects.empty());
@@ -2444,6 +2455,7 @@ ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
 		}
 	}
 
+	_effectFrameStates.resize(_effectDrawers.size());
 	return inOutTexture;
 }
 
@@ -2982,6 +2994,8 @@ void Renderer::_BackendThreadProc() noexcept {
 			}
 			[[fallthrough]];
 		case FrameSourceState::NewFrame:
+			FrameTrace::Mark(FrameTrace::Event::RenderReason,
+				frameSourceState == FrameSourceState::NewFrame ? 0 : _forceNextRender ? 2 : 1);
 			_forceNextRender = false;
 			_backendMayDeferFG = true;
 			_BackendRender(
@@ -3279,13 +3293,16 @@ void Renderer::_BackendRender(
 	ID3D11Texture2D* effectsOutput,
 	bool isNewCaptureFrame
 ) noexcept {
-	if (_colorPipelineFailed) return;
+	if (_colorPipelineFailed || (!isNewCaptureFrame &&
+		(_capturedFrameId == 0 || !_frameSource->IsHdrFrameReady()))) return;
+	_activeResourceGeneration.store(_frameSource->ResourceGeneration(), std::memory_order_release);
 	FrameTrace::Scope traceRender(FrameTrace::Event::BackendRender, isNewCaptureFrame);
 	_stepTimer.PrepareForRender();
 	if (isNewCaptureFrame) {
 		const auto captureTime = std::chrono::steady_clock::now();
 		const uint64_t sequence = _frameSource->CaptureSequence();
 		if (sequence != _captureSequence) {
+			_captureEffectFrameCount = 0;
 			_captureSequence = sequence;
 			_activeCaptureSequence.store(sequence, std::memory_order_release);
 			_activeResourceGeneration.store(
@@ -3303,6 +3320,7 @@ void Renderer::_BackendRender(
 				sequence, _capturedFrameId + 1, _frameSource->CaptureTimestamp100ns(),
 				_capturedFrameId != 0));
 		}
+		++_captureEffectFrameCount;
 		const auto downstreamWait = std::exchange(_captureCadenceQueueWait,
 			std::chrono::steady_clock::duration::zero());
 		if (_captureCadence.Observe(captureTime, downstreamWait)) {
@@ -3354,29 +3372,75 @@ void Renderer::_BackendRender(
 	ID3D11DeviceContext4* d3dDC = _backendResources.GetD3DDC();
 	d3dDC->ClearState();
 
-	if (ID3D11Buffer* t = _dynamicCB.get()) {
-		_UpdateDynamicConstants();
-		d3dDC->CSSetConstantBuffers(1, 1, &t);
-	}
-
 	_effectsProfiler.OnBeginEffects(d3dDC);
 	if (isNewCaptureFrame) {
 		_UpdateHdrEffectBoundaryContexts();
 	}
 
+	uint64_t inputRevision = _capturedFrameId;
+	uint64_t inputHistoryRevision = 0;
 	for (uint32_t i = 0; i < _effectDrawers.size(); ++i) {
 		const EffectDrawer& effectDrawer = _effectDrawers[i];
-		// Native SDKs may clear the context. Restore dynamic constants for the
-		// next image effect instead of relying on the first binding of the frame.
-		if (ID3D11Buffer* dynamic = _dynamicCB.get()) d3dDC->CSSetConstantBuffers(1, 1, &dynamic);
+		const EffectDesc& desc = *_activeEffectDescs[i];
+		auto resourceKey = [](ID3D11Texture2D* texture) noexcept {
+			D3D11_TEXTURE2D_DESC td{};
+			texture->GetDesc(&td);
+			return EffectFrameResource{ reinterpret_cast<uintptr_t>(texture),
+				td.Width, td.Height, static_cast<uint32_t>(td.Format) };
+		};
+		ID3D11Texture2D* upstream = i == 0 ? _frameSource->GetPipelineTexture()
+			: _effectDrawers[i - 1].GetExternalOutputTexture();
+		auto& frameState = _effectFrameStates[i];
+		const EffectFrameKey key{
+			.frameId = _capturedFrameId,
+			.inputRevision = inputRevision,
+			.inputHistoryRevision = inputHistoryRevision,
+			.parameterRevision = frameState.ParameterRevision(),
+			.captureSequence = _frameSource->CaptureSequence(),
+			.resourceGeneration = _frameSource->ResourceGeneration(),
+			.input = resourceKey(upstream),
+			.output = resourceKey(effectDrawer.GetExternalOutputTexture())
+		};
+		const bool captureClock = UsesCaptureFrameClock(desc.name);
+		const bool native = i < _nativeEffectBackends.size() && _nativeEffectBackends[i];
+		const bool renderClock = !native && (desc.flags & EffectFlags::UseDynamic) && !captureClock;
+		if (!frameState.NeedsDraw(key, renderClock)) {
+			FrameTrace::Mark(FrameTrace::Event::EffectReuse, i, inputRevision);
+			// Keep the profiler's pass slots aligned without executing image work.
+			for (size_t p = 0; p < desc.passes.size(); ++p) _effectsProfiler.OnEndPass(d3dDC);
+			inputRevision = frameState.OutputRevision();
+			inputHistoryRevision = frameState.OutputHistoryRevision();
+			continue;
+		}
+		const bool historyReset = frameState.RequiresHistoryReset(key);
+		bool drawSucceeded = false;
+		const auto publishVersion = wil::scope_exit([&] {
+			frameState.Commit(key, drawSucceeded);
+			inputRevision = frameState.OutputRevision();
+			inputHistoryRevision = frameState.OutputHistoryRevision();
+		});
+		FrameTrace::Mark(FrameTrace::Event::EffectExecute, i, historyReset);
+		if (captureClock && (historyReset || frameState.ParametersDiffer(key)) &&
+			!effectDrawer.ResetCaptureHistory(desc)) {
+			_FailColorPipeline(desc.name, ScalingError::EffectResourceFailed);
+			return;
+		}
+		// Native SDKs may clear state. Select a clock and rebind for each drawn
+		// shader. SMAA advances only on accepted capture events; other dynamic
+		// shaders keep their animation clock and propagate every actual draw.
+		if (!native && (desc.flags & EffectFlags::UseDynamic)) {
+			if (!_UpdateDynamicConstants(captureClock ? _captureEffectFrameCount : _stepTimer.FrameCount())) {
+				_FailColorPipeline(desc.name, ScalingError::EffectResourceFailed);
+				return;
+			}
+			ID3D11Buffer* dynamic = _dynamicCB.get();
+			d3dDC->CSSetConstantBuffers(1, 1, &dynamic);
+		}
 		if (ScalingWindow::Get().Options().hdrComponents.enabled ||
 			ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
 			// Rebind every boundary to the actual upstream canonical handoff for
 			// this frame. Initialization-time pointers become stale after the
 			// first capture and after any resize/rebuild.
-			ID3D11Texture2D* upstream = i == 0
-				? _frameSource->GetPipelineTexture()
-				: _effectDrawers[i - 1].GetExternalOutputTexture();
 			_effectDrawers[i].SetHdrInputSource(upstream);
 		}
 		const auto component = i < _runtimeEffectOptions.size()
@@ -3386,12 +3450,14 @@ void Renderer::_BackendRender(
 				_FailColorPipeline(_runtimeEffectOptions[i].name, ScalingError::EffectResourceFailed);
 				return;
 			}
+			drawSucceeded = true;
 			continue;
 		}
 		if (i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) {
 			if (!effectDrawer.PrepareHdrInput()) {
 				Logger::Get().Error("准备 native HDR 效果输入失败");
-				continue;
+				_FailColorPipeline(desc.name, ScalingError::EffectResourceFailed);
+				return;
 			}
 			D3D11_TEXTURE2D_DESC inputDesc{};
 			effectDrawer.GetTexture(0)->GetDesc(&inputDesc);
@@ -3400,6 +3466,12 @@ void Renderer::_BackendRender(
 					_capturedFrameId, { inputDesc.Width, inputDesc.Height },
 					GetMotionVectorRequest(
 						_nativeEffectBackends[i]->GetFrameGuidanceRequirements()));
+			// Recomputed old colors have no new current-to-previous motion pair.
+			// Diagnostics still display the captured pair. NR makes its residual-
+			// only cache decision first, then binds Zero for SDK re-evaluation;
+			// other temporal SDKs receive Zero immediately on this redraw.
+			const bool diagnostic = desc.name.starts_with("Diagnostics\\");
+			const bool nr = desc.name == "DLSSNR\\DLSSNR_AI_Filter";
 			const NativeEffectDrawContext drawContext{
 				.input = effectDrawer.GetTexture(0),
 				.output = effectDrawer.GetOutputTexture(),
@@ -3408,9 +3480,11 @@ void Renderer::_BackendRender(
 				.outputMetadata = effectDrawer.GetHdrBoundary().hdrEnabled
 					? effectDrawer.GetHdrBoundary().inputFrame.metadata : HdrFrameMetadata{},
 				.frameId = _capturedFrameId,
-				.inputRevision = i < _effectInputRevisions.size()
-					? _effectInputRevisions[i] : 0,
-				.frameGuidance = guidance.produced,
+				.inputRevision = key.inputRevision,
+				.inputHistoryRevision = key.inputHistoryRevision,
+				.inputHistoryReset = historyReset,
+				.isNewCaptureFrame = isNewCaptureFrame,
+				.frameGuidance = !isNewCaptureFrame && !diagnostic && !nr ? guidance.zero : guidance.produced,
 				.zeroFrameGuidance = guidance.zero
 			};
 			FrameTrace::Scope traceNative(FrameTrace::Event::NativeEffect, i);
@@ -3452,13 +3526,24 @@ void Renderer::_BackendRender(
 				// A runtime SDK failure must not publish the cleared route output.
 				// Execute the production marker pass through the same drawer so the
 				// chain remains visible at the requested output size.
-				effectDrawer.Draw(_effectsProfiler);
+				if (!effectDrawer.Draw(_effectsProfiler)) {
+					_FailColorPipeline(desc.name, ScalingError::EffectResourceFailed);
+					return;
+				}
 			} else if (!effectDrawer.CompleteHdrOutput()) {
 				Logger::Get().Error("完成 native HDR 效果输出失败");
+				_FailColorPipeline(desc.name, ScalingError::EffectResourceFailed);
+				return;
+			} else {
+				drawSucceeded = true;
 			}
-			_effectsProfiler.OnEndPass(d3dDC);
+			if (nativeDrawSucceeded) _effectsProfiler.OnEndPass(d3dDC);
 		} else {
-			effectDrawer.Draw(_effectsProfiler);
+			drawSucceeded = effectDrawer.Draw(_effectsProfiler);
+			if (!drawSucceeded) {
+				_FailColorPipeline(desc.name, ScalingError::EffectResourceFailed);
+				return;
+			}
 			if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() && isNewCaptureFrame && _capturedFrameId <= 2) {
 				_LogHdrTextureStats(effectDrawer.GetTexture(0), fmt::format("effect-{}-adapter-input", i));
 				_LogHdrTextureStats(effectDrawer.GetExternalOutputTexture(), fmt::format("effect-{}-canonical-output", i));
@@ -3920,7 +4005,7 @@ bool Renderer::_PublishBackendTexture(
 	return true;
 }
 
-bool Renderer::_UpdateDynamicConstants() const noexcept {
+bool Renderer::_UpdateDynamicConstants(uint32_t frameCount) const noexcept {
 	// cbuffer __CB2 : register(b1) { uint __frameCount; };
 
 	ID3D11DeviceContext4* d3dDC = _backendResources.GetD3DDC();
@@ -3930,7 +4015,6 @@ bool Renderer::_UpdateDynamicConstants() const noexcept {
 	if (SUCCEEDED(hr)) {
 		// 避免使用 *(uint32_t*)ms.pData，见
 		// https://learn.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-map
-		const uint32_t frameCount = _stepTimer.FrameCount();
 		std::memcpy(ms.pData, &frameCount, 4);
 		d3dDC->Unmap(_dynamicCB.get(), 0);
 	} else {
@@ -4027,10 +4111,14 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 		d3dDC->ClearState();
 
 		if (ID3D11Buffer* t = _dynamicCB.get()) {
+			_UpdateDynamicConstants(UsesCaptureFrameClock(_activeEffectDescs[effectIdx]->name)
+				? _captureEffectFrameCount : _stepTimer.FrameCount());
 			d3dDC->CSSetConstantBuffers(1, 1, &t);
 		}
 
 		_effectDrawers[effectIdx].DrawForExport(*_activeEffectDescs[effectIdx], passIdx);
+		for (size_t i = effectIdx; i < _effectFrameStates.size(); ++i) _effectFrameStates[i].Invalidate();
+		_forceNextRender = true;
 	}
 
 	// 创建 staging 纹理

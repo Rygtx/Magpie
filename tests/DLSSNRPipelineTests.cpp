@@ -131,11 +131,13 @@ int main() {
 			for (uint64_t frame = 1; frame <= 6; ++frame) {
 				for (auto* channel : channels) { channel->metadata.frameId=frame; channel->metadata.timestamp100ns=static_cast<int64_t>(frame)*166667; }
 				NativeEffectDrawContext context{.input=input.get(), .output=output.get(), .frameId=frame,
+					.inputRevision=frame,
 					.frameGuidance=zero, .zeroFrameGuidance=zero};
 				const auto fenceBefore = impl.fenceValue;
 				Require(chain.Draw(context) && chain.IsHealthy());
 				Require(impl.fenceValue == fenceBefore + 2); // exactly one input/output handshake
 				for (int i=0; i<count; ++i) Require(pass(i).evaluateCount == frame);
+				context.isNewCaptureFrame = false;
 				Require(chain.Draw(context));
 				Require(impl.fenceValue == fenceBefore + 2); // entire duplicate chain reused
 				if (!hdr && scaling && frame == 6) {
@@ -167,6 +169,18 @@ int main() {
 					}
 				}
 			}
+			// Same capture, different upstream output: all NR inputs are dirty.
+			// Capture ID stays real; a following identical redraw must reuse it.
+			NativeEffectDrawContext revised{.input=input.get(), .output=output.get(), .frameId=6,
+				.inputRevision=100, .inputHistoryRevision=1, .inputHistoryReset=true,
+				.isNewCaptureFrame=false, .frameGuidance=zero, .zeroFrameGuidance=zero};
+			std::array<uint64_t,3> beforeRevised{};
+			for (int i=0; i<count; ++i) beforeRevised[i]=pass(i).evaluateCount;
+			Require(chain.Draw(revised));
+			for (int i=0; i<count; ++i) Require(pass(i).evaluateCount==beforeRevised[i]+1);
+			revised.inputHistoryReset=false;
+			Require(chain.Draw(revised));
+			for (int i=0; i<count; ++i) Require(pass(i).evaluateCount==beforeRevised[i]+1);
 			Require(chain.Drain());
 			Require(DebugMessages());
 			D3D11_TEXTURE2D_DESC desc{}; output->GetDesc(&desc);

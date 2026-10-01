@@ -904,7 +904,7 @@
     <value>Applies only to fullscreen mode</value>
   </data>
   <data name="Home_Toolbar.Description" xml:space="preserve">
-    <value>The toolbar is at the top of the output window and provides FPS display and screenshots. In windowed mode, drag the toolbar to move the output window.</value>
+    <value>Drag the grip to dock the toolbar at the top or bottom and move it left or right. It provides FPS display and screenshots. In windowed mode, drag empty toolbar space to move the output window.</value>
   </data>
   <data name="Home_Toolbar.Header" xml:space="preserve">
     <value>Toolbar</value>
@@ -938,6 +938,9 @@
   </data>
   <data name="Overlay_Toolbar_Demo" xml:space="preserve">
     <value>ImGui Demo Window</value>
+  </data>
+  <data name="Overlay_Toolbar_Move" xml:space="preserve">
+    <value>Move toolbar (drag to the top or bottom)</value>
   </data>
   <data name="Overlay_Toolbar_Pin" xml:space="preserve">
     <value>Pin Toolbar</value>

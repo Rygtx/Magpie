@@ -3,6 +3,7 @@
 #include "CursorDrawer.h"
 #include "DeviceResources.h"
 #include "EffectDrawer.h"
+#include "EffectFrameState.h"
 #include "EffectsProfiler.h"
 #include "FrameGuidanceService.h"
 #include "NgxD3D12Core.h"
@@ -69,6 +70,8 @@ public:
 	void SwitchToolbarState() noexcept;
 	void InvokeOverlayAction(OverlayAction action) noexcept;
 	OverlaySessionState CaptureOverlayState() const noexcept { return _overlayDrawer.CaptureSessionState(); }
+	bool IsToolbarHandleAt(POINT point) const noexcept { return _overlayDrawer.IsToolbarHandleAt(point); }
+	bool IsToolbarMoveCursor() const noexcept { return _overlayDrawer.IsToolbarMoveCursor(); }
 	bool IsEditingParameters() const noexcept { return _overlayDrawer.IsEditingParameters(); }
 	bool IsParameterPreviewAt(POINT point) const noexcept { return _overlayDrawer.IsParameterPreviewAt(point); }
 	HWND ParameterInputHandle() const noexcept { return _overlayDrawer.ParameterInputHandle(); }
@@ -273,7 +276,7 @@ private:
 	bool _DrainNgxConsumers() noexcept;
 	void _ReleaseNgxConsumers() noexcept;
 
-	bool _UpdateDynamicConstants() const noexcept;
+	bool _UpdateDynamicConstants(uint32_t frameCount) const noexcept;
 
 
 	winrt::IAsyncOperation<bool> _TakeScreenshotImpl(
@@ -334,7 +337,8 @@ private:
 	NgxD3D12Core _ngxD3D12Core;
 	std::vector<EffectDrawer> _effectDrawers;
 	std::vector<EffectOption> _runtimeEffectOptions;
-	std::vector<uint64_t> _effectInputRevisions;
+	std::vector<EffectFrameState> _effectFrameStates;
+	uint32_t _captureEffectFrameCount = 0;
 	struct PendingEffectParameterUpdate {
 		uint32_t effectIdx = 0;
 		uint32_t parameterIdx = 0;

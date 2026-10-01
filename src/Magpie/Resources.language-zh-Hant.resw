@@ -877,7 +877,7 @@
     <value>僅適用於全螢幕模式</value>
   </data>
   <data name="Home_Toolbar.Description" xml:space="preserve">
-    <value>工具列位於輸出視窗頂部，提供幀率顯示、截圖等功能；視窗模式下還可拖曳工具列移動輸出視窗。</value>
+    <value>拖曳專用拖曳柄，可將工具列停靠在頂部或底部並左右移動。工具列提供幀率顯示、截圖等功能；視窗模式下，拖曳工具列空白區域可移動輸出視窗。</value>
   </data>
   <data name="Home_Toolbar.Header" xml:space="preserve">
     <value>工具列</value>
@@ -911,6 +911,9 @@
   </data>
   <data name="Overlay_Toolbar_Demo" xml:space="preserve">
     <value>ImGui 示範視窗</value>
+  </data>
+  <data name="Overlay_Toolbar_Move" xml:space="preserve">
+    <value>移動工具列（拖曳到頂部或底部）</value>
   </data>
   <data name="Overlay_Toolbar_Pin" xml:space="preserve">
     <value>固定工具列</value>

@@ -6,6 +6,7 @@
 #include "FramePacingOptions.h"
 #include "HdrComponents.h"
 #include "OverlayWindowGeometry.h"
+#include "ToolbarPlacement.h"
 #include <mutex>
 #include <functional>
 
@@ -296,6 +297,7 @@ struct OverlaySessionState {
 	bool profilerVisible = false;
 	bool effectParametersVisible = false;
 	ParameterPanelState parameterPanelState = ParameterPanelState::Closed;
+	ToolbarPositionState toolbarPosition;
 };
 
 struct OverlayOptions {
@@ -491,6 +493,7 @@ struct ScalingOptions {
 	DuplicateFrameDetectionMode duplicateFrameDetectionMode = DuplicateFrameDetectionMode::Dynamic;
 	ToolbarState fullscreenInitialToolbarState = ToolbarState::AutoHide;
 	ToolbarState windowedInitialToolbarState = ToolbarState::AutoHide;
+	ToolbarDockSettings toolbarDocks;
 	float initialWindowedScaleFactor = 0.0f;
 	std::filesystem::path screenshotsDir;
 
@@ -504,6 +507,7 @@ struct ScalingOptions {
 		std::string_view context, uint32_t systemError)> reportErrorDetails;
 	std::function<void(uint32_t, const EffectOption&, const std::string&, float, float)> revertEffectParameter;
 	void (*save)(const ScalingOptions& options, HWND hwndScaling) noexcept = nullptr;
+	std::function<void(bool windowed, ToolbarDock dock, uint32_t runId)> saveToolbarDock;
 	bool (*requestEffectParameters)(
 		const ScalingOptions& sessionOptions,
 		EffectParametersRequest&& request

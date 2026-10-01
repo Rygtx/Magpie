@@ -86,11 +86,13 @@
     <ClInclude Include="include\DirectXHelper.h" />
     <ClInclude Include="include\EffectCompiler.h" />
     <ClInclude Include="include\EffectDesc.h" />
+    <ClInclude Include="include\EffectFrameState.h" />
     <ClInclude Include="include\EffectParameterValue.h" />
     <ClInclude Include="include\ScalingOptions.h" />
     <ClInclude Include="include\SourceWindowGeometry.h" />
     <ClInclude Include="include\ScalingSessionLifetime.h" />
     <ClInclude Include="include\OverlayWindowGeometry.h" />
+    <ClInclude Include="include\ToolbarPlacement.h" />
     <ClInclude Include="include\EffectParameterPersistence.h" />
     <ClInclude Include="include\EffectParameterRestart.h" />
     <ClInclude Include="include\EffectParameterLocalization.h" />

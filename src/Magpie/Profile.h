@@ -104,6 +104,7 @@ struct Profile {
 		launchParameters = other.launchParameters;
 		destAlignment = other.destAlignment;
 		scalingFlags = other.scalingFlags;
+		toolbarDocks = other.toolbarDocks;
 		
 		isCroppingEnabled = other.isCroppingEnabled;
 		isFrameRateLimiterEnabled = other.isFrameRateLimiterEnabled;
@@ -127,6 +128,10 @@ struct Profile {
 	std::filesystem::path launcherPath;
 
 	bool isParameterFocusSwitchingEnabled = false;
+	ToolbarDockSettings toolbarDocks;
+	// Not serialized/copied by Copy(): survives vector moves and renames, but
+	// a deleted/recreated profile cannot receive an older toolbar save.
+	std::shared_ptr<const uint8_t> runtimeIdentity = std::make_shared<const uint8_t>(0);
 	AutoScale autoScale = AutoScale::Disabled;
 
 	InitialWindowedScaleFactor initialWindowedScaleFactor = InitialWindowedScaleFactor::Auto;

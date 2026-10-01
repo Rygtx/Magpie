@@ -53,6 +53,9 @@ struct NativeEffectDrawContext {
 	ID3D11Texture2D* input;
 	ID3D11Texture2D* output;
 	uint64_t inputRevision = 0;
+	uint64_t inputHistoryRevision = 0;
+	bool inputHistoryReset = false;
+	bool isNewCaptureFrame = true;
 };
 struct NativeEffectBackend {
 	virtual ~NativeEffectBackend() = default;

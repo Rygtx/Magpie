@@ -67,8 +67,10 @@ public:
 	void UpdateAfterActiveEffectsChanged() noexcept;
 
 	bool IsCursorOnCaptionArea() const noexcept {
-		return _isCursorOnCaptionArea;
+		return _isCursorOnCaptionArea && !_toolbarPlacement.IsDragging();
 	}
+	bool IsToolbarHandleAt(POINT screenPoint) const noexcept;
+	bool IsToolbarMoveCursor() const noexcept { return _isToolbarHandleHovered || _toolbarPlacement.IsDragging(); }
 
 private:
 	bool _parameterFocusSwitchingEnabled = false;
@@ -134,6 +136,7 @@ private:
 	);
 
 	bool _DrawToolbar(uint32_t fps, int& itemId) noexcept;
+	void _DrawToolbarDockHints(const ToolbarGeometry& geometry) noexcept;
 
 	bool _DrawProfiler(const SmallVector<float>& effectTimings, uint32_t fps, int& itemId) noexcept;
 	bool _DrawEffectParameters(int& itemId) noexcept;
@@ -197,6 +200,9 @@ private:
 	bool _isToolbarPinned = false;
 	bool _isCursorOnCaptionArea = false;
 	bool _isToolbarItemActive = false;
+	ToolbarPlacement _toolbarPlacement;
+	bool _isToolbarHandleHovered = false;
+	std::optional<ImVec4> _stagedToolbarHandleRect, _presentedToolbarHandleRect;
 	bool _isProfilerVisible = false;
 	bool _isEffectParametersVisible = false;
 	bool _isEffectParameterInputActive = false;
