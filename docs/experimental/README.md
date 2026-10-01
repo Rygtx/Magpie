@@ -20,6 +20,7 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [069 To do - xBR](todos/20260921-v0.6.9-xbr-TODO.md)：筛选标准 LV2 固定倍率、NoBlend 与 Hybrid 为首批范围；LV3、MLV4 和 Super-xBR 需经过画质/性能门槛后再决定是否进入 0.6.9。
 - [DLSSNR Multi Pass 残差时域稳定路线](design/20260914-dlssnr-temporal-stabilization-routes.md)：比较无光流／光流累积、快慢历史、稳健统计、分频与联合升采样，说明当前 068 串联实现的接入边界和验证顺序。
 - [v0.6.5 r8：参数状态、光流降级与 SR 入口收敛](todos/20260905-v0.6.5-r8-TODO.md)。
 - [r8 本地版本说明](../RELEASE_NOTES_v0.6.5-r8-local.md)。

@@ -2998,6 +2998,106 @@
       "subfamily": null
     },
     {
+      "id": "xBR\\xBR_2x",
+      "name": "xBR 2x",
+      "category": "upscale",
+      "subcategory": "像素画",
+      "purposes": [
+        "upscale"
+      ],
+      "summary": "xBR LV2 固定 2× 边缘感知像素画放大。",
+      "details": "放大与超分 › 像素画\n\n沿检测到的斜线方向平滑像素画轮廓；与 xBRZ 是不同算法入口。\n\n变体差异：标准 LV2 Blend，固定 2×；可调颜色差异、边缘系数与小细节保护。\n\n特定场景推荐：适合低分辨率像素画；与同倍率 xBRZ 比较轮廓和小细节。\n\n尝试建议：先使用默认参数；检查像素字体、眼睛和点状高光是否被磨圆\n\n组合建议：主要像素画缩放步骤；在「按需添加的 CRT 风格／显示调整」之前。先完成边缘感知整数倍放大，再做显示风格处理。\n\n输出尺寸：固定倍率：宽 ×2，高 ×2\n\n组合注意：固定倍率，按源码尺寸表达式使用\n\n使用条件：Direct3D 11 效果着色器可编译；目标输出尺寸满足固定 2× 表达式\n\n性能成本：中；具体帧率需在目标画面实测。\n\nHDR 注意：HDR 会经过 SDR-compatible 边界；高光、透明边缘和颜色仍需实机检查。",
+      "level": "situational",
+      "recommendation": "特定场景推荐",
+      "search": "xBR\\xBR_2x xBR 2x xBR 放大与超分 像素画 xBR LV2 2x xBR LV2 固定 2× 边缘感知像素画放大。 沿检测到的斜线方向平滑像素画轮廓；与 xBRZ 是不同算法入口。 放大与超分 像素画 xBR",
+      "family": {
+        "id": "xbr",
+        "name": "xBR",
+        "summary": "按边缘规则平滑像素画轮廓。标准 LV2 提供 2×–4×；NoBlend 3× 保持已有调色板，Hybrid 2× 面向预抗锯齿 SDR 素材。"
+      },
+      "subfamily": null
+    },
+    {
+      "id": "xBR\\xBR_3x",
+      "name": "xBR 3x",
+      "category": "upscale",
+      "subcategory": "像素画",
+      "purposes": [
+        "upscale"
+      ],
+      "summary": "xBR LV2 固定 3× 边缘感知像素画放大。",
+      "details": "放大与超分 › 像素画\n\n沿检测到的斜线方向平滑像素画轮廓；与 xBRZ 是不同算法入口。\n\n变体差异：标准 LV2 Blend，固定 3×；可调颜色差异、边缘系数与小细节保护。\n\n特定场景推荐：适合低分辨率像素画；与同倍率 xBRZ 和 NoBlend 比较轮廓及调色板。\n\n尝试建议：先使用默认参数；检查像素字体、眼睛和点状高光是否被磨圆\n\n组合建议：主要像素画缩放步骤；在「按需添加的 CRT 风格／显示调整」之前。先完成边缘感知整数倍放大，再做显示风格处理。\n\n输出尺寸：固定倍率：宽 ×3，高 ×3\n\n组合注意：固定倍率，按源码尺寸表达式使用\n\n使用条件：Direct3D 11 效果着色器可编译；目标输出尺寸满足固定 3× 表达式\n\n性能成本：中；具体帧率需在目标画面实测。\n\nHDR 注意：HDR 会经过 SDR-compatible 边界；高光、透明边缘和颜色仍需实机检查。",
+      "level": "situational",
+      "recommendation": "特定场景推荐",
+      "search": "xBR\\xBR_3x xBR 3x xBR 放大与超分 像素画 xBR LV2 3x xBR LV2 固定 3× 边缘感知像素画放大。 沿检测到的斜线方向平滑像素画轮廓；与 xBRZ 是不同算法入口。 放大与超分 像素画 xBR",
+      "family": {
+        "id": "xbr",
+        "name": "xBR",
+        "summary": "按边缘规则平滑像素画轮廓。标准 LV2 提供 2×–4×；NoBlend 3× 保持已有调色板，Hybrid 2× 面向预抗锯齿 SDR 素材。"
+      },
+      "subfamily": null
+    },
+    {
+      "id": "xBR\\xBR_4x",
+      "name": "xBR 4x",
+      "category": "upscale",
+      "subcategory": "像素画",
+      "purposes": [
+        "upscale"
+      ],
+      "summary": "xBR LV2 固定 4× 边缘感知像素画放大。",
+      "details": "放大与超分 › 像素画\n\n沿检测到的斜线方向平滑像素画轮廓；与 xBRZ 是不同算法入口。\n\n变体差异：标准 LV2 Blend，固定 4×；可调颜色差异、边缘系数与小细节保护。\n\n特定场景推荐：适合低分辨率像素画；4× 会放大规则差异，应重点检查细线和尖角。\n\n尝试建议：先使用默认参数；与 xBRZ 4x 对比尖角和曲线\n\n组合建议：主要像素画缩放步骤；在「按需添加的 CRT 风格／显示调整」之前。先完成边缘感知整数倍放大，再做显示风格处理。\n\n输出尺寸：固定倍率：宽 ×4，高 ×4\n\n组合注意：固定倍率，按源码尺寸表达式使用\n\n使用条件：Direct3D 11 效果着色器可编译；目标输出尺寸满足固定 4× 表达式\n\n性能成本：中到高；具体帧率需在目标画面实测。\n\nHDR 注意：HDR 会经过 SDR-compatible 边界；高光、透明边缘和颜色仍需实机检查。",
+      "level": "situational",
+      "recommendation": "特定场景推荐",
+      "search": "xBR\\xBR_4x xBR 4x xBR 放大与超分 像素画 xBR LV2 4x xBR LV2 固定 4× 边缘感知像素画放大。 沿检测到的斜线方向平滑像素画轮廓；与 xBRZ 是不同算法入口。 放大与超分 像素画 xBR",
+      "family": {
+        "id": "xbr",
+        "name": "xBR",
+        "summary": "按边缘规则平滑像素画轮廓。标准 LV2 提供 2×–4×；NoBlend 3× 保持已有调色板，Hybrid 2× 面向预抗锯齿 SDR 素材。"
+      },
+      "subfamily": null
+    },
+    {
+      "id": "xBR\\xBR_NoBlend_3x",
+      "name": "xBR NoBlend 3x",
+      "category": "upscale",
+      "subcategory": "像素画",
+      "purposes": [
+        "upscale"
+      ],
+      "summary": "固定 3× 的 xBR 调色板保持放大。",
+      "details": "放大与超分 › 像素画\n\n只从邻域已有颜色中选择输出色，不插值新 RGB 值，适合有限调色板像素画。\n\n变体差异：NoBlend 固定 3×；上游推荐奇数整数倍率，只有 Lv2 边缘系数可调。\n\n特定场景推荐：适合有限调色板、需要避免插值新颜色的像素画。\n\n尝试建议：与标准 xBR 3x 对比斜线锯齿；检查透明边缘\n\n组合建议：主要像素画缩放步骤；在「按需添加的 CRT 风格／显示调整」之前。先保持原调色板完成整数倍放大，再添加显示风格。\n\n输出尺寸：固定倍率：宽 ×3，高 ×3\n\n组合注意：固定 3×；保持 Point 采样以避免生成新颜色\n\n使用条件：Direct3D 11 效果着色器可编译；目标输出尺寸满足固定 3× 表达式\n\n性能成本：中；具体帧率需在目标画面实测。\n\nHDR 注意：HDR 会经过 SDR-compatible 边界；调色板保持结论仅针对效果输入的 SDR RGB 值。",
+      "level": "situational",
+      "recommendation": "特定场景推荐",
+      "search": "xBR\\xBR_NoBlend_3x xBR NoBlend 3x xBR 放大与超分 像素画 xBR NoBlend 3x 调色板 固定 3× 的 xBR 调色板保持放大。 只从邻域已有颜色中选择输出色，不插值新 RGB 值，适合有限调色板像素画。 放大与超分 像素画 xBR",
+      "family": {
+        "id": "xbr",
+        "name": "xBR",
+        "summary": "按边缘规则平滑像素画轮廓。标准 LV2 提供 2×–4×；NoBlend 3× 保持已有调色板，Hybrid 2× 面向预抗锯齿 SDR 素材。"
+      },
+      "subfamily": null
+    },
+    {
+      "id": "xBR\\xBR_Hybrid_2x",
+      "name": "xBR Hybrid 2x",
+      "category": "upscale",
+      "subcategory": "像素画",
+      "purposes": [
+        "upscale"
+      ],
+      "summary": "xBR 与 Reverse-AA 组合的固定 2× 放大。",
+      "details": "放大与超分 › 像素画\n\n面向已带抗锯齿、渐变或较平滑的低分辨率 2D 素材；不是标准像素画调色板保持路线。\n\n变体差异：固定 2×、gamma-coded SDR；HDR 兼容模式回退到 Point 2×，不执行未验证的 Gamma 运算。\n\n进阶／实验：用于已平滑或预抗锯齿的低分辨率 2D 素材；纯像素画先尝试标准 xBR。\n\n尝试建议：只在 SDR 下评价 Hybrid 画质；比较渐变、色带和半透明边缘\n\n组合建议：主要 2D 图像缩放步骤；在「按需添加的锐化或显示风格」之前。Reverse-AA 需要在原始低分辨率边缘上工作，后续再做输出分辨率相关处理。\n\n输出尺寸：固定倍率：宽 ×2，高 ×2\n\n组合注意：仅对 gamma-coded SDR 执行 Hybrid；HDR 模式回退为 Point 2×\n\n使用条件：Direct3D 11 效果着色器可编译；Hybrid 处理需要 gamma-coded SDR 输入\n\n性能成本：中到高；具体帧率需在目标画面实测。\n\nHDR 注意：Hybrid 尚不支持 HDR 算法处理；HDR 兼容模式只进行 Point 2× 回退。",
+      "level": "advanced",
+      "recommendation": "进阶／实验",
+      "search": "xBR\\xBR_Hybrid_2x xBR Hybrid 2x xBR 放大与超分 像素画 xBR Hybrid Reverse-AA 2x xBR 与 Reverse-AA 组合的固定 2× 放大。 面向已带抗锯齿、渐变或较平滑的低分辨率 2D 素材；不是标准像素画调色板保持路线。 放大与超分 像素画 xBR",
+      "family": {
+        "id": "xbr",
+        "name": "xBR",
+        "summary": "按边缘规则平滑像素画轮廓。标准 LV2 提供 2×–4×；NoBlend 3× 保持已有调色板，Hybrid 2× 面向预抗锯齿 SDR 素材。"
+      },
+      "subfamily": null
+    },
+    {
       "id": "xBRZ\\xBRZ_2x",
       "name": "xBRZ 2x",
       "category": "upscale",
