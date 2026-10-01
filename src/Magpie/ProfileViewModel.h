@@ -146,6 +146,12 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 
 	int CursorInterpolationMode() const noexcept;
 	void CursorInterpolationMode(int value);
+	bool IsCursorOriginalFramePreferred() const noexcept;
+	void IsCursorOriginalFramePreferred(bool value);
+	bool IsCursorMinimumRefreshEnabled() const noexcept;
+	void IsCursorMinimumRefreshEnabled(bool value);
+	double CursorMinimumRefreshRate() const noexcept;
+	void CursorMinimumRefreshRate(double value);
 
 	bool IsAutoHideCursorEnabled() const noexcept;
 	void IsAutoHideCursorEnabled(bool value);

@@ -105,6 +105,8 @@
     <ClInclude Include="CursorDrawer.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="CursorRefreshPolicy.h"><Filter>Render</Filter></ClInclude>
+    <ClInclude Include="include\CursorRefreshSettings.h"><Filter>Include</Filter></ClInclude>
     <ClInclude Include="DeviceResources.h">
       <Filter>Render</Filter>
     </ClInclude>

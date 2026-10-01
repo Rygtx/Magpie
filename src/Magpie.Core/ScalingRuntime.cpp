@@ -415,8 +415,7 @@ void ScalingRuntime::_ScalingThreadProc() noexcept {
 			const auto now = steady_clock::now();
 			// Content/input messages wake immediately; periodic cursor checks need
 			// not run at 500 Hz on a lower-refresh display.
-			const nanoseconds timeout = scalingWindow.Options().Is3DGameMode() ?
-				nanoseconds(8ms) : scalingWindow.Renderer().FrontendPollInterval();
+			const nanoseconds timeout = scalingWindow.Renderer().FrontendPollInterval();
 			nanoseconds rest = timeout - (now - lastRenderTime);
 
 			// One render attempt per pass. Prefer content, which includes the same
@@ -442,7 +441,7 @@ void ScalingRuntime::_ScalingThreadProc() noexcept {
 				MsgWaitForMultipleObjectsEx(0, nullptr, 8, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
 				continue;
 			}
-			rest = timeout - (steady_clock::now() - lastRenderTime);
+			rest = scalingWindow.Renderer().FrontendPollInterval() - (steady_clock::now() - lastRenderTime);
 
 			// 值为 1000000
 			constexpr auto ratio = std::ratio_divide<std::milli, std::nano>().num;

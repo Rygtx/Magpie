@@ -305,6 +305,29 @@
 						</local:SettingsCard>
 					</local:SettingsExpander.Items>
 				</local:SettingsExpander>
+				<local:SettingsExpander x:Uid="Profile_Cursor_Refresh" IsWrapEnabled="True">
+					<local:SettingsExpander.HeaderIcon><FontIcon Glyph="&#xECAD;" /></local:SettingsExpander.HeaderIcon>
+					<local:SettingsExpander.Items>
+						<local:SettingsCard x:Uid="Profile_Cursor_Refresh_Original" IsWrapEnabled="True">
+							<ToggleSwitch x:Uid="ToggleSwitch"
+							              IsOn="{x:Bind ViewModel.IsCursorOriginalFramePreferred, Mode=TwoWay}" />
+						</local:SettingsCard>
+						<local:SettingsCard x:Uid="Profile_Cursor_Refresh_Minimum" IsWrapEnabled="True">
+							<ToggleSwitch x:Uid="ToggleSwitch"
+							              IsOn="{x:Bind ViewModel.IsCursorMinimumRefreshEnabled, Mode=TwoWay}" />
+						</local:SettingsCard>
+						<local:SettingsCard x:Uid="Profile_Cursor_Refresh_Rate" IsWrapEnabled="True">
+							<local:SimpleStackPanel Orientation="Horizontal" Spacing="8">
+								<muxc:NumberBox Width="100" Minimum="1" Maximum="1000" SmallChange="1"
+								                Loaded="NumberBox_Loaded"
+								                NumberFormatter="{x:Bind local:App.DoubleFormatter, Mode=OneTime}"
+								                IsEnabled="{x:Bind ViewModel.IsCursorMinimumRefreshEnabled, Mode=OneWay}"
+								                Value="{x:Bind ViewModel.CursorMinimumRefreshRate, Mode=TwoWay}" />
+								<TextBlock Text="FPS" VerticalAlignment="Center" />
+							</local:SimpleStackPanel>
+						</local:SettingsCard>
+					</local:SettingsExpander.Items>
+				</local:SettingsExpander>
 				<local:SettingsExpander x:Uid="Profile_Cursor_AutoHide"
 				                        IsExpanded="{x:Bind ViewModel.IsAutoHideCursorEnabled, Mode=OneWay}">
 					<local:SettingsExpander.HeaderIcon>

@@ -880,6 +880,40 @@ bool ProfileViewModel::IsAutoHideCursorEnabled() const noexcept {
 	return _data->isAutoHideCursorEnabled;
 }
 
+bool ProfileViewModel::IsCursorOriginalFramePreferred() const noexcept {
+	return _data->cursorRefresh.preferOriginalFrames;
+}
+
+void ProfileViewModel::IsCursorOriginalFramePreferred(bool value) {
+	if (_data->cursorRefresh.preferOriginalFrames == value) return;
+	_data->cursorRefresh.preferOriginalFrames = value;
+	AppSettings::Get().SaveAsync();
+	RaisePropertyChanged(L"IsCursorOriginalFramePreferred");
+}
+
+bool ProfileViewModel::IsCursorMinimumRefreshEnabled() const noexcept {
+	return _data->cursorRefresh.minimumRefreshEnabled;
+}
+
+void ProfileViewModel::IsCursorMinimumRefreshEnabled(bool value) {
+	if (_data->cursorRefresh.minimumRefreshEnabled == value) return;
+	_data->cursorRefresh.minimumRefreshEnabled = value;
+	AppSettings::Get().SaveAsync();
+	RaisePropertyChanged(L"IsCursorMinimumRefreshEnabled");
+}
+
+double ProfileViewModel::CursorMinimumRefreshRate() const noexcept {
+	return _data->cursorRefresh.minimumRefreshRate;
+}
+
+void ProfileViewModel::CursorMinimumRefreshRate(double value) {
+	const float rate = ::Magpie::CursorRefreshSettings::ValidateRate(value);
+	if (_data->cursorRefresh.minimumRefreshRate == rate && value == rate) return;
+	_data->cursorRefresh.minimumRefreshRate = rate;
+	AppSettings::Get().SaveAsync();
+	RaisePropertyChanged(L"CursorMinimumRefreshRate");
+}
+
 void ProfileViewModel::IsAutoHideCursorEnabled(bool value) {
 	if (_data->isAutoHideCursorEnabled == value) {
 		return;

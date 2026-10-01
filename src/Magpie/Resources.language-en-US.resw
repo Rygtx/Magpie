@@ -1733,4 +1733,13 @@ Negative lightness changes in Oklab</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_5" xml:space="preserve"><value>Protection Weight</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_6" xml:space="preserve"><value>Gamut Scale</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_7" xml:space="preserve"><value>Compression Scale</value></data>
+  <data name="Profile_Cursor_Refresh.Header" xml:space="preserve"><value>Cursor refresh</value></data>
+  <data name="Profile_Cursor_Refresh.Description" xml:space="preserve"><value>Controls cursor drawing. Mouse input remains responsive. Applies the next time scaling starts.</value></data>
+  <data name="Profile_Cursor_Refresh_Original.Header" xml:space="preserve"><value>Prefer original content frames</value></data>
+  <data name="Profile_Cursor_Refresh_Original.Description" xml:space="preserve"><value>Hold the cursor between new captured content frames. Turn off minimum refresh below to prevent extra presentations caused by movement; visibility and cursor ownership changes still update.</value></data>
+  <data name="Profile_Cursor_Refresh_Minimum.Header" xml:space="preserve"><value>Keep a minimum cursor refresh rate</value></data>
+  <data name="Profile_Cursor_Refresh_Minimum.Description" xml:space="preserve"><value>Refresh a changed cursor when content is slow or paused, reusing the last image. This target is not a maximum and is limited by display and presentation capacity.</value></data>
+  <data name="Profile_Cursor_Refresh_Rate.Header" xml:space="preserve"><value>Minimum refresh rate</value></data>
+  <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>1–1000 FPS. The default is 60. An unchanged cursor does not request extra presentations.</value></data>
+  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>FG effects use their own duplicate frame setting. Without FG, this global setting applies except in 3D game mode. Cursor refresh is configured per application.</value></data>
 </root>

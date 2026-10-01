@@ -353,10 +353,18 @@
 						           Text="FPS" />
 					</Grid>
 				</local:SettingsCard>
+				<local:SettingsCard x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection"
+				                    IsWrapEnabled="True">
+					<ComboBox DropDownOpened="ComboBox_DropDownOpened"
+					          SelectedIndex="{x:Bind ViewModel.DuplicateFrameDetectionMode, Mode=TwoWay}">
+						<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Always" />
+						<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Dynamic" />
+						<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Never" />
+					</ComboBox>
+				</local:SettingsCard>
 				<local:SettingsExpander x:Name="DeveloperModeExpander"
 				                        x:Uid="Home_Advanced_DeveloperOptions"
-				                        x:Load="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}"
-				                        IsExpanded="True">
+				                        IsExpanded="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}">
 					<local:SettingsExpander.HeaderIcon>
 						<FontIcon Glyph="&#xEC7A;" />
 					</local:SettingsExpander.HeaderIcon>
@@ -365,7 +373,7 @@
 						              IsOn="{x:Bind ViewModel.IsDeveloperMode, Mode=TwoWay}" />
 					</local:SettingsExpander.Content>
 					<local:SettingsExpander.Items>
-						<local:SettingsCard x:Uid="Home_Advanced_DeveloperOptions_LocateLogs"
+						<local:SettingsCard IsEnabled="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}" x:Uid="Home_Advanced_DeveloperOptions_LocateLogs"
 						                    IsWrapEnabled="True">
 							<local:SimpleStackPanel Orientation="Horizontal"
 							                        Spacing="4">
@@ -377,48 +385,40 @@
 								        Content="Updater" />
 							</local:SimpleStackPanel>
 						</local:SettingsCard>
-						<local:SettingsCard ContentAlignment="Left">
+						<local:SettingsCard IsEnabled="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}" ContentAlignment="Left">
 							<CheckBox x:Uid="Home_Advanced_DeveloperOptions_DebugMode"
 							          IsChecked="{x:Bind ViewModel.IsDebugMode, Mode=TwoWay}" />
 						</local:SettingsCard>
-						<local:SettingsCard ContentAlignment="Left">
+						<local:SettingsCard IsEnabled="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}" ContentAlignment="Left">
 							<CheckBox x:Uid="Home_Advanced_DeveloperOptions_BenchmarkMode"
 							          IsChecked="{x:Bind ViewModel.IsBenchmarkMode, Mode=TwoWay}" />
 						</local:SettingsCard>
-						<local:SettingsCard ContentAlignment="Left">
+						<local:SettingsCard IsEnabled="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}" ContentAlignment="Left">
 							<CheckBox x:Uid="Home_Advanced_DeveloperOptions_DisableTopmost"
 							          IsChecked="{x:Bind ViewModel.IsTopmostDisabled, Mode=TwoWay}" />
 						</local:SettingsCard>
-						<local:SettingsCard ContentAlignment="Left">
+						<local:SettingsCard IsEnabled="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}" ContentAlignment="Left">
 							<CheckBox x:Uid="Home_Advanced_DeveloperOptions_DisableEffectCache"
 							          IsChecked="{x:Bind ViewModel.IsEffectCacheDisabled, Mode=TwoWay}" />
 						</local:SettingsCard>
-						<local:SettingsCard ContentAlignment="Left">
+						<local:SettingsCard IsEnabled="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}" ContentAlignment="Left">
 							<CheckBox x:Uid="Home_Advanced_DeveloperOptions_SaveEffectSources"
 							          IsChecked="{x:Bind ViewModel.IsSaveEffectSources, Mode=TwoWay}" />
 						</local:SettingsCard>
-						<local:SettingsCard ContentAlignment="Left">
+						<local:SettingsCard IsEnabled="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}" ContentAlignment="Left">
 							<CheckBox x:Uid="Home_Advanced_DeveloperOptions_WarningsAreErrors"
 							          IsChecked="{x:Bind ViewModel.IsWarningsAreErrors, Mode=TwoWay}" />
 						</local:SettingsCard>
-						<local:SettingsCard ContentAlignment="Left">
+						<local:SettingsCard IsEnabled="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}" ContentAlignment="Left">
 							<CheckBox x:Uid="Home_Advanced_DeveloperOptions_DisableFP16"
 							          IsChecked="{x:Bind ViewModel.IsFP16Disabled, Mode=TwoWay}" />
 						</local:SettingsCard>
-						<local:SettingsCard ContentAlignment="Left">
+						<local:SettingsCard IsEnabled="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}" ContentAlignment="Left">
 							<CheckBox x:Uid="Home_Advanced_DeveloperOptions_DisableFontCache"
 							          IsChecked="{x:Bind ViewModel.IsFontCacheDisabled, Mode=TwoWay}" />
 						</local:SettingsCard>
-						<local:SettingsCard x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection"
-						                    IsWrapEnabled="True">
-							<ComboBox DropDownOpened="ComboBox_DropDownOpened"
-							          SelectedIndex="{x:Bind ViewModel.DuplicateFrameDetectionMode, Mode=TwoWay}">
-								<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Always" />
-								<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Dynamic" />
-								<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Never" />
-							</ComboBox>
-						</local:SettingsCard>
-						<local:SettingsCard ContentAlignment="Left">
+
+						<local:SettingsCard IsEnabled="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}" ContentAlignment="Left">
 							<CheckBox x:Uid="Home_Advanced_DeveloperOptions_EnableStatisticsForDynamicDetection"
 							          IsChecked="{x:Bind ViewModel.IsStatisticsForDynamicDetectionEnabled, Mode=TwoWay}" />
 						</local:SettingsCard>

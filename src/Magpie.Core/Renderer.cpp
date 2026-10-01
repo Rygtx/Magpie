@@ -543,6 +543,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 		Logger::Get().Error("Initialize CursorDrawer failed");
 		return ScalingError::OverlayInitFailed;
 	}
+	_cursorDrawer.SetDisplayRate(_presentationRefreshRate.load(std::memory_order_acquire));
 
 	if (!_overlayDrawer.Initialize(_frontendResources, overlayOptions)) {
 		Logger::Get().Error("初始化 OverlayDrawer 失败");
@@ -1030,6 +1031,10 @@ bool Renderer::_FrontendRender(
 		// Drain samples only when drawing the overlay. Front Edge Sync retries
 		// above must leave them available for the frame that actually draws it.
 		_overlayDrawer.Draw(_stepTimer.FPS(), _effectsProfiler.GetTimings(), drawOffset);
+		if (!stableBaseOnly && _frontendBaseNeedsPresent) {
+			_cursorDrawer.ObserveContent({ sourceMetadata.frameId, sourceMetadata.captureSequence,
+				sourceMetadata.resourceGeneration }, sourceMetadata.generated);
+		}
 		_cursorDrawer.Draw(frameTex.get(), drawOffset);
 	}
 
@@ -1100,21 +1105,29 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 		if (!stableBaseOnly) _frontendBaseNeedsPresent = false;
 		if (!uiInIndependentLayer) {
 			_overlayDrawer.OnPresentSucceeded();
+			_cursorDrawer.OnPresent(true);
 			_overlayPresentationClock.Presented(std::chrono::steady_clock::now());
 			_presentedOverlayActionRevision = overlayActionRevision;
 		}
 	} else if (!uiInIndependentLayer) {
 		_overlayDrawer.OnPresentFailed();
+		_cursorDrawer.OnPresent(false);
 	}
 	if (submitted && contentFrame && _frameSyncEnabled && _frameSyncUsesSharedSlot) {
 		_frameSyncAcknowledgedKey.store(contentKey, std::memory_order_release);
 		SetEvent(_frameSyncConsumedEvent.get());
 	}
 
+	if (submitted && contentFrame && uiInIndependentLayer) {
+		_cursorDrawer.OnContentPresented({ _frontendFrameMetadata.frameId,
+			_frontendFrameMetadata.captureSequence, _frontendFrameMetadata.resourceGeneration },
+			_frontendFrameMetadata.generated);
+	}
 	if (submitted && uiInIndependentLayer &&
 		(_HasPendingOverlayAction() || _isPassThroughActive || _cursorDrawer.NeedRedraw() || _cursorDrawer.IsBackgroundDependent() ||
 			_overlayDrawer.NeedRedraw(_stepTimer.FPS()))) {
-		_FrontendOverlayRender(_isPassThroughActive || _cursorDrawer.IsBackgroundDependent());
+		_FrontendOverlayRender(_cursorDrawer.HasOriginalRefreshPending() ||
+			_isPassThroughActive || _cursorDrawer.IsBackgroundDependent());
 	}
 	return submitted;
 }
@@ -1153,6 +1166,7 @@ bool Renderer::_FrontendOverlayRender(bool contentChanged) noexcept {
 	_cursorDrawer.Draw(frameTex.get(), drawOffset,
 		cursorBackground);
 	const bool submitted = _presenter->EndOverlayFrame();
+	_cursorDrawer.OnPresent(submitted, true);
 	if (submitted) {
 		_overlayDrawer.OnPresentSucceeded();
 		_overlayPresentationClock.Presented(std::chrono::steady_clock::now());
@@ -1260,13 +1274,14 @@ bool Renderer::HasPendingContent() const noexcept {
 		_sharedTextureMutexKeys[slot].load(std::memory_order_acquire);
 }
 
-bool Renderer::_CanRenderOverlay() const noexcept {
+bool Renderer::_CanRenderOverlay() noexcept {
 	// Button/wheel/cancel edges and explicit toolbar actions remain immediate.
 	// Continuous dragging is urgent to the input queue, but can be coalesced
 	// for presentation without dropping its latest position or button edges.
 	const bool due = _overlayPresentationClock.IsDue(std::chrono::steady_clock::now(),
 		_HasPendingOverlayAction() || _overlayDrawer.HasCriticalInput() ||
-		ScalingWindow::Get().IsResizingOrMoving());
+		ScalingWindow::Get().IsResizingOrMoving() || _cursorDrawer.IsMinimumRefreshDue() ||
+		_cursorDrawer.HasVisibilityTransition() || _cursorDrawer.HasOriginalRefreshPending());
 	if (!due) FrameTrace::Mark(FrameTrace::Event::OverlayDeferred);
 	return due;
 }
@@ -1279,6 +1294,8 @@ void Renderer::_UpdateOverlayRefreshRate() noexcept {
 	const double refreshRate = GetDisplayRefreshRate(window);
 	_presentationRefreshRate.store(refreshRate, std::memory_order_release);
 	_overlayPresentationClock.SetRefreshRate(refreshRate);
+	_cursorDrawer.SetDisplayRate(refreshRate);
+	_cursorDrawer.ResetVisual();
 	_frontEdgeClock.Reset();
 	if (_backendThreadDispatcher) {
 		_backendThreadDispatcher.TryEnqueue([this] { _UpdateFrameRateLimits(); });
@@ -1477,6 +1494,8 @@ DLSSFGFrameRenderResult Renderer::RenderDLSSFGFrame(
 }
 
 bool Renderer::OnResize() noexcept {
+	_cursorDrawer.OnPresent(false);
+	_cursorDrawer.ResetVisual();
 	if (_pendingFrontendFrame) {
 		// A deferred Present has not performed flip-model RTV unbinding yet.
 		// Drop the context's indirect back-buffer references before ResizeBuffers.
@@ -1555,6 +1574,7 @@ void Renderer::OnEndResize() noexcept {
 }
 
 void Renderer::OnMove() noexcept {
+	_cursorDrawer.ResetVisual();
 	_UpdateOverlayRefreshRate();
 	_UpdateDestRect();
 }

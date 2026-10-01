@@ -593,6 +593,13 @@ void HomeViewModel::IsDeveloperMode(bool value) {
 
 	settings.IsDeveloperMode(value);
 	RaisePropertyChanged(L"IsDeveloperMode");
+	if (!value) {
+		for (const auto* property : { L"IsDebugMode", L"IsBenchmarkMode", L"IsEffectCacheDisabled",
+			L"IsFontCacheDisabled", L"IsSaveEffectSources", L"IsWarningsAreErrors",
+			L"IsStatisticsForDynamicDetectionEnabled", L"IsFP16Disabled" }) {
+			RaisePropertyChanged(property);
+		}
+	}
 }
 
 void HomeViewModel::LocateMagpieLogs() noexcept {

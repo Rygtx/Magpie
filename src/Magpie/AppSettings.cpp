@@ -147,6 +147,12 @@ static void WriteProfile(rapidjson::PrettyWriter<rapidjson::StringBuffer>& write
 	writer.Bool(profile.isAutoHideCursorEnabled);
 	writer.Key("autoHideCursorDelay");
 	writer.Double(profile.autoHideCursorDelay);
+	writer.Key("cursorPreferOriginalFrames");
+	writer.Bool(profile.cursorRefresh.preferOriginalFrames);
+	writer.Key("cursorMinimumRefreshEnabled");
+	writer.Bool(profile.cursorRefresh.minimumRefreshEnabled);
+	writer.Key("cursorMinimumRefreshRate");
+	writer.Double(CursorRefreshSettings::ValidateRate(profile.cursorRefresh.minimumRefreshRate));
 
 	writer.Key("croppingEnabled");
 	writer.Bool(profile.isCroppingEnabled);
@@ -557,7 +563,6 @@ void AppSettings::IsDeveloperMode(bool value) noexcept {
 		_isFontCacheDisabled = false;
 		_isSaveEffectSources = false;
 		_isWarningsAreErrors = false;
-		_duplicateFrameDetectionMode = DuplicateFrameDetectionMode::Dynamic;
 		_isStatisticsForDynamicDetectionEnabled = false;
 		_isFP16Disabled = false;
 	}
@@ -1390,6 +1395,12 @@ bool AppSettings::_LoadProfile(
 	}
 
 	JsonHelper::ReadBool(profileObj, "autoHideCursorEnabled", profile.isAutoHideCursorEnabled);
+	profile.cursorRefresh = {};
+	JsonHelper::ReadBool(profileObj, "cursorPreferOriginalFrames", profile.cursorRefresh.preferOriginalFrames);
+	JsonHelper::ReadBool(profileObj, "cursorMinimumRefreshEnabled", profile.cursorRefresh.minimumRefreshEnabled);
+	JsonHelper::ReadFloat(profileObj, "cursorMinimumRefreshRate", profile.cursorRefresh.minimumRefreshRate);
+	profile.cursorRefresh.minimumRefreshRate = CursorRefreshSettings::ValidateRate(
+		profile.cursorRefresh.minimumRefreshRate);
 	JsonHelper::ReadFloat(profileObj, "autoHideCursorDelay", profile.autoHideCursorDelay);
 	if (profile.autoHideCursorDelay <= 0.1f - FLOAT_EPSILON<float> ||
 		profile.autoHideCursorDelay >= 5.0f + FLOAT_EPSILON<float>)

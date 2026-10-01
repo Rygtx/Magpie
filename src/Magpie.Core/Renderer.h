@@ -56,7 +56,7 @@ public:
 	bool HasUrgentOverlayInput() const noexcept;
 	bool HasPendingContent() const noexcept;
 	std::chrono::nanoseconds FrontendPollInterval() const noexcept {
-		return _overlayPresentationClock.PollInterval();
+		return std::min(_overlayPresentationClock.PollInterval(), _cursorDrawer.PollInterval());
 	}
 
 	// Sleep in the outer message pump, never inside a prepared frame.
@@ -191,7 +191,7 @@ private:
 		return _overlayActionRevision != _presentedOverlayActionRevision;
 	}
 	void _UpdateOverlayRefreshRate() noexcept;
-	bool _CanRenderOverlay() const noexcept;
+	bool _CanRenderOverlay() noexcept;
 	struct FrontendRenderTimings {
 		std::chrono::nanoseconds beginFrame{};
 		std::chrono::nanoseconds draw{};

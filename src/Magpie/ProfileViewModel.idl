@@ -63,6 +63,9 @@ namespace Magpie {
 		Int32 CursorScaling;
 		Double CustomCursorScaling;
 		Int32 CursorInterpolationMode;
+		Boolean IsCursorOriginalFramePreferred;
+		Boolean IsCursorMinimumRefreshEnabled;
+		Double CursorMinimumRefreshRate;
 		Boolean IsAutoHideCursorEnabled;
 		Double AutoHideCursorDelay;
 		String AutoHideCursorDelayText { get; };

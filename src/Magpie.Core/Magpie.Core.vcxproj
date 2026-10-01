@@ -65,6 +65,8 @@
     <ClInclude Include="CompSwapchainPresenter.h" />
     <ClInclude Include="CursorManager.h" />
     <ClInclude Include="CursorDrawer.h" />
+    <ClInclude Include="CursorRefreshPolicy.h" />
+    <ClInclude Include="include\CursorRefreshSettings.h" />
     <ClInclude Include="DDS.h" />
     <ClInclude Include="DDSHelper.h" />
     <ClInclude Include="DesktopDuplicationFrameSource.h" />
