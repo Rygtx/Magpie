@@ -1733,4 +1733,13 @@ Oklab 模式中只控制变暗修正</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_5" xml:space="preserve"><value>保护权重</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_6" xml:space="preserve"><value>色域压缩比例</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_7" xml:space="preserve"><value>局部压缩比例</value></data>
+  <data name="Profile_Cursor_Refresh.Header" xml:space="preserve"><value>光标刷新</value></data>
+  <data name="Profile_Cursor_Refresh.Description" xml:space="preserve"><value>控制光标绘制，鼠标输入仍正常响应。下次启动缩放时生效。</value></data>
+  <data name="Profile_Cursor_Refresh_Original.Header" xml:space="preserve"><value>优先随原始内容帧更新</value></data>
+  <data name="Profile_Cursor_Refresh_Original.Description" xml:space="preserve"><value>在新的捕获内容帧之间保持光标状态。关闭下方最低刷新后，移动不再请求额外呈现；可见性和光标归属切换仍会更新。</value></data>
+  <data name="Profile_Cursor_Refresh_Minimum.Header" xml:space="preserve"><value>保持光标最低刷新率</value></data>
+  <data name="Profile_Cursor_Refresh_Minimum.Description" xml:space="preserve"><value>内容更新缓慢或暂停时，复用已呈现画面刷新变化的光标。此值为目标下限，并非上限，受显示器及呈现容量限制。</value></data>
+  <data name="Profile_Cursor_Refresh_Rate.Header" xml:space="preserve"><value>最低刷新率</value></data>
+  <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>范围 1–1000 FPS，默认 60。光标不变时不请求额外呈现。</value></data>
+  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>FG 效果优先使用自身的重复帧设置。无 FG 时采用此全局设置，3D 游戏模式保留现有绕过规则。光标刷新在应用配置中设置。</value></data>
 </root>

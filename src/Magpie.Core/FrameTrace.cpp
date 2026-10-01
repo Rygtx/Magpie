@@ -24,7 +24,7 @@ constexpr std::array<const char*, EVENT_COUNT> NAMES{
     "RenderDecision", "CaptureAccepted", "FrontendMessage", "WgcNotificationWait",
     "WgcDequeue", "CaptureWake", "OverlayDeferred", "InputBackpressure", "GenerationFence",
     "FgQueued", "FgDequeued", "CaptureClassification", "RenderReason", "EffectReuse", "EffectExecute",
-    "HdrCapture"
+    "HdrCapture", "CursorPublish"
 };
 struct Entry {
     int64_t start, duration;

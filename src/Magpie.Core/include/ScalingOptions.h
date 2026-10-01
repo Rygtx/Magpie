@@ -1,4 +1,5 @@
 #pragma once
+#include "CursorRefreshSettings.h"
 #include <parallel_hashmap/phmap.h>
 #include <string_view>
 #include <memory>
@@ -484,6 +485,7 @@ struct ScalingOptions {
 	float frontEdgeSyncFrameRate = 60.0f;
 	FrameSyncMode frameSyncMode = FrameSyncMode::FrontEdge;
 	float cursorScaling = 1.0f;
+	CursorRefreshSettings cursorRefresh;
 	CaptureMethod captureMethod = CaptureMethod::GraphicsCapture;
 	MultiMonitorUsage multiMonitorUsage = MultiMonitorUsage::Closest;
 	std::wstring preferredMonitorId;

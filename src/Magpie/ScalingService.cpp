@@ -453,6 +453,9 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	options.preferredMonitorId = profile.preferredMonitorId;
 	options.destAlignment = profile.destAlignment;
 	options.cursorInterpolationMode = profile.cursorInterpolationMode;
+	options.cursorRefresh = profile.cursorRefresh;
+	options.cursorRefresh.minimumRefreshRate = CursorRefreshSettings::ValidateRate(
+		options.cursorRefresh.minimumRefreshRate);
 	options.flags = profile.scalingFlags;
 
 	options.IsWindowedMode(windowedMode);

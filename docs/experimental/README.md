@@ -25,6 +25,7 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 - [069 快捷键清除与“未设置”状态 TODO](todos/20261001-v0.6.9-shortcut-clear-TODO.md)：行内垃圾桶、弹窗清除、显式空绑定持久化与正常注销已实现，自动回归通过；真实界面验收和 069 beta1 编译部署交由独立会话。关联 Issue #34。
 - [069 工具栏拖拽与上下停靠 TODO](todos/20261001-v0.6.9-toolbar-drag-TODO.md)：专用拖拽柄、上下蓝条、按应用 / 模式保存上下位置和会话期左右位置已实现，自动回归通过；真实界面 / GPU 验收与 069 beta1 编译部署交由独立会话。关联 Issue #50。
 - [069 重复帧过滤优化 TODO](todos/20261001-v0.6.9-duplicate-frame-filter-optimization-TODO.md)：效果输出版本、旧帧复用、时序历史重置及 HDR 去重前置已实施，CPU / WARP 回归与源码语法检查通过；同步读回和 Dynamic 策略保留，069 beta1 产品编译部署与真实 SDK / 画质 / 性能验收交由独立会话。
+- [069 光标刷新与主页选项 TODO](todos/20261001-v0.6.9-cursor-refresh-and-home-options-TODO.md)：应用配置光标策略、默认开启的 60 FPS 最低刷新、主页过滤及开发者入口已实施，386 项离线检查、相关回归和源码语法检查通过；[实施及 beta1 交接](reviews/20261001-v0.6.9-cursor-refresh-and-home-options.md)，产品编译部署与真实 UI / SDK / 性能验收交由独立会话。
 - [069 DLSSNR 重复资源开销优化 To do](todos/20261001-v0.6.9-dlssnr-overhead-optimization-TODO.md)：入口共用缩放 / 引导、出口统一总残差、D3D12 集中调度与缓存优化已实施；自动回归及有限真实 NGX 冒烟通过，069 beta1 产品编译部署与完整画质 / 性能验收交由独立会话。
 - [069 To do - xBR](todos/20260921-v0.6.9-xbr-TODO.md)：筛选标准 LV2 固定倍率、NoBlend 与 Hybrid 为首批范围；LV3、MLV4 和 Super-xBR 需经过画质/性能门槛后再决定是否进入 0.6.9。
 - [DLSSNR Multi Pass 残差时域稳定路线](design/20260914-dlssnr-temporal-stabilization-routes.md)：比较无光流／光流累积、快慢历史、稳健统计、分频与联合升采样，说明当前 068 串联实现的接入边界和验证顺序。

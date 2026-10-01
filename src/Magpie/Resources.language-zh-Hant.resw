@@ -1681,4 +1681,13 @@ Oklab 模式中只控制變暗修正</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_5" xml:space="preserve"><value>保護權重</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_6" xml:space="preserve"><value>色域壓縮比例</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Option_7" xml:space="preserve"><value>局部壓縮比例</value></data>
+  <data name="Profile_Cursor_Refresh.Header" xml:space="preserve"><value>游標重新整理</value></data>
+  <data name="Profile_Cursor_Refresh.Description" xml:space="preserve"><value>控制游標繪製，滑鼠輸入仍正常回應。下次啟動縮放時生效。</value></data>
+  <data name="Profile_Cursor_Refresh_Original.Header" xml:space="preserve"><value>優先隨原始內容影格更新</value></data>
+  <data name="Profile_Cursor_Refresh_Original.Description" xml:space="preserve"><value>在新的擷取內容影格之間保持游標狀態。關閉下方最低重新整理後，移動不再要求額外呈現；可見性與游標歸屬切換仍會更新。</value></data>
+  <data name="Profile_Cursor_Refresh_Minimum.Header" xml:space="preserve"><value>保持游標最低重新整理率</value></data>
+  <data name="Profile_Cursor_Refresh_Minimum.Description" xml:space="preserve"><value>內容更新緩慢或暫停時，重用已呈現畫面更新變動的游標。此值為目標下限，並非上限，受顯示器與呈現容量限制。</value></data>
+  <data name="Profile_Cursor_Refresh_Rate.Header" xml:space="preserve"><value>最低重新整理率</value></data>
+  <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>範圍 1–1000 FPS，預設 60。游標不變時不要求額外呈現。</value></data>
+  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>FG 效果優先使用自身的重複影格設定。無 FG 時採用此全域設定，3D 遊戲模式保留現有略過規則。游標更新在應用程式設定中調整。</value></data>
 </root>
