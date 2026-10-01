@@ -20,6 +20,7 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [069 DLSSNR 重复资源开销优化 To do](todos/20261001-v0.6.9-dlssnr-overhead-optimization-TODO.md)：入口共用缩放 / 引导、出口统一总残差、D3D12 集中调度与缓存优化已实施；自动回归及有限真实 NGX 冒烟通过，069 beta1 产品编译部署与完整画质 / 性能验收交由独立会话。
 - [DLSSNR Multi Pass 残差时域稳定路线](design/20260914-dlssnr-temporal-stabilization-routes.md)：比较无光流／光流累积、快慢历史、稳健统计、分频与联合升采样，说明当前 068 串联实现的接入边界和验证顺序。
 - [v0.6.5 r8：参数状态、光流降级与 SR 入口收敛](todos/20260905-v0.6.5-r8-TODO.md)。
 - [r8 本地版本说明](../RELEASE_NOTES_v0.6.5-r8-local.md)。

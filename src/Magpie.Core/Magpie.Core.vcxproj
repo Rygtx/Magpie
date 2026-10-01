@@ -125,6 +125,7 @@
     <ClInclude Include="DLSSNRTemporalShader.h" />
     <ClInclude Include="include\DLSSNRTemporalState.h" />
     <ClInclude Include="include\DLSSNRParameters.h" />
+    <ClInclude Include="include\DLSSNRChainCache.h" />
     <ClInclude Include="FrameGuidanceProvider.h" />
     <ClInclude Include="FrameGuidanceService.h" />
     <ClInclude Include="MotionVectorRequest.h" />
