@@ -12,6 +12,8 @@
 #include <d3d12sdklayers.h>
 #include <iostream>
 #include <cassert>
+#include <source_location>
+#include "DLSSNRColorReference.h"
 
 using namespace Magpie;
 ID3D12Device* testedDevice = nullptr;
@@ -36,13 +38,19 @@ bool DebugMessages() {
 	return clean && SUCCEEDED(removed);
 }
 void Check(HRESULT hr) { if (FAILED(hr)) { std::cerr << std::hex << hr << '\n'; std::abort(); } }
-void Require(bool value) { if (!value) { DebugMessages(); Logger::Get().Flush(); std::abort(); } }
+void Require(bool value, const std::source_location where = std::source_location::current()) {
+	if (!value) {
+		std::cerr << "Requirement failed at " << where.file_name() << ':' << where.line() << '\n';
+		DebugMessages(); Logger::Get().Flush(); std::abort();
+	}
+}
 NVSDK_NGX_Result NVSDK_CONV FailEvaluation(ID3D12GraphicsCommandList*, const NVSDK_NGX_Handle*,
 	const NVSDK_NGX_Parameter*, PFN_NVSDK_NGX_ProgressCallback) {
 	return NVSDK_NGX_Result_FAIL_InvalidParameter;
 }
 
-void CheckColor(DeviceResources& resources, ID3D11Texture2D* texture, const float* expected) {
+void CheckColor(DeviceResources& resources, ID3D11Texture2D* texture, const float* expected,
+	const std::source_location where = std::source_location::current()) {
 	D3D11_TEXTURE2D_DESC desc{}; texture->GetDesc(&desc);
 	const uint32_t width=desc.Width, height=desc.Height;
 	desc.Usage=D3D11_USAGE_STAGING; desc.BindFlags=0; desc.CPUAccessFlags=D3D11_CPU_ACCESS_READ; desc.MiscFlags=0;
@@ -52,9 +60,21 @@ void CheckColor(DeviceResources& resources, ID3D11Texture2D* texture, const floa
 	D3D11_MAPPED_SUBRESOURCE map{}; Check(resources.GetD3DDC()->Map(staging.get(),0,D3D11_MAP_READ,0,&map));
 	for (uint32_t y=0; y<height; ++y) for (uint32_t x=0; x<width; ++x) for (uint32_t c=0; c<4; ++c) {
 		const int value=static_cast<const uint8_t*>(map.pData)[y*map.RowPitch+x*4+c];
+		if (std::abs(value-static_cast<int>(std::lround(expected[c]*255))) > (c == 3 ? 0 : 1))
+			std::cerr << "Pixel mismatch from line " << where.line() << ": xy=" << x << ',' << y
+				<< " channel=" << c << " actual=" << value << " expected=" << expected[c]*255 << '\n';
 		Require(std::abs(value-static_cast<int>(std::lround(expected[c]*255))) <= (c == 3 ? 0 : 1));
 	}
 	resources.GetD3DDC()->Unmap(staging.get(),0);
+}
+
+std::array<float,4> OriginalLightness(const float* original, const float* candidate) {
+	const auto base = ColorReference::ToLab({original[0],original[1],original[2]});
+	auto controlled = ColorReference::ToLab({candidate[0],candidate[1],candidate[2]});
+	controlled[0] = base[0];
+	const auto rgb = ColorReference::FromLab(controlled);
+	for (const double channel : rgb) Require(channel >= 0 && channel <= 1); // In-gamut reference fixture.
+	return {float(rgb[0]),float(rgb[1]),float(rgb[2]),original[3]};
 }
 
 int main() {
@@ -240,12 +260,16 @@ int main() {
 			CheckColor(resources,output.get(),negative);
 			controls.shadowStructureMultiplier=0; fixture.residualParametersDirty=true;
 			Require(CompositeResidual(fixture,output.get(),fixture.sharedOutputSrv11.get(),controls));
-			CheckColor(resources,output.get(),original);
+			// Directional gains now control lightness alone; chroma correction stays.
+			// Compare against independent double-precision color coordinates.
+			const auto noDarkening = OriginalLightness(original,negative);
+			CheckColor(resources,output.get(),noDarkening.data());
 			const float positive[4]{.6f,.5f,.8f,.43f};
 			fixture.context11->ClearUnorderedAccessViewFloat(denoisedUav.get(),positive);
 			controls.shadowStructureMultiplier=1; controls.reflectionGlowMultiplier=0;
 			Require(CompositeResidual(fixture,output.get(),fixture.sharedOutputSrv11.get(),controls));
-			CheckColor(resources,output.get(),original);
+			const auto noBrightening = OriginalLightness(original,positive);
+			CheckColor(resources,output.get(),noBrightening.data());
 			controls.reflectionGlowMultiplier=1; controls.residualMultiplier=2;
 			Require(CompositeResidual(fixture,output.get(),fixture.sharedOutputSrv11.get(),controls));
 			const float clipped[4]{.8f,.7f,1.f,.43f};

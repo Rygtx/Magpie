@@ -22,7 +22,7 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 - [0.6.9 Beta1 fix1 TODO](todos/20261001-v0.6.9-beta1-fix1-TODO.md)：参数浮层超出主窗口、DLSSNR 默认隐藏的进阶调整与名称悬停说明、统一残差与保留数值迁移、工具栏按钮／底部样式、12px 居中吸附和 2px 青色中央竖线已实施，自动回归通过。竖线仅拖拽吸附时显示，运行时参数面板保留纵向布局；部署和 GUI 验收边界见执行记录。
 
-- [069 DLSSNR 细节控制 TODO](todos/20261001-v0.6.9-dlssnr-detail-control-TODO.md)：Oklab、保护／压缩、频率与色度时域控制已实施，旧 HSL 配置保留；[实施及验证记录](reviews/20261001-v0.6.9-dlssnr-detail-control.md)包含生产 shader 响应图。069 beta1 编译部署与真实内容／原生 UI 验收交由独立会话。
+- [069 DLSSNR 细节控制 TODO](todos/20261001-v0.6.9-dlssnr-detail-control-TODO.md)：基础、保护／压缩、频率与色度时域控制已实施，旧模式兼容规则已由 Beta1 fix1 的统一迁移替代；[原始实施及验证记录](reviews/20261001-v0.6.9-dlssnr-detail-control.md)保留生产 shader 响应图与当时证据。
 
 - [069 快捷键清除与“未设置”状态 TODO](todos/20261001-v0.6.9-shortcut-clear-TODO.md)：行内垃圾桶、弹窗清除、显式空绑定持久化与正常注销已实现，自动回归通过；真实界面验收和 069 beta1 编译部署交由独立会话。关联 Issue #34。
 - [069 工具栏拖拽与上下停靠 TODO](todos/20261001-v0.6.9-toolbar-drag-TODO.md)：专用拖拽柄、上下蓝条、按应用 / 模式保存上下位置和会话期左右位置已实现，自动回归通过；真实界面 / GPU 验收与 069 beta1 编译部署交由独立会话。关联 Issue #50。
