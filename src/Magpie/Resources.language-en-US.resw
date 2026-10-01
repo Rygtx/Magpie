@@ -1680,4 +1680,23 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_4" xml:space="preserve"><value>Low-frequency Temporal Reconstruction</value></data>
   <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>Duplicate Frame Filtering</value></data>
   <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>Duplicate Frame Filtering</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrYWeight_Label" xml:space="preserve"><value>Y Weight</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrEqThreshold_Label" xml:space="preserve"><value>Eq Threshold</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 Coefficient</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramPreserveSmallDetails_Label" xml:space="preserve"><value>Preserve Small Details</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramPreserveSmallDetails_Option_0" xml:space="preserve"><value>Off</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramPreserveSmallDetails_Option_1" xml:space="preserve"><value>On</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrYWeight_Label" xml:space="preserve"><value>Y Weight</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrEqThreshold_Label" xml:space="preserve"><value>Eq Threshold</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 Coefficient</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramPreserveSmallDetails_Label" xml:space="preserve"><value>Preserve Small Details</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramPreserveSmallDetails_Option_0" xml:space="preserve"><value>Off</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramPreserveSmallDetails_Option_1" xml:space="preserve"><value>On</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrYWeight_Label" xml:space="preserve"><value>Y Weight</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrEqThreshold_Label" xml:space="preserve"><value>Eq Threshold</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 Coefficient</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Label" xml:space="preserve"><value>Preserve Small Details</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Option_0" xml:space="preserve"><value>Off</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Option_1" xml:space="preserve"><value>On</value></data>
+  <data name="EffectParam_xBR_xBR_NoBlend_3x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 Coefficient</value></data>
 </root>

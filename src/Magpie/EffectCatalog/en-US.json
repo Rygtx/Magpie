@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "language": "zh-Hans",
+  "language": "en-US",
   "categories": [
     {
       "id": "upscale",
@@ -2995,6 +2995,76 @@
       "recommendation": "Recommended for specific scenarios",
       "search": "SSimDownscaler SSimDownscaler SSimDownscaler     SSimDownscaler         SSimDownscaler Structural similarity resampling for downscaling helps preserve look and feel when reducing resolution. Recommended for specific scenarios Upscaling and super resolution Downscaling and resizing",
       "family": null,
+      "subfamily": null
+    },
+    {
+      "id": "xBR\\xBR_2x",
+      "name": "xBR 2x",
+      "category": "upscale",
+      "subcategory": "Pixel art",
+      "purposes": ["upscale"],
+      "summary": "Fixed 2x xBR LV2 edge-aware pixel-art scaling.",
+      "details": "Upscaling and super resolution › Pixel art\n\nSmooths pixel-art contours along detected diagonal edges. xBR and xBRZ remain separate algorithms.\n\nVariant: standard LV2 Blend at fixed 2x, with color-distance, edge-rule, and small-detail controls.\n\nSituational: compare contours and small features against xBRZ at the same scale.\n\nFirst try: use the defaults, then inspect pixel fonts, eyes, and one-pixel highlights.\n\nPipeline: use as the main integer pixel-art scaling step, before optional CRT or display styling.\n\nOutput size: fixed width x2 and height x2.\n\nRequirements: the Direct3D 11 effect shader must compile and the fixed output size must fit the device.\n\nPerformance: medium; measure on the target GPU.\n\nHDR: uses an SDR-compatible boundary. Highlights, transparent edges, and color still require hardware validation.",
+      "level": "situational",
+      "recommendation": "Situational",
+      "search": "xBR\\xBR_2x xBR 2x LV2 Blend pixel art edge-aware fixed 2x xBRZ",
+      "family": {"id": "xbr", "name": "xBR", "summary": "Rule-based pixel-art contour smoothing. Standard LV2 provides 2x-4x, NoBlend 3x preserves the existing palette, and Hybrid 2x targets pre-antialiased SDR material."},
+      "subfamily": null
+    },
+    {
+      "id": "xBR\\xBR_3x",
+      "name": "xBR 3x",
+      "category": "upscale",
+      "subcategory": "Pixel art",
+      "purposes": ["upscale"],
+      "summary": "Fixed 3x xBR LV2 edge-aware pixel-art scaling.",
+      "details": "Upscaling and super resolution › Pixel art\n\nSmooths pixel-art contours along detected diagonal edges. xBR and xBRZ remain separate algorithms.\n\nVariant: standard LV2 Blend at fixed 3x, with color-distance, edge-rule, and small-detail controls.\n\nSituational: compare contours and palette changes against xBRZ 3x and NoBlend 3x.\n\nFirst try: use the defaults, then inspect pixel fonts, eyes, and one-pixel highlights.\n\nPipeline: use as the main integer pixel-art scaling step, before optional CRT or display styling.\n\nOutput size: fixed width x3 and height x3.\n\nRequirements: the Direct3D 11 effect shader must compile and the fixed output size must fit the device.\n\nPerformance: medium; measure on the target GPU.\n\nHDR: uses an SDR-compatible boundary. Highlights, transparent edges, and color still require hardware validation.",
+      "level": "situational",
+      "recommendation": "Situational",
+      "search": "xBR\\xBR_3x xBR 3x LV2 Blend pixel art edge-aware fixed 3x xBRZ NoBlend",
+      "family": {"id": "xbr", "name": "xBR", "summary": "Rule-based pixel-art contour smoothing. Standard LV2 provides 2x-4x, NoBlend 3x preserves the existing palette, and Hybrid 2x targets pre-antialiased SDR material."},
+      "subfamily": null
+    },
+    {
+      "id": "xBR\\xBR_4x",
+      "name": "xBR 4x",
+      "category": "upscale",
+      "subcategory": "Pixel art",
+      "purposes": ["upscale"],
+      "summary": "Fixed 4x xBR LV2 edge-aware pixel-art scaling.",
+      "details": "Upscaling and super resolution › Pixel art\n\nSmooths pixel-art contours along detected diagonal edges. xBR and xBRZ remain separate algorithms.\n\nVariant: standard LV2 Blend at fixed 4x, with color-distance, edge-rule, and small-detail controls.\n\nSituational: at 4x, inspect thin lines, corners, and curves where rule differences become easier to see.\n\nFirst try: use the defaults and compare against xBRZ 4x.\n\nPipeline: use as the main integer pixel-art scaling step, before optional CRT or display styling.\n\nOutput size: fixed width x4 and height x4.\n\nRequirements: the Direct3D 11 effect shader must compile and the fixed output size must fit the device.\n\nPerformance: medium to high; measure on the target GPU.\n\nHDR: uses an SDR-compatible boundary. Highlights, transparent edges, and color still require hardware validation.",
+      "level": "situational",
+      "recommendation": "Situational",
+      "search": "xBR\\xBR_4x xBR 4x LV2 Blend pixel art edge-aware fixed 4x xBRZ",
+      "family": {"id": "xbr", "name": "xBR", "summary": "Rule-based pixel-art contour smoothing. Standard LV2 provides 2x-4x, NoBlend 3x preserves the existing palette, and Hybrid 2x targets pre-antialiased SDR material."},
+      "subfamily": null
+    },
+    {
+      "id": "xBR\\xBR_NoBlend_3x",
+      "name": "xBR NoBlend 3x",
+      "category": "upscale",
+      "subcategory": "Pixel art",
+      "purposes": ["upscale"],
+      "summary": "Fixed 3x xBR scaling that preserves the existing RGB palette.",
+      "details": "Upscaling and super resolution › Pixel art\n\nSelects output colors only from the sampled neighborhood instead of interpolating new RGB values. It suits limited-palette pixel art.\n\nVariant: NoBlend at fixed 3x, the odd integer scale recommended upstream. Only the LV2 edge coefficient is adjustable because the upstream Corner A path does not consume an equality-threshold parameter.\n\nSituational: compare diagonal stair-stepping against standard xBR 3x and inspect transparent edges.\n\nPipeline: use as the main integer pixel-art scaling step and keep point sampling enabled.\n\nOutput size: fixed width x3 and height x3.\n\nPerformance: medium; measure on the target GPU.\n\nHDR: palette preservation refers to the SDR RGB values presented to this effect.",
+      "level": "situational",
+      "recommendation": "Situational",
+      "search": "xBR\\xBR_NoBlend_3x xBR NoBlend 3x palette preserve pixel art fixed 3x point sampling",
+      "family": {"id": "xbr", "name": "xBR", "summary": "Rule-based pixel-art contour smoothing. Standard LV2 provides 2x-4x, NoBlend 3x preserves the existing palette, and Hybrid 2x targets pre-antialiased SDR material."},
+      "subfamily": null
+    },
+    {
+      "id": "xBR\\xBR_Hybrid_2x",
+      "name": "xBR Hybrid 2x",
+      "category": "upscale",
+      "subcategory": "Pixel art",
+      "purposes": ["upscale"],
+      "summary": "Fixed 2x scaling that combines xBR with Reverse-AA.",
+      "details": "Upscaling and super resolution › Pixel art\n\nTargets low-resolution 2D material that already contains antialiasing, gradients, or smoother edges. It is not the palette-preserving route for strict pixel art.\n\nVariant: fixed 2x and defined for gamma-coded SDR. HDR compatibility mode falls back to point 2x instead of running unvalidated gamma math.\n\nAdvanced: evaluate Hybrid quality only in SDR and compare gradients, banding, and translucent edges.\n\nPipeline: use as the main 2D scaling step before optional sharpening or display styling.\n\nOutput size: fixed width x2 and height x2.\n\nPerformance: medium to high; measure on the target GPU.\n\nHDR: the Hybrid algorithm is not enabled in HDR; compatibility mode performs only the point 2x fallback.",
+      "level": "advanced",
+      "recommendation": "Advanced / experimental",
+      "search": "xBR\\xBR_Hybrid_2x xBR Hybrid 2x Reverse-AA pre-antialiased gradient SDR point HDR fallback",
+      "family": {"id": "xbr", "name": "xBR", "summary": "Rule-based pixel-art contour smoothing. Standard LV2 provides 2x-4x, NoBlend 3x preserves the existing palette, and Hybrid 2x targets pre-antialiased SDR material."},
       "subfamily": null
     },
     {

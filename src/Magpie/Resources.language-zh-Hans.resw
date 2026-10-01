@@ -1680,4 +1680,23 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_4" xml:space="preserve"><value>低频时域重建</value></data>
   <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重复帧过滤</value></data>
   <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重复帧过滤</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrYWeight_Label" xml:space="preserve"><value>亮度权重</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrEqThreshold_Label" xml:space="preserve"><value>相等阈值</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 边缘系数</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramPreserveSmallDetails_Label" xml:space="preserve"><value>保护小细节</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramPreserveSmallDetails_Option_0" xml:space="preserve"><value>关闭</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramPreserveSmallDetails_Option_1" xml:space="preserve"><value>开启</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrYWeight_Label" xml:space="preserve"><value>亮度权重</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrEqThreshold_Label" xml:space="preserve"><value>相等阈值</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 边缘系数</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramPreserveSmallDetails_Label" xml:space="preserve"><value>保护小细节</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramPreserveSmallDetails_Option_0" xml:space="preserve"><value>关闭</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramPreserveSmallDetails_Option_1" xml:space="preserve"><value>开启</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrYWeight_Label" xml:space="preserve"><value>亮度权重</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrEqThreshold_Label" xml:space="preserve"><value>相等阈值</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 边缘系数</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Label" xml:space="preserve"><value>保护小细节</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Option_0" xml:space="preserve"><value>关闭</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Option_1" xml:space="preserve"><value>开启</value></data>
+  <data name="EffectParam_xBR_xBR_NoBlend_3x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 边缘系数</value></data>
 </root>
