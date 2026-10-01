@@ -1404,8 +1404,10 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		(!_parameterFocusSwitchingEnabled || IsEditingParameters()) ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	if (IsEditingParameters() && window->TitleBarRect().Contains(ImGui::GetIO().MousePos)) {
-		const std::string hint = StrHelper::Concat(_GetResourceString(L"Overlay_Parameters_InputHint"),
-			" ", ScalingWindow::Get().Options().toolbarShortcutLabels.parameters);
+		const auto& shortcut = ScalingWindow::Get().Options().toolbarShortcutLabels.parameters;
+		const std::string hint = shortcut.empty() ?
+			_GetResourceString(L"Overlay_Parameters_InputHintWithoutShortcut") :
+			StrHelper::Concat(_GetResourceString(L"Overlay_Parameters_InputHint"), " ", shortcut);
 		_imguiImpl.Tooltip(hint.c_str(), _dpiScale);
 	}
 	const OverlayWindowRect rect{

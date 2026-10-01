@@ -135,6 +135,11 @@
   <data name="Home_Activation_Timer_Delay.Header" xml:space="preserve">
     <value>Delay in seconds</value>
   </data>
+  <data name="ShortcutDialog_Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="ShortcutControl_ClearButton.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Clear shortcut</value></data>
+  <data name="ShortcutControl_NotSet.Text" xml:space="preserve"><value>Not set</value></data>
+  <data name="ShortcutControl_ClearAutomationName" xml:space="preserve"><value>Clear shortcut: {0}</value></data>
+  <data name="Overlay_Parameters_InputHintWithoutShortcut" xml:space="preserve"><value>Ctrl+click a slider to enter its value. Esc: Edit → Preview → Closed. Click the preview panel to edit.</value></data>
   <data name="ShortcutDialog_Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>

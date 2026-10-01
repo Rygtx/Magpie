@@ -112,6 +112,15 @@ inline Plan Prepare(std::string_view source, std::string_view backup,
 	};
 	for (const char* key : { "windowPos", "shortcuts", "hotkeys", "overlay" })
 		check(doc, key, "", object);
+	for (const char* objectKey : { "shortcuts", "hotkeys" }) {
+		if (!doc.HasMember(objectKey)) continue;
+		for (const char* key : { "scale", "windowedModeScale", "toolbar", "overlay",
+			"profiler", "effectParameters", "screenshot", "toolbarPin", "comparison" }) {
+			check(doc[objectKey], key, std::string("/") + objectKey, [](const auto& value) {
+				return value.IsUint() && value.GetUint() <= 0xfff;
+			});
+		}
+	}
 	for (const char* key : { "scalingModes", "profiles", "scalingProfiles" })
 		check(doc, key, "", array);
 	// Version migrations are normal loading, not evidence of damaged settings.

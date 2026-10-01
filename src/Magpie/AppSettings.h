@@ -437,7 +437,8 @@ private:
 		bool isDefault = false,
 		bool legacyParameterFocusSwitching = false
 	) const noexcept;
-	bool _SetDefaultShortcuts() noexcept;
+	bool _LoadShortcuts(const rapidjson::GenericObject<true, rapidjson::Value>& root) noexcept;
+	void _SetDefaultShortcuts() noexcept;
 	void _SetDefaultScalingModes() noexcept;
 
 	bool _UpdateConfigPath(std::filesystem::path* existingConfigPath = nullptr) noexcept;
