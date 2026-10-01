@@ -904,7 +904,7 @@
     <value>Applies only to fullscreen mode</value>
   </data>
   <data name="Home_Toolbar.Description" xml:space="preserve">
-    <value>Drag the grip to dock the toolbar at the top or bottom and move it left or right. It provides FPS display and screenshots. In windowed mode, drag empty toolbar space to move the output window.</value>
+    <value>Drag empty toolbar space or the FPS display to move the toolbar and dock it at the top or bottom.</value>
   </data>
   <data name="Home_Toolbar.Header" xml:space="preserve">
     <value>Toolbar</value>
