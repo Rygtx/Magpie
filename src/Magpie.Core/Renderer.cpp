@@ -3461,6 +3461,7 @@ void Renderer::_BackendRender(
 			// Diagnostics still display the captured pair; temporal image SDKs
 			// receive Zero plus an explicit reset instead of stale nonzero motion.
 			const bool diagnostic = desc.name.starts_with("Diagnostics\\");
+			const bool nr = desc.name == "DLSSNR\\DLSSNR_AI_Filter";
 			const NativeEffectDrawContext drawContext{
 				.input = effectDrawer.GetTexture(0),
 				.output = effectDrawer.GetOutputTexture(),
@@ -3473,7 +3474,7 @@ void Renderer::_BackendRender(
 				.inputHistoryRevision = key.inputHistoryRevision,
 				.inputHistoryReset = historyReset,
 				.isNewCaptureFrame = isNewCaptureFrame,
-				.frameGuidance = !isNewCaptureFrame && !diagnostic ? guidance.zero : guidance.produced,
+				.frameGuidance = !isNewCaptureFrame && !diagnostic && !nr ? guidance.zero : guidance.produced,
 				.zeroFrameGuidance = guidance.zero
 			};
 			FrameTrace::Scope traceNative(FrameTrace::Event::NativeEffect, i);

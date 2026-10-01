@@ -117,7 +117,7 @@ bool DLSSNRTemporal::Draw(const NativeEffectDrawContext& context) noexcept {
 	auto& impl = *_impl;
 	const auto& zero = context.zeroFrameGuidance.motion.metadata;
 	const auto& guidance = context.frameGuidance;
-	bool motion = impl.mode >= 2 &&
+	bool motion = context.isNewCaptureFrame && impl.mode >= 2 &&
 		guidance.motion.IsValid(DXGI_FORMAT_R16G16_FLOAT, context.frameId, impl.extent) &&
 		!guidance.motion.metadata.isZero &&
 		guidance.motionDirection == FrameGuidanceMotionDirection::CurrentToPrevious &&

@@ -14,6 +14,17 @@ parser = source[source.index("DLSSNRSettings ParseDLSSNRSettings("):source.index
 (out / "DLSSNRSettingsUnderTest.h").write_text(settings + "DLSSNRSettings ParseDLSSNRSettings(const EffectOption&, bool = false) noexcept;\n" + parser, encoding="utf-8")
 session = source[source.index("static bool InitializeSignedSnippet(\n"):source.index("static void SetEvaluateParametersUnsafe(")]
 (out / "DLSSNRSessionUnderTest.h").write_text(session, encoding="utf-8")
+live = source[source.index("EffectParameterApplyMode DLSSNRFilter::GetParameterApplyMode("):source.index("EffectParameterRestartReason DLSSNRFilter::GetParameterRestartReason(")]
+live += source[source.index("static bool SameNRSettings("):source.index("bool DLSSNRFilter::Initialize(")]
+(out / "DLSSNRLiveUnderTest.h").write_text(live, encoding="utf-8")
+guidance_types = read("src/Magpie.Core/FrameGuidanceTypes.h")
+guidance_types = guidance_types[guidance_types.index("using FrameGuidanceFrameId"):guidance_types.index("struct MotionVectorProviderOutput;")]
+guidance = source[source.index("static FrameGuidanceRegion ScaleGuidanceRegion("):source.index("static bool CompositeResidual(")]
+guidance += source[source.index("static bool SameGuidance("):source.index("static void TransitionColor(")]
+interop = read("src/Magpie.Core/FrameGuidanceD3D12Interop.cpp")
+guidance += interop[interop.index("bool FrameGuidanceD3D12Interop::WaitForProducer("):interop.index("void FrameGuidanceD3D12Interop::Transition(")]
+(out / "DLSSNRGuidanceTypesUnderTest.h").write_text(guidance_types, encoding="utf-8")
+(out / "DLSSNRGuidanceUnderTest.h").write_text(guidance, encoding="utf-8")
 
 shader = read("src/Effects/DLSSNR/DLSSNR_AI_Filter.hlsl")
 blocks = {}
