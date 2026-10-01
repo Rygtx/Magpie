@@ -122,6 +122,9 @@
     <ClInclude Include="DLSSFrameGenerator.h" />
     <ClInclude Include="GroupBEffectProtocol.h" />
     <ClInclude Include="DLSSNRFilter.h" />
+    <ClInclude Include="DLSSNRColorShader.h" />
+    <ClInclude Include="DLSSNRDetailShader.h" />
+    <ClInclude Include="include\DLSSNRDetailParameters.h" />
     <ClInclude Include="DLSSNRMultiPass.h" />
     <ClInclude Include="DLSSNRTemporal.h" />
     <ClInclude Include="DLSSNRTemporalShader.h" />

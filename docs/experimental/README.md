@@ -20,6 +20,8 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [069 DLSSNR 细节控制 TODO](todos/20261001-v0.6.9-dlssnr-detail-control-TODO.md)：Oklab、保护／压缩、频率与色度时域控制已实施，旧 HSL 配置保留；[实施及验证记录](reviews/20261001-v0.6.9-dlssnr-detail-control.md)包含生产 shader 响应图。069 beta1 编译部署与真实内容／原生 UI 验收交由独立会话。
+
 - [069 快捷键清除与“未设置”状态 TODO](todos/20261001-v0.6.9-shortcut-clear-TODO.md)：行内垃圾桶、弹窗清除、显式空绑定持久化与正常注销已实现，自动回归通过；真实界面验收和 069 beta1 编译部署交由独立会话。关联 Issue #34。
 - [069 工具栏拖拽与上下停靠 TODO](todos/20261001-v0.6.9-toolbar-drag-TODO.md)：专用拖拽柄、上下蓝条、按应用 / 模式保存上下位置和会话期左右位置已实现，自动回归通过；真实界面 / GPU 验收与 069 beta1 编译部署交由独立会话。关联 Issue #50。
 - [069 重复帧过滤优化 TODO](todos/20261001-v0.6.9-duplicate-frame-filter-optimization-TODO.md)：效果输出版本、旧帧复用、时序历史重置及 HDR 去重前置已实施，CPU / WARP 回归与源码语法检查通过；同步读回和 Dynamic 策略保留，069 beta1 产品编译部署与真实 SDK / 画质 / 性能验收交由独立会话。

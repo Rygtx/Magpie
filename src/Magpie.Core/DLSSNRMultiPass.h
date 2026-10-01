@@ -18,6 +18,7 @@ public:
 		_temporal.reset();
 		_rawOutput = {};
 		_core = &core;
+		_context = resources.GetD3DDC();
 		_option = option;
 		_hdr = hdr;
 		_count = Count(option);
@@ -50,6 +51,7 @@ public:
 			if (!_temporal->Initialize(resources, input, input,
 				_rawOutput.get(), output, antiFlicker, hdr)) return false;
 		}
+		ConfigureDetail();
 		return true;
 	}
 	void SetHdrBoundary(HdrEffectBoundaryContext context) noexcept override {
@@ -82,6 +84,11 @@ public:
 			if (_temporal) _temporal->Reset();
 			if (_count > 1) return false;
 		}
+		if (_temporal && DebugEnabled()) {
+			_temporal->Reset();
+			_context->CopyResource(context.output, _rawOutput.get());
+			return true;
+		}
 		return !_temporal || _temporal->Draw(context);
 	}
 	EffectParameterApplyMode GetParameterApplyMode(std::string_view name) const noexcept override {
@@ -100,14 +107,29 @@ public:
 		bool activeEdit = false;
 		for (const auto& name : names) {
 			if (GetParameterApplyMode(name) != EffectParameterApplyMode::Live) return false;
-			activeEdit |= DLSSNRParameterPass(name) <= _count;
+			activeEdit |= DLSSNRParameterPass(name) <= _count &&
+				name != "residualShowProtection" && name != "residualShowAdvanced";
 		}
 		if (!_filter->ApplyLiveParameters(option, names)) return false;
 		_option = option;
 		if (_temporal && activeEdit) _temporal->Reset();
+		ConfigureDetail();
 		return true;
 	}
 private:
+	float Value(std::string_view name, float fallback = 0) const noexcept {
+		const auto it = _option.parameters.find(std::string(name));
+		return it == _option.parameters.end() ? fallback : it->second;
+	}
+	bool DetailEnabled() const noexcept {
+		return !_hdr && Value("enableInputResolutionScaling") >= .5f && Value("residualColorMode") == 1;
+	}
+	bool DebugEnabled() const noexcept { return DetailEnabled() && Value("residualDebugView") >= .5f; }
+	void ConfigureDetail() noexcept {
+		if (_temporal) _temporal->ConfigureDetail(DetailEnabled() ? Value("residualChromaTemporalStrength") : 0,
+				!_hdr && Value("enableInputResolutionScaling") >= .5f);
+	}
+	ID3D11DeviceContext* _context = nullptr;
 	static int Count(const EffectOption& option) noexcept {
 		return DLSSNRPassCount([&](std::string_view name, float fallback) {
 			const auto it = option.parameters.find(std::string(name));
