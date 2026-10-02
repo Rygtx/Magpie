@@ -1614,10 +1614,15 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	auto rate = [&](const char* id, const wchar_t* label, float& value) {
 		ImGui::TextUnformatted(_GetResourceString(label).c_str());
 		ImGui::SetNextItemWidth(-1.0f);
-		const std::string format = fmt::format("{:g} FPS", value);
-		const bool changed = ImGui::SliderFloat(id, &value, 1, 1000, format.c_str(),
+		constexpr int minimum = FrameRefreshSettings::MinimumEditedRate;
+		constexpr int maximum = FrameRefreshSettings::MaximumEditedRate;
+		int integerValue = static_cast<int>(std::round(std::clamp(value, float(minimum), float(maximum))));
+		const bool changed = ImGui::SliderInt(id, &integerValue, minimum, maximum, "%d FPS",
 			ImGuiSliderFlags_AlwaysClamp | (_parameterFocusSwitchingEnabled ? ImGuiSliderFlags_None : ImGuiSliderFlags_NoInput));
-		if (changed) parameterEdited = needRedraw = true;
+		if (changed) {
+			value = static_cast<float>(integerValue);
+			parameterEdited = needRedraw = true;
+		}
 		return changed;
 	};
 	static constexpr const wchar_t* contentKeys[]{ L"FrameRefresh_Source/Content", L"FrameRefresh_Auto/Content", L"FrameRefresh_Custom/Content" };

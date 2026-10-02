@@ -319,6 +319,18 @@ INumberFormatter2 App::DoubleFormatter() {
 	return numberFormatter;
 }
 
+INumberFormatter2 App::IntegerFormatter() {
+	static DecimalFormatter numberFormatter = []() {
+		DecimalFormatter result;
+		IncrementNumberRounder rounder;
+		rounder.Increment(1);
+		result.NumberRounder(rounder);
+		result.FractionDigits(0);
+		return result;
+	}();
+	return numberFormatter;
+}
+
 void App::_Uninitialize() {
 	NotifyIconService::Get().Uninitialize();
 	UpdateService::Get().Uninitialize();

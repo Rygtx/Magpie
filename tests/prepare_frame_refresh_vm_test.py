@@ -65,6 +65,13 @@ int main() {
     vm.ContentFrameRate(std::numeric_limits<double>::infinity());
     vm.CursorSupplementRate(std::numeric_limits<double>::quiet_NaN()); vm.IdleRedrawRate(0);
     assert(vm.ContentFrameRate()==60 && vm.CursorSupplementRate()==60 && vm.IdleRedrawRate()==30);
+    // Explicit edits quantize, without quantizing saved legacy values on read.
+    vm.ContentFrameRate(59.6); vm.CursorSupplementRate(143.4); vm.IdleRedrawRate(29.5);
+    assert(vm.ContentFrameRate()==60 && vm.CursorSupplementRate()==143 && vm.IdleRedrawRate()==30);
+    vm.ContentFrameRate(1); vm.CursorSupplementRate(1000); vm.IdleRedrawRate(10.4);
+    assert(vm.ContentFrameRate()==15 && vm.CursorSupplementRate()==360 && vm.IdleRedrawRate()==15);
+    defaults.frameRefresh.contentRate=59.94f;
+    assert(vm.ContentFrameRate()==double(59.94f));
     vm.FrameSyncModeIndex(2); vm.ContentFrameRateModeIndex(0);
     assert(vm.FrameSyncModeIndex()==2 && !vm.IsContentPacingEnabled());
     vm.ResetFrameRefresh();

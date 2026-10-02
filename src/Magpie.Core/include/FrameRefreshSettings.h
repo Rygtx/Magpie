@@ -13,6 +13,8 @@ enum class CursorSupplementMode : uint32_t { Auto, Custom };
 // Saved per profile. Runtime limits are projections of this single model;
 // clamping a runtime value must never overwrite the user's saved target.
 struct FrameRefreshSettings {
+	static constexpr int MinimumEditedRate = 15;
+	static constexpr int MaximumEditedRate = 360;
 	ContentFrameRateMode contentMode = ContentFrameRateMode::Custom;
 	float contentRate = 60.0f;
 	FrameSyncMode pacing = FrameSyncMode::FrontEdge;
@@ -32,6 +34,12 @@ struct FrameRefreshSettings {
 
 	static float ValidateRate(double value, float fallback = 60.0f) noexcept {
 		return std::isfinite(value) && value >= 1 && value <= 1000 ? float(value) : fallback;
+	}
+	// Quantize explicit user edits only. Preserve legacy saved values and the
+	// fractional targets calculated from display refresh / FG multipliers.
+	static float ValidateEditedRate(double value, float fallback = 60.0f) noexcept {
+		return std::round(std::clamp(ValidateRate(value, fallback),
+			float(MinimumEditedRate), float(MaximumEditedRate)));
 	}
 	bool IsValid() const noexcept {
 		return uint32_t(contentMode) <= uint32_t(ContentFrameRateMode::Custom) &&

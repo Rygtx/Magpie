@@ -10,7 +10,7 @@
 - 内容帧率支持 **跟随源／自动／自定义**。节奏方式支持 **Front Edge／Async／NVIDIA Reflex**，位于内容选择下方、基础数值上方；跟随源时禁用固定目标节奏并保留选择。自动按显示刷新率和 FG 倍率计算基础目标。
 - 光标支持 **响应优先／仅随原始内容帧／原始帧优先并补充**。补充刷新率支持自动跟随显示器或自定义最低目标；静止光标不持续触发空呈现，成功发布变化状态才推进刷新期限。
 - 高级区默认折叠，提供空闲持续重绘及数值。有效空闲率受内容上限限制，FG 期间停用后端空闲重绘，但保留配置，光标补充仍独立工作。
-- 新配置及恢复默认：**内容自定义 60 FPS、Front Edge、原始帧优先并补充、光标自定义最低 60 FPS、空闲重绘启用 30 FPS**。内容、光标和空闲自定义范围均为 **1–1000 FPS**，支持小数。
+- 新配置及恢复默认：**内容自定义 60 FPS、Front Edge、原始帧优先并补充、光标自定义最低 60 FPS、空闲重绘启用 30 FPS**。实时面板与配置页的内容、光标、空闲三个自定义值统一为 **15–360 FPS**，整数、步进 1；自动目标和旧配置小数继续兼容，只在手动编辑时按新范围取整数。
 - 修改自动保存，重新启用缩放后生效；运行时参数面板使用同一设置，可保存并重启。新建应用配置复制当前默认配置或选定模板，之后各自独立保存。
 - 旧全局空闲率、同步模式、独立上限和四种旧光标组合按有效旧行为迁移；不会用新默认值覆盖合法旧选择。保存值与运行时有效值分开，隐藏控件保留数值，恢复默认仅影响当前配置。
 - 运行时保存检查配置身份、窗口、运行会话及字段冲突，防止旧回调写入其他配置。配置恢复规则升级，检查字段类型、枚举和范围。
@@ -116,7 +116,7 @@ Local test release dated 2026-10-02. This is the **complete cumulative 0.6.9 cha
 - Content modes are **Follow source / Automatic / Custom**. **Front Edge / Async / NVIDIA Reflex** pacing appears below the content mode and above its numeric target. Follow source disables fixed-target pacing while retaining the selection. Automatic derives the base target from display refresh and FG multiplier.
 - Cursor modes are **Response first / Original content frames only / Prefer original frames with supplementation**. Supplemental rates can follow the display automatically or use a custom minimum. An unchanged cursor does not continuously present; only successfully published changes advance the deadline.
 - The advanced section starts collapsed and contains idle redraw and its rate. Its effective rate respects the content ceiling. FG disables backend idle redraw while retaining the setting; cursor supplementation remains separate.
-- New/restored defaults: **Custom content 60 FPS, Front Edge, original frames with supplementation, Custom cursor minimum 60 FPS, idle redraw enabled at 30 FPS**. All three custom rate ranges are **1–1000 FPS**, including fractional values.
+- New/restored defaults: **Custom content 60 FPS, Front Edge, original frames with supplementation, Custom cursor minimum 60 FPS, idle redraw enabled at 30 FPS**. Both the runtime panel and profile page use **15–360 FPS**, integer values in 1-FPS steps, for content, cursor and idle targets. Automatically calculated targets and legacy fractional values remain compatible; explicit edits use the new integer range.
 - Edits save automatically and apply after restarting scaling. The runtime parameter panel uses the same model and supports save/restart. New profiles copy the current default or selected template and then save independently.
 - Valid legacy global idle rates, pacing, independent ceilings and four cursor combinations migrate without being replaced by the new defaults. Effective rates do not overwrite saved values; hidden controls retain numbers, and restoring defaults affects only the current profile.
 - Runtime saves validate profile, window, session and field conflicts to reject stale writes. Configuration recovery validates types, enums and ranges.

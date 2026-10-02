@@ -717,7 +717,7 @@ void ProfileViewModel::ContentFrameRateModeIndex(int32_t value) {
 
 double ProfileViewModel::ContentFrameRate() const noexcept { return double(_data->frameRefresh.contentRate); }
 void ProfileViewModel::ContentFrameRate(double value) {
-	const auto next = FrameRefreshSettings::ValidateRate(value, 60);
+	const auto next = FrameRefreshSettings::ValidateEditedRate(value, 60);
 	if (_data->frameRefresh.contentRate == next) return;
 	_data->frameRefresh.contentRate = next;
 	_data->frameRefresh.ContentEdited();
@@ -755,7 +755,7 @@ void ProfileViewModel::CursorSupplementModeIndex(int32_t value) {
 
 double ProfileViewModel::CursorSupplementRate() const noexcept { return double(_data->frameRefresh.cursorRate); }
 void ProfileViewModel::CursorSupplementRate(double value) {
-	const auto next = FrameRefreshSettings::ValidateRate(value, 60);
+	const auto next = FrameRefreshSettings::ValidateEditedRate(value, 60);
 	if (_data->frameRefresh.cursorRate == next) return;
 	_data->frameRefresh.cursorRate = next;
 	_SaveFrameRefresh();
@@ -772,7 +772,7 @@ void ProfileViewModel::IdleRedrawModeIndex(int32_t value) {
 
 double ProfileViewModel::IdleRedrawRate() const noexcept { return double(_data->frameRefresh.idleRate); }
 void ProfileViewModel::IdleRedrawRate(double value) {
-	const auto next = FrameRefreshSettings::ValidateRate(value, 30);
+	const auto next = FrameRefreshSettings::ValidateEditedRate(value, 30);
 	if (_data->frameRefresh.idleRate == next) return;
 	_data->frameRefresh.idleRate = next;
 	_SaveFrameRefresh();

@@ -156,7 +156,7 @@
 						</local:SettingsCard>
 						<local:SettingsCard x:Uid="FrameRefresh_ContentRate" IsWrapEnabled="True" Visibility="{x:Bind ViewModel.ShowContentFrameRate, Mode=OneWay}">
 							<local:SimpleStackPanel Orientation="Horizontal" Spacing="8">
-								<muxc:NumberBox x:Uid="FrameRefresh_ContentRate_Input" Width="100" Minimum="1" Maximum="1000" SmallChange="1" LargeChange="10" Loaded="NumberBox_Loaded" NumberFormatter="{x:Bind local:App.DoubleFormatter, Mode=OneTime}" Value="{x:Bind ViewModel.ContentFrameRate, Mode=TwoWay}" />
+								<muxc:NumberBox x:Uid="FrameRefresh_ContentRate_Input" Width="100" Minimum="15" Maximum="360" SmallChange="1" LargeChange="10" Loaded="NumberBox_Loaded" NumberFormatter="{x:Bind local:App.IntegerFormatter, Mode=OneTime}" Value="{x:Bind ViewModel.ContentFrameRate, Mode=TwoWay}" />
 								<TextBlock Text="FPS" VerticalAlignment="Center" />
 							</local:SimpleStackPanel>
 						</local:SettingsCard>
@@ -182,7 +182,7 @@
 						</local:SettingsCard>
 						<local:SettingsCard x:Uid="FrameRefresh_CursorRate" IsWrapEnabled="True" Visibility="{x:Bind ViewModel.ShowCursorSupplementRate, Mode=OneWay}">
 							<local:SimpleStackPanel Orientation="Horizontal" Spacing="8">
-								<muxc:NumberBox x:Uid="FrameRefresh_CursorRate_Input" Width="100" Minimum="1" Maximum="1000" SmallChange="1" LargeChange="10" Loaded="NumberBox_Loaded" NumberFormatter="{x:Bind local:App.DoubleFormatter, Mode=OneTime}" Value="{x:Bind ViewModel.CursorSupplementRate, Mode=TwoWay}" />
+								<muxc:NumberBox x:Uid="FrameRefresh_CursorRate_Input" Width="100" Minimum="15" Maximum="360" SmallChange="1" LargeChange="10" Loaded="NumberBox_Loaded" NumberFormatter="{x:Bind local:App.IntegerFormatter, Mode=OneTime}" Value="{x:Bind ViewModel.CursorSupplementRate, Mode=TwoWay}" />
 								<TextBlock Text="FPS" VerticalAlignment="Center" />
 							</local:SimpleStackPanel>
 						</local:SettingsCard>
@@ -201,7 +201,7 @@
 						</local:SettingsCard>
 						<local:SettingsCard x:Uid="FrameRefresh_IdleRate" IsWrapEnabled="True" Visibility="{x:Bind ViewModel.ShowIdleRedrawRate, Mode=OneWay}">
 							<local:SimpleStackPanel Orientation="Horizontal" Spacing="8">
-								<muxc:NumberBox x:Uid="FrameRefresh_IdleRate_Input" Width="100" Minimum="1" Maximum="1000" SmallChange="1" LargeChange="10" Loaded="NumberBox_Loaded" NumberFormatter="{x:Bind local:App.DoubleFormatter, Mode=OneTime}" Value="{x:Bind ViewModel.IdleRedrawRate, Mode=TwoWay}" />
+								<muxc:NumberBox x:Uid="FrameRefresh_IdleRate_Input" Width="100" Minimum="15" Maximum="360" SmallChange="1" LargeChange="10" Loaded="NumberBox_Loaded" NumberFormatter="{x:Bind local:App.IntegerFormatter, Mode=OneTime}" Value="{x:Bind ViewModel.IdleRedrawRate, Mode=TwoWay}" />
 								<TextBlock Text="FPS" VerticalAlignment="Center" />
 							</local:SimpleStackPanel>
 						</local:SettingsCard>

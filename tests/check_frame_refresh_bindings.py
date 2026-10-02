@@ -30,7 +30,9 @@ for uid, property_name in {
     assert node.get("Visibility") == f"{{x:Bind ViewModel.{property_name}, Mode=OneWay}}"
 assert all(n.get("IsWrapEnabled") == "True" for n in group.iter(local + "SettingsCard"))
 for n in group.iter("{using:Microsoft.UI.Xaml.Controls}NumberBox"):
-    assert n.get("Minimum") == "1" and n.get("Maximum") == "1000"
+    assert n.get("Minimum") == "15" and n.get("Maximum") == "360"
+    assert n.get("SmallChange") == "1"
+    assert n.get("NumberFormatter") == "{x:Bind local:App.IntegerFormatter, Mode=OneTime}"
 home = read("src/Magpie/HomePage.xaml")
 assert "MinFrameRateIndex" not in home and "DefaultFrameRefreshSummary" in home and "EditDefaultFrameRefresh" in home
 assert "Profile_Cursor_Refresh" not in read("src/Magpie/ProfilePage.xaml")
