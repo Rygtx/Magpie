@@ -10,10 +10,12 @@
 #include "EffectParametersViewModel.h"
 #include "EffectParameterPopupLayout.h"
 #include "App.h"
+#include "AppSettings.h"
 #include "CommonSharedConstants.h"
 #include "MainWindow.h"
 #include "Logger.h"
 #include "ToastService.h"
+#include "Win32Helper.h"
 #include <cmath>
 #include <parallel_hashmap/phmap.h>
 #include <winrt/Windows.Devices.Input.h>
@@ -227,6 +229,16 @@ void ScalingModesPage::AddEffectButton_Click(IInspectable const& sender, RoutedE
 
 void ScalingModesPage::NewScalingModeButton_Click(IInspectable const&, RoutedEventArgs const&) {
 	_viewModel->AddScalingMode();
+}
+
+void ScalingModesPage::OpenConfigFolderButton_Click(IInspectable const&, RoutedEventArgs const&) {
+	const auto& configDir = AppSettings::Get().ConfigDir();
+	if (!Win32Helper::ShellOpen(configDir.c_str())) {
+		const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
+		ToastService::Get().ShowMessageInApp(loader.GetString(L"ScalingModes_General_ConfigFolder/Content"),
+			fmt::format(L"{}\n{}", std::wstring_view(loader.GetString(L"ErrorDetails_OpenConfigFailed")), configDir.native()),
+			std::chrono::seconds(8));
+	}
 }
 
 fire_and_forget ScalingModesPage::ResetScalingModesButton_Click(

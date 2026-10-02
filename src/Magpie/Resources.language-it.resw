@@ -195,10 +195,10 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>Avvia</value>
   </data>
-  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
     <value>Esporta</value>
   </data>
-  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
     <value>Importa</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
@@ -765,5 +765,11 @@
   </data>
   <data name="Home_TouchSupport_Info.Title" xml:space="preserve">
     <value>Se il supporto touch fallisce, Magpie potrebbe richiedere privilegi di amministratore prima di effettuare il ridimensionamento per eseguire riparazioni.</value>
+  </data>
+  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+    <value>Cartella config.</value>
+  </data>
+  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+    <value>Ripristina</value>
   </data>
 </root>

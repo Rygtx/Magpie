@@ -285,11 +285,11 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>Запуск</value>
   </data>
-  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
-    <value>Экспортировать</value>
+  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+    <value>Экспорт</value>
   </data>
-  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
-    <value>Импортировать</value>
+  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+    <value>Импорт</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Больше настроек</value>
@@ -1059,5 +1059,11 @@
   </data>
   <data name="Home_Advanced_DeveloperOptions_DisableTopmost.Content" xml:space="preserve">
     <value>Отключить функцию «Всегда поверх всех окон»</value>
+  </data>
+  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+    <value>Папка настроек</value>
+  </data>
+  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+    <value>Сброс</value>
   </data>
 </root>
