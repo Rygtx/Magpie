@@ -130,6 +130,9 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 	double IdleRedrawRate() const noexcept;
 	void IdleRedrawRate(double value);
 	bool ShowIdleRedrawRate() const noexcept;
+	int32_t DuplicateFrameDetectionMode() const noexcept;
+	void DuplicateFrameDetectionMode(int32_t value);
+	bool ShowFrameRefreshNotice() const noexcept;
 	hstring FrameRefreshNotice() const noexcept;
 	void ResetFrameRefresh();
 

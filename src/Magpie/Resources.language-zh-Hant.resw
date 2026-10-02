@@ -751,7 +751,7 @@
     <value>動態偵測</value>
   </data>
   <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Header" xml:space="preserve">
-    <value>偵測重複幀</value>
+    <value>重複影格偵測</value>
   </data>
   <data name="Message_CreateFenceFailed" xml:space="preserve">
     <value>所選顯示卡未能建立同步資源。請開啟下方設定檔 → 效能 → 顯示卡，選擇另一張可用顯示卡後重試；若仍失敗，可更新對應驅動程式，並提供詳細資料與記錄。</value>
@@ -1669,7 +1669,7 @@
   <data name="Profile_Cursor_Refresh_Minimum.Description" xml:space="preserve"><value>內容更新較慢時，更新變化的游標。</value></data>
   <data name="Profile_Cursor_Refresh_Rate.Header" xml:space="preserve"><value>最低重新整理率</value></data>
   <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>游標的目標最低更新率。</value></data>
-  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>跳過相同畫面。補幀使用效果器設定；3D 模式下無補幀時不偵測。</value></data>
+  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>偵測並跳過相同畫面，全域生效。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description" xml:space="preserve"><value>調整送入 NR 的輸入解析度。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent_Description" xml:space="preserve"><value>設定 NR 輸入解析度佔原圖的比例。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Description" xml:space="preserve"><value>調節 NR 處理效果的整體強度。</value></data>
@@ -1714,8 +1714,8 @@
   <data name="Home_FrameRefresh_Edit.Content" xml:space="preserve"><value>編輯預設設定檔</value></data>
   <data name="Home_FrameRefresh_Summary" xml:space="preserve"><value>內容：{} · 游標：{} · 閒置重繪：{}</value></data>
   <data name="FrameRefresh_RestartNotice" xml:space="preserve"><value>修改自動儲存；重新啟用縮放或使用「儲存並重新啟動」後生效。</value></data>
-  <data name="FrameRefresh_LegacyNotice" xml:space="preserve"><value>此設定檔保留舊節奏／游標約束。修改對應模式、內容目標或節奏方式後，由新設定接管對應相容約束。</value></data>
-  <data name="FrameRefresh_IdleLimitNotice" xml:space="preserve"><value>閒置重繪生效值受內容目標或舊上限約束，儲存值保持不變。</value></data>
+  <data name="FrameRefresh_LegacyNotice" xml:space="preserve"><value>此設定檔使用舊版節奏與游標設定。</value></data>
+  <data name="FrameRefresh_IdleLimitNotice" xml:space="preserve"><value>閒置重繪按內容目標與原設定上限執行。</value></data>
   <data name="FrameRefresh.Header" xml:space="preserve"><value>影格率與重新整理</value></data>
   <data name="FrameRefresh_Content.Header" xml:space="preserve"><value>內容影格率</value></data>
   <data name="FrameRefresh_Pacing.Header" xml:space="preserve"><value>節奏控制方式</value></data>
@@ -1728,17 +1728,17 @@
   <data name="FrameRefresh_IdleRate.Header" xml:space="preserve"><value>閒置重繪頻率</value></data>
   <data name="FrameRefresh_Reset.Header" xml:space="preserve"><value>還原重新整理預設設定</value></data>
   <data name="Home_FrameRefresh.Header" xml:space="preserve"><value>預設影格率與重新整理</value></data>
-  <data name="FrameRefresh.Description" xml:space="preserve"><value>依設定檔獨立儲存，重新啟用縮放後生效。</value></data>
-  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>控制 Magpie 的基礎內容處理節奏。自動依顯示更新頻率及補幀倍率計算；不改變來源應用程式影格率。</value></data>
-  <data name="FrameRefresh_Pacing.Description" xml:space="preserve"><value>控制內容目標的執行方式。XeSS 補幀由 XeLL 接管；Reflex 無法使用時退回 Async。</value></data>
-  <data name="FrameRefresh_ContentRate.Description" xml:space="preserve"><value>基礎處理目標；補幀後的輸出影格率另依倍率計算。</value></data>
-  <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>更新變化的系統游標。僅隨原始內容影格時等待新原始影格；補充模式在內容不足時追加更新。</value></data>
-  <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>自動跟隨顯示更新頻率；僅在游標有待發佈變化時補充重新整理。</value></data>
-  <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>這是補充目標而非上限。原始內容較快時可以高於此值，實際受顯示與呈現能力限制。</value></data>
-  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>沒有新內容時的選用重繪。</value></data>
-  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>沒有新內容時定期重繪，可能增加耗電；受內容上限約束，補幀期間停用。不會提高來源應用程式真實影格率。</value></data>
-  <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>受內容上限約束，儲存值保持不變。</value></data>
-  <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>將目前設定檔還原為內容 60、游標補充 60、閒置重繪 30 FPS，節奏方式為 Front Edge。</value></data>
+  <data name="FrameRefresh.Description" xml:space="preserve"><value>按設定檔儲存，重新啟用縮放後生效。</value></data>
+  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>控制 Magpie 的內容處理影格率；自動模式按顯示更新率和補幀倍率計算。</value></data>
+  <data name="FrameRefresh_Pacing.Description" xml:space="preserve"><value>選擇內容影格的處理節奏。</value></data>
+  <data name="FrameRefresh_ContentRate.Description" xml:space="preserve"><value>設定基礎內容處理的目標影格率。</value></data>
+  <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>選擇系統游標的更新方式。</value></data>
+  <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>選擇自動或自訂的游標補充更新率。</value></data>
+  <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>設定游標補充更新的目標最低影格率。</value></data>
+  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>重複影格偵測與閒置重繪。</value></data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>閒置時重繪目前畫面。</value></data>
+  <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>設定閒置重繪的目標影格率。</value></data>
+  <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>還原內容 60、游標補充 60、閒置重繪 30 FPS，節奏方式為 Front Edge。</value></data>
   <data name="FrameRefresh_Content_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>內容影格率</value></data>
   <data name="FrameRefresh_Pacing_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>節奏控制方式</value></data>
   <data name="FrameRefresh_ContentRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>目標基礎影格率</value></data>

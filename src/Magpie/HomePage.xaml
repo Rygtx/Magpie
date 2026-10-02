@@ -305,16 +305,6 @@
 					<local:SettingsCard.HeaderIcon><FontIcon Glyph="&#xECAD;" /></local:SettingsCard.HeaderIcon>
 					<Button x:Uid="Home_FrameRefresh_Edit" Click="{x:Bind ViewModel.EditDefaultFrameRefresh}" />
 				</local:SettingsCard>
-				<local:SettingsCard x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection"
-				                    IsWrapEnabled="True">
-					<local:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE8C8;" /></local:SettingsCard.HeaderIcon>
-					<ComboBox DropDownOpened="ComboBox_DropDownOpened"
-					          SelectedIndex="{x:Bind ViewModel.DuplicateFrameDetectionMode, Mode=TwoWay}">
-						<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Always" />
-						<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Dynamic" />
-						<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Never" />
-					</ComboBox>
-				</local:SettingsCard>
 				<local:SettingsExpander x:Name="DeveloperModeExpander"
 				                        x:Uid="Home_Advanced_DeveloperOptions"
 				                        IsExpanded="{x:Bind ViewModel.IsDeveloperMode, Mode=OneWay}">

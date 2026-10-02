@@ -39,7 +39,7 @@
 - 所有效果器参数浮层可超出主窗口，按显示器工作区确定尺寸，保留可读列宽，空间不足时滚动。
 - DLSSNR 配置页按“细节控制｜进阶调整｜Pass 1｜启用的后续 Pass”排列；进阶组默认隐藏，收起保留数值和效果，诊断视图归入进阶组。
 - 修复隐藏列和参数行留下的额外间距。DLSSNR 名称悬停提供简短用途说明，补齐英文、简中、繁中；运行时面板仍采用纵向分组。
-- 重复帧检测与开发者选项入口常驻主页，检测项补充图标。关闭开发者模式不重置检测设置；FG 自身参数继续覆盖主页全局检测设置。
+- 重复帧检测移至 **帧率与刷新 → 高级选项**，沿用全局设置；开发者选项入口常驻主页，FG 检测使用效果器参数。刷新设置说明统一为简短陈述，移除重复保存提示。
 - 修复快捷键清除按钮引用不存在的 XAML 样式导致的启动失败，并补充异常详情日志。
 
 ## 效果器、处理与兼容性
@@ -145,7 +145,7 @@ Local test release dated 2026-10-02. This is the **complete cumulative 0.6.9 cha
 - All effect parameter popups can extend beyond the main window, sizing against the monitor work area with readable columns and scrolling when needed.
 - DLSSNR uses Detail Control / Advanced Adjustments / Pass 1 / enabled later Pass columns. Advanced starts hidden; collapsing retains values and processing, and diagnostics belong to Advanced.
 - Remove leftover spacing from hidden columns/rows. DLSSNR names show concise hover descriptions in English, Simplified and Traditional Chinese; the runtime panel retains vertical groups.
-- Duplicate detection and developer options remain on Home, with a detection icon. Disabling developer mode does not reset detection; FG parameters still override the global setting.
+- Duplicate detection moves to **Frame rate and refresh → Advanced**, retaining its global setting. Developer options remain on Home; FG detection uses effect parameters. Refresh descriptions are concise and the repeated save notice is removed.
 - Remove an unavailable XAML style that prevented startup after shortcut clearing was introduced, and add detailed exception logging.
 
 ## Effects, processing and compatibility

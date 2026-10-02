@@ -60,6 +60,8 @@ namespace Magpie {
 		Int32 IdleRedrawModeIndex;
 		Double IdleRedrawRate;
 		Boolean ShowIdleRedrawRate { get; };
+		Int32 DuplicateFrameDetectionMode;
+		Boolean ShowFrameRefreshNotice { get; };
 		String FrameRefreshNotice { get; };
 		void ResetFrameRefresh();
 

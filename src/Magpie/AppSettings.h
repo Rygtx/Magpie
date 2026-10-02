@@ -326,6 +326,7 @@ public:
 	void DuplicateFrameDetectionMode(enum DuplicateFrameDetectionMode value) noexcept {
 		_duplicateFrameDetectionMode = value;
 		SaveAsync();
+		DuplicateFrameDetectionModeChanged.Invoke();
 	}
 
 	bool IsStatisticsForDynamicDetectionEnabled() const noexcept {
@@ -381,6 +382,7 @@ public:
 	Event<uint32_t> CountdownSecondsChanged;
 	Event<bool> IsShowNotifyIconChanged;
 	Event<bool> IsAutoCheckForUpdatesChanged;
+	Event<> DuplicateFrameDetectionModeChanged;
 
 private:
 	std::filesystem::path _recoveredConfigPath;

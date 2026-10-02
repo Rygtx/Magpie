@@ -698,6 +698,7 @@ void ProfileViewModel::_NotifyFrameRefreshChanged() {
 	RaisePropertyChanged(L"IdleRedrawRate");
 	RaisePropertyChanged(L"ShowIdleRedrawRate");
 	RaisePropertyChanged(L"FrameRefreshNotice");
+	RaisePropertyChanged(L"ShowFrameRefreshNotice");
 }
 
 void ProfileViewModel::_SaveFrameRefresh() {
@@ -783,12 +784,27 @@ bool ProfileViewModel::ShowContentFrameRate() const noexcept { return _data->fra
 bool ProfileViewModel::ShowCursorSupplement() const noexcept { return _data->frameRefresh.cursorMode == CursorRefreshMode::Supplement; }
 bool ProfileViewModel::ShowCursorSupplementRate() const noexcept { return ShowCursorSupplement() && _data->frameRefresh.cursorSupplement == CursorSupplementMode::Custom; }
 bool ProfileViewModel::ShowIdleRedrawRate() const noexcept { return _data->frameRefresh.idleEnabled; }
+int32_t ProfileViewModel::DuplicateFrameDetectionMode() const noexcept {
+	return int32_t(AppSettings::Get().DuplicateFrameDetectionMode());
+}
+void ProfileViewModel::DuplicateFrameDetectionMode(int32_t value) {
+	if (value < 0 || value > int32_t(::Magpie::DuplicateFrameDetectionMode::Never)) return;
+	const auto mode = ::Magpie::DuplicateFrameDetectionMode(value);
+	AppSettings& settings = AppSettings::Get();
+	if (settings.DuplicateFrameDetectionMode() == mode) return;
+	if (mode != ::Magpie::DuplicateFrameDetectionMode::Dynamic)
+		settings.IsStatisticsForDynamicDetectionEnabled(false);
+	settings.DuplicateFrameDetectionMode(mode);
+	RaisePropertyChanged(L"DuplicateFrameDetectionMode");
+}
+bool ProfileViewModel::ShowFrameRefreshNotice() const noexcept {
+	return !FrameRefreshNotice().empty();
+}
 hstring ProfileViewModel::FrameRefreshNotice() const noexcept {
 	const auto loader = ResourceLoader::GetForViewIndependentUse(CommonSharedConstants::APP_RESOURCE_MAP_ID);
 	const auto& s = _data->frameRefresh;
-	std::wstring text(loader.GetString(L"FrameRefresh_RestartNotice"));
+	std::wstring text;
 	if (s.legacyContentLimit > 0 || s.legacySourceTarget >= 0 || s.legacyLimiterOnly || s.legacyResponsiveMinimum) {
-		text += L"\n";
 		text += loader.GetString(L"FrameRefresh_LegacyNotice");
 	}
 	if (s.legacyContentLimit > 0) {
@@ -797,7 +813,7 @@ hstring ProfileViewModel::FrameRefreshNotice() const noexcept {
 	}
 	if (s.idleEnabled && ((s.contentMode == ContentFrameRateMode::Custom && s.idleRate > s.contentRate) ||
 		(s.legacyContentLimit > 0 && s.idleRate > s.legacyContentLimit))) {
-		text += L"\n";
+		if (!text.empty()) text += L"\n";
 		text += loader.GetString(L"FrameRefresh_IdleLimitNotice");
 	}
 	return hstring(text);

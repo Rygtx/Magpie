@@ -763,7 +763,7 @@
     <value>开发者模式已启用。</value>
   </data>
   <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Header" xml:space="preserve">
-    <value>检测重复帧</value>
+    <value>重复帧检测</value>
   </data>
   <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Always.Content" xml:space="preserve">
     <value>总是检测</value>
@@ -1721,7 +1721,7 @@
   <data name="Profile_Cursor_Refresh_Minimum.Description" xml:space="preserve"><value>内容更新较慢时，刷新变化的光标。</value></data>
   <data name="Profile_Cursor_Refresh_Rate.Header" xml:space="preserve"><value>最低刷新率</value></data>
   <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>光标的目标最低刷新率。</value></data>
-  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>跳过相同画面。补帧使用效果器设置；3D 模式下无补帧时不检测。</value></data>
+  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>检测并跳过相同画面，全局生效。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description" xml:space="preserve"><value>调整送入 NR 的输入分辨率。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent_Description" xml:space="preserve"><value>设置 NR 输入分辨率占原图的比例。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Description" xml:space="preserve"><value>调节 NR 处理效果的整体强度。</value></data>
@@ -1766,8 +1766,8 @@
   <data name="Home_FrameRefresh_Edit.Content" xml:space="preserve"><value>编辑默认配置</value></data>
   <data name="Home_FrameRefresh_Summary" xml:space="preserve"><value>内容：{} · 光标：{} · 空闲重绘：{}</value></data>
   <data name="FrameRefresh_RestartNotice" xml:space="preserve"><value>修改自动保存；重新启用缩放或使用“保存并重启”后生效。</value></data>
-  <data name="FrameRefresh_LegacyNotice" xml:space="preserve"><value>此配置保留旧节奏／光标约束。修改对应模式、内容目标或节奏方式后，由新设置接管对应兼容约束。</value></data>
-  <data name="FrameRefresh_IdleLimitNotice" xml:space="preserve"><value>空闲重绘生效值受内容目标或旧上限约束，保存值保持不变。</value></data>
+  <data name="FrameRefresh_LegacyNotice" xml:space="preserve"><value>此配置使用旧版节奏与光标设置。</value></data>
+  <data name="FrameRefresh_IdleLimitNotice" xml:space="preserve"><value>空闲重绘按内容目标与原配置上限运行。</value></data>
   <data name="FrameRefresh.Header" xml:space="preserve"><value>帧率与刷新</value></data>
   <data name="FrameRefresh_Content.Header" xml:space="preserve"><value>内容帧率</value></data>
   <data name="FrameRefresh_Pacing.Header" xml:space="preserve"><value>节奏控制方式</value></data>
@@ -1780,17 +1780,17 @@
   <data name="FrameRefresh_IdleRate.Header" xml:space="preserve"><value>空闲重绘率</value></data>
   <data name="FrameRefresh_Reset.Header" xml:space="preserve"><value>恢复刷新默认设置</value></data>
   <data name="Home_FrameRefresh.Header" xml:space="preserve"><value>默认帧率与刷新</value></data>
-  <data name="FrameRefresh.Description" xml:space="preserve"><value>按配置独立保存，重新启用缩放后生效。</value></data>
-  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>控制 Magpie 的基础内容处理节奏。自动按显示刷新率及补帧倍率计算；不改变源应用帧率。</value></data>
-  <data name="FrameRefresh_Pacing.Description" xml:space="preserve"><value>控制内容目标的执行方式。XeSS 补帧由 XeLL 接管；Reflex 不可用时回退到 Async。</value></data>
-  <data name="FrameRefresh_ContentRate.Description" xml:space="preserve"><value>基础处理目标；补帧后的输出帧率另按倍率计算。</value></data>
-  <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>更新变化的系统光标。仅随原始内容帧时等待新原始帧；补充模式在内容不足时追加更新。</value></data>
-  <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>自动跟随显示刷新率；仅在光标有待发布变化时补充刷新。</value></data>
-  <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>这是补充目标而非上限。原始内容较快时可以高于此值，实际受显示与呈现能力限制。</value></data>
-  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>没有新内容时的可选重绘。</value></data>
-  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>没有新内容时定期重绘，可能增加功耗；受内容上限约束，补帧期间停用。不会提高源应用真实帧率。</value></data>
-  <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>受内容上限约束，保存值保持不变。</value></data>
-  <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>将当前配置恢复为内容 60、光标补充 60、空闲重绘 30 FPS，节奏方式为 Front Edge。</value></data>
+  <data name="FrameRefresh.Description" xml:space="preserve"><value>按配置保存，重新启用缩放后生效。</value></data>
+  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>控制 Magpie 的内容处理帧率；自动模式按显示刷新率和补帧倍率计算。</value></data>
+  <data name="FrameRefresh_Pacing.Description" xml:space="preserve"><value>选择内容帧的处理节奏。</value></data>
+  <data name="FrameRefresh_ContentRate.Description" xml:space="preserve"><value>设置基础内容处理的目标帧率。</value></data>
+  <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>选择系统光标的刷新方式。</value></data>
+  <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>选择自动或自定义的光标补充刷新率。</value></data>
+  <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>设置光标补充刷新的目标最低帧率。</value></data>
+  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>重复帧检测与空闲重绘。</value></data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>空闲时重绘当前画面。</value></data>
+  <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>设置空闲重绘的目标帧率。</value></data>
+  <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>恢复内容 60、光标补充 60、空闲重绘 30 FPS，节奏方式为 Front Edge。</value></data>
   <data name="FrameRefresh_Content_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>内容帧率</value></data>
   <data name="FrameRefresh_Pacing_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>节奏控制方式</value></data>
   <data name="FrameRefresh_ContentRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>目标基础帧率</value></data>

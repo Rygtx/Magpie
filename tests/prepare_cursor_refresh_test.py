@@ -55,12 +55,14 @@ assert x + "Load" not in dev.attrib
 assert "ViewModel.IsDeveloperMode" in dev.get("IsExpanded")
 assert all("ViewModel.IsDeveloperMode" in n.get("IsEnabled", "") for n in dev.iter(ns + "SettingsCard"))
 uid = "Home_Advanced_DeveloperOptions_DuplicateFrameDetection"
-cards = [n for n in home.iter() if n.get(x + "Uid") == uid]
-assert len(cards) == 1 and cards[0] not in list(dev.iter())
+assert not any(n.get(x + "Uid") == uid for n in home.iter())
 profile_ui = ET.fromstring(read("src/Magpie/ProfilePage.xaml"))
+advanced = next(n for n in profile_ui.iter() if n.get(x + "Uid") == "FrameRefresh_Advanced")
+cards = [n for n in advanced.iter() if n.get(x + "Uid") == uid]
+assert len(cards) == 1
 new_uids = {n.get(x + "Uid") for n in profile_ui.iter() if n.get(x + "Uid", "").startswith("FrameRefresh") and n.tag in (ns+"SettingsCard", ns+"SettingsExpander", ns+"SettingsGroup")}
 rate = next(n for n in profile_ui.iter() if "ViewModel.CursorSupplementRate" in n.get("Value", ""))
-assert rate.get("Minimum") == "1" and rate.get("Maximum") == "1000"
+assert rate.get("Minimum") == "15" and rate.get("Maximum") == "360"
 for lang in ("en-US", "zh-Hans", "zh-Hant"):
     root = ET.fromstring(read(f"src/Magpie/Resources.language-{lang}.resw"))
     names = [n.get("name") for n in root.findall("data")]

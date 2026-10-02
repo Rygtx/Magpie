@@ -1721,7 +1721,7 @@
   <data name="Profile_Cursor_Refresh_Minimum.Description" xml:space="preserve"><value>Refresh a changing cursor when content updates slowly.</value></data>
   <data name="Profile_Cursor_Refresh_Rate.Header" xml:space="preserve"><value>Minimum refresh rate</value></data>
   <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>Target minimum cursor refresh rate.</value></data>
-  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>Skip identical frames. Frame generation uses effect settings; detection is bypassed in 3D mode without frame generation.</value></data>
+  <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>Detects and skips identical images across all profiles.</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description" xml:space="preserve"><value>Adjust the input resolution sent to NR.</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent_Description" xml:space="preserve"><value>Set the NR input resolution as a percentage of the original image.</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Description" xml:space="preserve"><value>Adjust the overall strength of NR processing.</value></data>
@@ -1766,8 +1766,8 @@
   <data name="Home_FrameRefresh_Edit.Content" xml:space="preserve"><value>Edit default profile</value></data>
   <data name="Home_FrameRefresh_Summary" xml:space="preserve"><value>Content: {} · Cursor: {} · Idle redraw: {}</value></data>
   <data name="FrameRefresh_RestartNotice" xml:space="preserve"><value>Automatically saved. Re-enable scaling or use Save and restart to apply.</value></data>
-  <data name="FrameRefresh_LegacyNotice" xml:space="preserve"><value>Legacy pacing/cursor constraints are retained for this profile. Editing the relevant mode, content target, or pacing method replaces its compatibility constraint.</value></data>
-  <data name="FrameRefresh_IdleLimitNotice" xml:space="preserve"><value>The effective idle redraw rate is limited by the content target or legacy cap. The saved rate is unchanged.</value></data>
+  <data name="FrameRefresh_LegacyNotice" xml:space="preserve"><value>This profile uses legacy pacing and cursor settings.</value></data>
+  <data name="FrameRefresh_IdleLimitNotice" xml:space="preserve"><value>Idle redraw follows the content target and retained profile cap.</value></data>
   <data name="FrameRefresh.Header" xml:space="preserve"><value>Frame rate and refresh</value></data>
   <data name="FrameRefresh_Content.Header" xml:space="preserve"><value>Content frame rate</value></data>
   <data name="FrameRefresh_Pacing.Header" xml:space="preserve"><value>Pacing method</value></data>
@@ -1781,16 +1781,16 @@
   <data name="FrameRefresh_Reset.Header" xml:space="preserve"><value>Restore refresh defaults</value></data>
   <data name="Home_FrameRefresh.Header" xml:space="preserve"><value>Default frame rate and refresh</value></data>
   <data name="FrameRefresh.Description" xml:space="preserve"><value>Saved per profile. Re-enable scaling to apply.</value></data>
-  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>Controls Magpie’s base content processing. Auto uses display refresh and the frame generation multiplier; source FPS is unchanged.</value></data>
-  <data name="FrameRefresh_Pacing.Description" xml:space="preserve"><value>Executes the content target. XeSS FG uses XeLL; unavailable Reflex falls back to Async.</value></data>
-  <data name="FrameRefresh_ContentRate.Description" xml:space="preserve"><value>Base processing target. Generated output FPS also depends on the multiplier.</value></data>
-  <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>Updates a changed system cursor. Original-only waits for new non-generated content; supplement fills slower-content gaps.</value></data>
-  <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>Auto follows the display refresh rate. Only pending cursor changes request supplemental refreshes.</value></data>
-  <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>Supplemental minimum, not a cap. Faster original content can refresh above it; presentation capacity still applies.</value></data>
-  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>Optional redraws when content is idle.</value></data>
-  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>Redraws old content while idle and may increase power use. Limited by the content target; disabled during frame generation. Does not increase source FPS.</value></data>
-  <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>The saved target is retained even when runtime limits reduce it.</value></data>
-  <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>Resets this profile to content 60, supplemental cursor 60, idle redraw 30 FPS, and Front Edge.</value></data>
+  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>Sets Magpie’s content processing rate. Auto uses display refresh and the frame generation multiplier.</value></data>
+  <data name="FrameRefresh_Pacing.Description" xml:space="preserve"><value>Selects how content frames are paced.</value></data>
+  <data name="FrameRefresh_ContentRate.Description" xml:space="preserve"><value>Sets the target rate for base content processing.</value></data>
+  <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>Selects how the system cursor is refreshed.</value></data>
+  <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>Selects automatic or custom supplemental cursor refresh.</value></data>
+  <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>Sets the target minimum rate for supplemental cursor refresh.</value></data>
+  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>Duplicate detection and idle redraw.</value></data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>Redraws the current image while content is idle.</value></data>
+  <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>Sets the target rate for idle redraw.</value></data>
+  <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>Restores content 60, supplemental cursor 60, idle redraw 30 FPS, and Front Edge.</value></data>
   <data name="FrameRefresh_Content_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Content frame rate</value></data>
   <data name="FrameRefresh_Pacing_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Pacing method</value></data>
   <data name="FrameRefresh_ContentRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Target base frame rate</value></data>

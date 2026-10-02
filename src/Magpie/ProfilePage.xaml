@@ -193,6 +193,13 @@
 						<FontIcon Glyph="&#xE713;" />
 					</local:SettingsExpander.HeaderIcon>
 					<local:SettingsExpander.Items>
+						<local:SettingsCard x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection" IsWrapEnabled="True">
+							<ComboBox DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.DuplicateFrameDetectionMode, Mode=TwoWay}">
+								<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Always" />
+								<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Dynamic" />
+								<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Never" />
+							</ComboBox>
+						</local:SettingsCard>
 						<local:SettingsCard x:Uid="FrameRefresh_Idle" IsWrapEnabled="True">
 							<ComboBox x:Uid="FrameRefresh_Idle_Input" Width="225" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.IdleRedrawModeIndex, Mode=TwoWay}">
 								<ComboBoxItem x:Uid="FrameRefresh_Off" />
@@ -207,7 +214,7 @@
 						</local:SettingsCard>
 					</local:SettingsExpander.Items>
 				</local:SettingsExpander>
-				<TextBlock Text="{x:Bind ViewModel.FrameRefreshNotice, Mode=OneWay}" TextWrapping="Wrap" Margin="8,4" />
+				<TextBlock Text="{x:Bind ViewModel.FrameRefreshNotice, Mode=OneWay}" Visibility="{x:Bind ViewModel.ShowFrameRefreshNotice, Mode=OneWay}" TextWrapping="Wrap" Margin="8,4" />
 				<local:SettingsCard x:Uid="FrameRefresh_Reset" IsWrapEnabled="True">
 					<Button x:Uid="FrameRefresh_ResetButton" Click="{x:Bind ViewModel.ResetFrameRefresh}" />
 				</local:SettingsCard>

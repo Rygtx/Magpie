@@ -25,6 +25,11 @@ using namespace Magpie;
 namespace winrt::Magpie::implementation {
 
 HomeViewModel::HomeViewModel() {
+	_duplicateFrameDetectionModeChangedRevoker = AppSettings::Get().DuplicateFrameDetectionModeChanged(auto_revoke, [this] {
+		RaisePropertyChanged(L"DuplicateFrameDetectionMode");
+		RaisePropertyChanged(L"IsDynamicDection");
+		RaisePropertyChanged(L"IsStatisticsForDynamicDetectionEnabled");
+	});
 	_frameRefreshChangedRevoker = ProfileService::Get().FrameRefreshChanged(auto_revoke, [this](const ::Magpie::Profile& profile) {
 		if (profile.runtimeIdentity == AppSettings::Get().DefaultProfile().runtimeIdentity)
 			RaisePropertyChanged(L"DefaultFrameRefreshSummary");
