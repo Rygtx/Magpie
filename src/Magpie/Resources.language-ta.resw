@@ -297,10 +297,10 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>ஏவுதல்</value>
   </data>
-  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
     <value>ஏற்றுமதி</value>
   </data>
-  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
     <value>இறக்குமதி</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
@@ -1060,10 +1060,11 @@
   <data name="Home_Advanced_DeveloperOptions_DisableTopmost.Content" xml:space="preserve">
     <value>எப்பொழுதும் மேல்நிலையை முடக்கு</value>
   </data>
-  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+  <data name="ScalingModes_General_ConfigFolder.Text" xml:space="preserve">
     <value>அமைப்புக் கோப்புறை</value>
   </data>
-  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>மீட்டமை</value>
   </data>
+  <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>மேலும் விருப்பங்கள்</value></data>
 </root>

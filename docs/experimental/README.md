@@ -1,5 +1,7 @@
 # Magpie 实验分支文档索引
 
+0.6.9 正在按 0.6.8 三附件结构准备本地分发：[完整中英 Release Note](../RELEASE_NOTES_v0.6.9-experimental.md)、[分发准备记录](reviews/20261002-v0.6.9-release-preparation.md)。包含当前 Beta3 菜单、按钮尺度和全部效果器说明；程序版本设为 `0.6.9`，本轮完成本地构建与文件核验，GitHub 上传另行处理。下方 0.6.8 Draft 状态为历史记录。
+
 帧同步当前状态：保留 Front Edge 默认，普通效果与 DLSS FG 支持 Async／Reflex 驱动基础限帧，XeSS FG 由 XeLL 接管；自动回退仅记简短日志，实时参数面板不显示运行状态。见 [使用指南](../FRAME_SYNC_GUIDE.md) 与 [实施记录](reviews/20260909-v0.6.7-frame-sync-modes.md)。
 
 HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关保持关闭；效果器选择器新增「HDR 组件」分类，仅显式转换链按节点启用 HDR 捕获／输出。见 [HDR 组件实施记录](reviews/20260908-v0.6.7-hdr-conversion-effects-plan.md)。
@@ -19,6 +21,10 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 本目录只收纳实验功能的路线图、TODO、测试矩阵和运行记录。上游通用 Wiki 文档继续保留在 `docs/` 根目录，避免实验说明与用户文档混在一起。
 
 ## 当前工作
+
+- [069 “其他选项”按钮样式协调 TODO](todos/20261002-v0.6.9-effect-options-button-style-TODO.md)：已继承普通按钮的 14 号字与默认留白，保留 36 DIP 高度、纯文字、中性填充和零边框。144 组原生页头布局及页脚、容器和配置目录检查通过；单线程完整 Release 与包／编译资源校验通过。按用户明确授权关闭 Magpie 后，已归档旧完整目录、保留最新配置并替换至原 Beta3 路径，替换后的实际文件校验通过；Magpie 保持关闭，实际界面验收待完成。[实施与部署记录](reviews/20261002-v0.6.9-effect-options-button-style.md)。
+
+- [069 效果组其他选项菜单与效果器说明 Review TODO](todos/20261002-v0.6.9-effect-options-and-description-review-TODO.md)：菜单源码与全部 162 项双语说明审查完成，入口沿用旧版 36 DIP 高度及当前普通按钮外观；目录生成、144 组原生页头布局、选择器模型与页面语法检查通过。已按单线程、低优先级和单逻辑核心完成 Beta3 构建部署及包／编译资源校验，游戏期间未启动应用；实际主窗口操作、完整 DPI 和安装后选择器验收仍待完成。[实施与验证](reviews/20261002-v0.6.9-effect-options-and-description-review.md)、[Beta3 部署记录](reviews/20261002-v0.6.9-beta3-deployment.md)。
 
 - **Beta2 按钮与刷新控件样式对齐**：四个操作采用效果组／效果器的普通中性填充、零边框；六个下拉框与三组数值统一为 225 DIP，提供行内步进，并统一窄窗口换行与条件提示。完整 Release、原生标题／刷新控件测量及模型回归通过，已部署到原 Beta2；主窗口启动与三个现有配置保留检查通过。[TODO 与验证范围](todos/20261002-v0.6.9-beta2-ui-style-alignment-TODO.md)、[实施与部署记录](reviews/20261002-v0.6.9-beta2-ui-style-alignment.md)。
 

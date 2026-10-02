@@ -230,10 +230,10 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>啟動</value>
   </data>
-  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
     <value>匯出</value>
   </data>
-  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
     <value>匯入</value>
   </data>
   <data name="NotifyIcon_Exit" xml:space="preserve">
@@ -1749,11 +1749,12 @@
   <data name="FrameRefresh_IdleRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>閒置重繪頻率</value></data>
   <data name="FrameRefresh_LegacyCapNotice" xml:space="preserve"><value>保留的舊上限：{} FPS</value></data>
 
-  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+  <data name="ScalingModes_General_ConfigFolder.Text" xml:space="preserve">
     <value>設定資料夾</value>
   </data>
-  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>重設</value>
   </data>
   <data name="FrameRefresh_DuplicateDetection_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>重複影格偵測</value></data>
+  <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>更多選項</value></data>
 </root>

@@ -270,13 +270,13 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>Lancez</value>
   </data>
-  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
     <value>Importer</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Plus d'options</value>
   </data>
-  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
     <value>Exporter</value>
   </data>
   <data name="AppSettings_ErrorDialog_ReadFailed" xml:space="preserve">
@@ -1060,10 +1060,11 @@
   <data name="Home_Advanced_DeveloperOptions_DisableTopmost.Content" xml:space="preserve">
     <value>Désactiver l'option «Toujours au premier plan»</value>
   </data>
-  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+  <data name="ScalingModes_General_ConfigFolder.Text" xml:space="preserve">
     <value>Dossier config.</value>
   </data>
-  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>Réinitialiser</value>
   </data>
+  <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>Plus d'options</value></data>
 </root>
