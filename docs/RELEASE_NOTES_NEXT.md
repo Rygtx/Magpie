@@ -1,5 +1,9 @@
 # 开发与分发准备 / Development and Distribution Preparation
 
+## 0.6.9 Beta2 本地整合
+
+全部 11 个 069 功能分支已合入本地 `experimental`，包含 Beta1 及 fix1–3 的累计修正，以及统一帧率与刷新、效果组页面、Reflex 标记和仅显示适配器筛选。见 [完整中英清单](RELEASE_NOTES_v0.6.9-beta2.md) 与 [整合部署记录](experimental/reviews/20261002-v0.6.9-beta2-integration.md)。独立本地测试包版本为 `0.6.9-beta2`，准确构建和验收结果以清单与审计为准。
+
 ## 0.6.9 Beta1 本地整合
 
 七个 069 功能分支已合入本地 `experimental`：快捷键清除、xBR、DLSSNR 开销优化、工具栏拖拽、重复帧过滤优化、DLSSNR 细节控制、光标刷新与主页常驻选项。
@@ -13,6 +17,10 @@
 当前公开版本仍为 [Magpie Experimental v0.6.7](https://github.com/SAOG0721/Magpie/releases/tag/untagged-1a7d59dfa5a6fd93c888)。Draft 阶段保留 `version.json` 的 0.6.7 版本，不提前宣告 0.6.8 可公开下载；0.6.8 的构建版本、目标提交和附件以分发清单记录。收到明确发布指令后再更新公开版本入口。
 
 ---
+
+## 0.6.9 Beta2 local integration
+
+All eleven 069 feature branches are merged into local `experimental`, including Beta1/fix1–3 and unified frame/refresh settings, the effect-group page, Reflex markers and display-only adapter filtering. See the [complete bilingual notes](RELEASE_NOTES_v0.6.9-beta2.md) and [integration/deployment record](experimental/reviews/20261002-v0.6.9-beta2-integration.md). The independent local test package is `0.6.9-beta2`; manifests/audits record the exact build and acceptance results.
 
 ## 0.6.9 Beta1 local integration
 
