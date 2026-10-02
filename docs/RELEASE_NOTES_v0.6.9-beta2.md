@@ -20,6 +20,7 @@
 
 - 恢复整个列表下方右侧的 **“＋新建效果组”**，修复负边距与零尺寸布局过滤组合导致按钮消失的问题。
 - 标题右侧直接显示 **导入、导出、配置文件夹、重置**，取代更多菜单；18 种支持语言均提供短文字按钮标签。
+- 四个操作按钮增加淡主题色背景及细边框，便于识别可点击区域。
 - 配置文件夹打开当前实际生效目录，支持普通与便携模式；失败提示包含实际路径。导入、导出、新建和重置沿用原流程，重置仍先确认。
 
 ### 3. 快捷键清除
@@ -126,6 +127,7 @@ Local test release dated 2026-10-02. This is the **complete cumulative 0.6.9 cha
 
 - Restore **+ New effect group** at the lower right below the entire list, repairing the interaction between a negative margin and zero-size layout filtering.
 - Show **Import, Export, Config folder, Reset** directly in the header instead of a more menu, with short labels in all 18 supported languages.
+- The four actions use a light accent tint and thin border to make their clickable area clear.
 - Config folder opens the active normal/portable path and reports the actual path on failure. Import, export, creation and reset retain their existing flows and reset confirmation.
 
 ### 3. Clear shortcuts
