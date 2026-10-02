@@ -1,6 +1,7 @@
 #Requires -Version 7.0
 param([string]$CachedRepoDirectory, [string]$RuntimeDirectory,
-    [string]$IntermediateRoot, [string]$OutputDirectory, [switch]$SyntaxOnly)
+    [string]$IntermediateRoot, [string]$OutputDirectory,
+    [string]$GeneratedFilesDirectory, [switch]$SyntaxOnly)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 if (!$CachedRepoDirectory) {
@@ -29,8 +30,14 @@ Copy-Item -LiteralPath (Join-Path $RuntimeDirectory 'Microsoft.UI.Xaml.dll') -De
 $winuiPri = Join-Path $IntermediateRoot 'x64/Release/x64/WinUI/Microsoft.UI.Xaml.pri'
 if (!(Test-Path -LiteralPath $winuiPri)) { $winuiPri = Join-Path $IntermediateRoot 'x64/WinUI/Microsoft.UI.Xaml.pri' }
 Copy-Item -LiteralPath $winuiPri -Destination (Join-Path $OutputDirectory 'resources.pri') -Force
-$generated = Join-Path $IntermediateRoot 'x64/Release/Magpie/Generated Files'
+$cachedGenerated = Join-Path $IntermediateRoot 'x64/Release/Magpie/Generated Files'
+if (!$GeneratedFilesDirectory) { $GeneratedFilesDirectory = $cachedGenerated }
+$generated = [IO.Path]::GetFullPath($GeneratedFilesDirectory)
+if (!(Test-Path -LiteralPath (Join-Path $generated 'winrt/Magpie.h'))) {
+    throw 'Current Magpie C++/WinRT projection is missing; specify GeneratedFilesDirectory.'
+}
 $includes = @("/I$repo/src/Magpie", "/I$repo/src/Shared", "/I$repo/src/Magpie.Core/include", "/I$OutputDirectory", "/I$generated",
+    "/I$cachedGenerated",
     "/I$CachedRepoDirectory/packages/Microsoft.Windows.ImplementationLibrary.1.0.260126.7/include")
 # Reuse the cached dependency include paths, including fmt, without rebuilding
 # or overwriting the application's PCH, generated XAML files or EXE.
