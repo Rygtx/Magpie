@@ -466,10 +466,10 @@
   <data name="Profile_SourceWindow_CustomCropping_Top.Header" xml:space="preserve">
     <value>Trên</value>
   </data>
-  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
     <value>Xuất</value>
   </data>
-  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
     <value>Nhập</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
@@ -1059,5 +1059,11 @@
   </data>
   <data name="Overlay_Toolbar_Profiler" xml:space="preserve">
     <value>Cửa sổ Profiler</value>
+  </data>
+  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+    <value>Thư mục cấu hình</value>
+  </data>
+  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+    <value>Đặt lại</value>
   </data>
 </root>

@@ -245,17 +245,17 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>启动</value>
   </data>
-  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
-    <value>配置导出</value>
+  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+    <value>导出</value>
   </data>
-  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
-    <value>配置导入</value>
+  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+    <value>导入</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>更多选项</value>
   </data>
-  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
-    <value>重置配置</value>
+  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+    <value>重置</value>
   </data>
   <data name="ScalingModes_ResetDialog_Title" xml:space="preserve">
     <value>重置效果组配置？</value>
@@ -1755,4 +1755,7 @@
   <data name="EffectParameter_Help_Step" xml:space="preserve"><value>步进</value></data>
   <data name="EffectParameter_Help_AntiFlickerRequired" xml:space="preserve"><value>开启抗闪烁后可调节此参数。</value></data>
 
+  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+    <value>配置文件夹</value>
+  </data>
 </root>

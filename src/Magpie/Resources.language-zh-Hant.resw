@@ -230,10 +230,10 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>啟動</value>
   </data>
-  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
     <value>匯出</value>
   </data>
-  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
     <value>匯入</value>
   </data>
   <data name="NotifyIcon_Exit" xml:space="preserve">
@@ -1703,4 +1703,10 @@
   <data name="EffectParameter_Help_Step" xml:space="preserve"><value>步進</value></data>
   <data name="EffectParameter_Help_AntiFlickerRequired" xml:space="preserve"><value>開啟抗閃爍後可調節此參數。</value></data>
 
+  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+    <value>設定資料夾</value>
+  </data>
+  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+    <value>重設</value>
+  </data>
 </root>

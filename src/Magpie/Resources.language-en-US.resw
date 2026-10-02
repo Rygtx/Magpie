@@ -245,17 +245,17 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>Launch</value>
   </data>
-  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
-    <value>Export configuration</value>
+  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+    <value>Export</value>
   </data>
-  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
-    <value>Import configuration</value>
+  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+    <value>Import</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>More options</value>
   </data>
-  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
-    <value>Reset configuration</value>
+  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+    <value>Reset</value>
   </data>
   <data name="ScalingModes_ResetDialog_Title" xml:space="preserve">
     <value>Reset effect group configuration?</value>
@@ -1755,4 +1755,7 @@
   <data name="EffectParameter_Help_Step" xml:space="preserve"><value>Step</value></data>
   <data name="EffectParameter_Help_AntiFlickerRequired" xml:space="preserve"><value>Enable Anti-flicker to adjust this parameter.</value></data>
 
+  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+    <value>Config folder</value>
+  </data>
 </root>

@@ -252,10 +252,10 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>起動</value>
   </data>
-  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
     <value>エクスポート</value>
   </data>
-  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
     <value>インポート</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
@@ -1059,5 +1059,11 @@
   </data>
   <data name="Home_Advanced_DeveloperOptions_DisableTopmost.Content" xml:space="preserve">
     <value>常時最前面表示を無効にする</value>
+  </data>
+  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+    <value>設定フォルダー</value>
+  </data>
+  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+    <value>リセット</value>
   </data>
 </root>

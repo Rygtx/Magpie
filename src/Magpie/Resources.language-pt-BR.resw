@@ -189,10 +189,10 @@
   <data name="ToggleSwitch.OnContent" xml:space="preserve">
     <value>Ativado</value>
   </data>
-  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
     <value>Exportar</value>
   </data>
-  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
     <value>Importar</value>
   </data>
   <data name="Home_UpdateCard_AutoCheckForUpdates.Content" xml:space="preserve">
@@ -891,5 +891,11 @@
   </data>
   <data name="Home_Toolbar_StateToggle.Header" xml:space="preserve">
     <value>Atalho para alternar o estado da barra de ferramentas</value>
+  </data>
+  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+    <value>Pasta de config.</value>
+  </data>
+  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+    <value>Redefinir</value>
   </data>
 </root>
