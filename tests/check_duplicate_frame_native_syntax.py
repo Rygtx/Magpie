@@ -14,7 +14,10 @@ shell = ctypes.windll.shell32
 shell.CommandLineToArgvW.argtypes = [ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_int)]
 shell.CommandLineToArgvW.restype = ctypes.POINTER(ctypes.c_wchar_p)
 ctypes.windll.kernel32.LocalFree.argtypes = [ctypes.c_void_p]
-log = build / "obj/Magpie.Core/Magpie.Core.tlog/CL.command.1.tlog"
+obj = build / "obj"
+if not (obj / "Magpie.Core").exists():
+    obj = obj / "x64/Release"
+log = obj / "Magpie.Core/Magpie.Core.tlog/CL.command.1.tlog"
 text = "\n".join(line for line in log.read_text(encoding="utf-16").splitlines() if not line.startswith("^"))
 count = ctypes.c_int()
 pointer = shell.CommandLineToArgvW("tool " + text, ctypes.byref(count))
@@ -24,7 +27,8 @@ includes = list(dict.fromkeys(arg for arg in args if arg.lower().startswith("/i"
 defines = list(dict.fromkeys(args[i+1] for i, arg in enumerate(args[:-1]) if arg.lower() == "/d"))
 base = ["cl.exe", "/nologo", "/Zs", "/Y-", "/std:c++20", "/EHsc", "/utf-8", "/MT", "/W4", "/WX",
         "/permissive-", "/bigobj", "/Zc:__cplusplus", "/volatile:iso",
-        "/I" + str(repo / "src/Magpie.Core"), "/I" + str(repo / "src/Magpie.Core/include")]
+        "/I" + str(repo / "src/Magpie.Core"), "/I" + str(repo / "src/Magpie.Core/include"),
+        "/I" + str(obj / "Magpie.Core"), "/I" + str(obj / "Magpie.Core/Generated Files")]
 base += includes + [arg for define in defines for arg in ("/D", define)]
 files = sys.argv[2:] or ["Renderer.cpp", "EffectDrawer.cpp", "FrameSourceBase.cpp", "FrameTrace.cpp",
          "DLSSNRFilter.cpp", "DLSSNRTemporal.cpp", "DLSSSRUpscaler.cpp", "FSR2Upscaler.cpp",

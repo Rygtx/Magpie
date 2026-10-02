@@ -20,6 +20,8 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [069 帧率、空闲重绘与光标刷新统一 TODO](todos/20261002-v0.6.9-unified-frame-refresh-TODO.md)：源码实现及离线验证完成，内容／光标／空闲 60／60／30 默认值和统一配置入口已接入；节奏方式位于内容选择与基础数值之间。保留旧配置语义，光标呈现独立于内容时钟；产品编译部署、原生 UI 与真实 GPU 验收交给 069 beta2。[实施记录](reviews/20261002-v0.6.9-unified-frame-refresh.md)。
+
 - **0.6.9 Beta1 fix3 已部署**：消除工具栏 FPS 继承按钮基线导致的垂直下偏；128 组布局与既有交互回归、完整编译、包核验和主窗口启动检查通过。实际捕获视觉验收仍待实测；[更新说明](../RELEASE_NOTES_v0.6.9-beta1-fix3.md)、[实施与恢复记录](reviews/20261001-v0.6.9-beta1-fix3.md)。
 
 - **0.6.9 Beta1 fix2 已部署**：[TODO](todos/20261001-v0.6.9-beta1-fix2-TODO.md)、[实施与验证](reviews/20261001-v0.6.9-beta1-fix2.md)、[参数文案 Review](reviews/20261001-v0.6.9-beta1-fix1-dlssnr-parameter-copy-review.md)。原生主窗口与配置迁移通过；完整 GUI／实际捕获验收待实测，保留两项快捷键注册冲突。

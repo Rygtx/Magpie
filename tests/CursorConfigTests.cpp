@@ -1,4 +1,4 @@
-#include "../src/Magpie.Core/include/CursorRefreshSettings.h"
+#include "../src/Magpie/ProfileFrameRefresh.h"
 #include <string>
 #include "../src/Magpie/JsonHelper.h"
 #include <rapidjson/prettywriter.h>
@@ -52,7 +52,7 @@ struct AppSettings {
 	void SaveAsync() { ++saves; }
 	void IsDeveloperMode(bool value) noexcept;
 	bool _LoadProfile(const rapidjson::GenericObject<true, rapidjson::Value>&,
-		Profile&, bool, bool) const noexcept;
+		Profile&, bool, bool, const FrameSyncSettings& = {}, float = 10.0f, bool = true) const noexcept;
 };
 #include "CursorConfigProduction.inc"
 }
@@ -78,47 +78,60 @@ static void Load(std::string json, Profile& profile, bool isDefault = true) {
 }
 int main() {
 	const Profile defaults;
-	Check(!defaults.cursorRefresh.preferOriginalFrames && defaults.cursorRefresh.minimumRefreshEnabled &&
-		defaults.cursorRefresh.minimumRefreshRate == 60, "New/legacy defaults changed");
+	Check(defaults.frameRefresh.Cursor().preferOriginalFrames && defaults.frameRefresh.Cursor().minimumRefreshEnabled &&
+		defaults.frameRefresh.Cursor().minimumRefreshRate == 60, "Screenshot defaults changed");
+	Profile tuned;
+	tuned.frameRefresh.contentMode = ContentFrameRateMode::Auto;
+	tuned.frameRefresh.contentRate = 37; tuned.frameRefresh.pacing = FrameSyncMode::Reflex;
+	tuned.frameRefresh.legacyContentLimit = 20; tuned.frameRefresh.cursorSupplement = CursorSupplementMode::Auto;
+	tuned.frameRefresh.idleEnabled = false; tuned.frameRefresh.idleRate = 17;
+	Profile tunedCopy; tunedCopy.Copy(tuned);
+	Check(tunedCopy.frameRefresh == tuned.frameRefresh, "Copy lost unified settings");
+	Profile tunedLoad; Load(Serialize(tunedCopy), tunedLoad);
+	Check(tunedLoad.frameRefresh == tuned.frameRefresh, "Production full model roundtrip failed");
+	tunedCopy.frameRefresh.contentRate = 38;
+	Check(tuned.frameRefresh.contentRate == 37, "Copied content edit leaked to source");
 	for (bool original : {false, true}) for (bool minimum : {false, true}) for (float rate : {1.0f, 60.0f, 144.0f, 1000.0f}) {
 		Profile profile;
-		profile.cursorRefresh = {original, minimum, rate};
+		profile.frameRefresh.cursorMode = !original ? CursorRefreshMode::Responsive : minimum ? CursorRefreshMode::Supplement : CursorRefreshMode::OriginalOnly;
+		profile.frameRefresh.legacyResponsiveMinimum = !original && minimum;
+		profile.frameRefresh.cursorRate = rate;
 		profile.name = L"app"; profile.pathRule = L"C:/game.exe"; profile.classNameRule = L"GameWindow";
 		Profile copy;
 		copy.Copy(profile);
-		Check(copy.cursorRefresh.preferOriginalFrames == original && copy.cursorRefresh.minimumRefreshEnabled == minimum &&
-			copy.cursorRefresh.minimumRefreshRate == rate, "Production profile Copy lost cursor fields");
+		Check(copy.frameRefresh.Cursor().preferOriginalFrames == original && copy.frameRefresh.Cursor().minimumRefreshEnabled == minimum &&
+			copy.frameRefresh.Cursor().minimumRefreshRate == rate, "Production profile Copy lost cursor fields");
 		Check(copy.runtimeIdentity != profile.runtimeIdentity, "Copy shared session identity");
 		Profile loaded;
 		Load(Serialize(profile), loaded, false);
-		Check(loaded.cursorRefresh.preferOriginalFrames == original && loaded.cursorRefresh.minimumRefreshEnabled == minimum &&
-			loaded.cursorRefresh.minimumRefreshRate == rate, "Application profile roundtrip failed");
+		Check(loaded.frameRefresh.Cursor().preferOriginalFrames == original && loaded.frameRefresh.Cursor().minimumRefreshEnabled == minimum &&
+			loaded.frameRefresh.Cursor().minimumRefreshRate == rate, "Application profile roundtrip failed");
 		Profile loadedDefault;
 		profile.name.clear();
 		Load(Serialize(profile), loadedDefault);
-		Check(loadedDefault.cursorRefresh.preferOriginalFrames == original && loadedDefault.cursorRefresh.minimumRefreshEnabled == minimum &&
-			loadedDefault.cursorRefresh.minimumRefreshRate == rate, "Default profile roundtrip failed");
-		copy.cursorRefresh.minimumRefreshRate = 99;
-		Check(profile.cursorRefresh.minimumRefreshRate == rate, "Copied profile edits leaked to source");
+		Check(loadedDefault.frameRefresh.Cursor().preferOriginalFrames == original && loadedDefault.frameRefresh.Cursor().minimumRefreshEnabled == minimum &&
+			loadedDefault.frameRefresh.Cursor().minimumRefreshRate == rate, "Default profile roundtrip failed");
+		copy.frameRefresh.cursorRate = 99;
+		Check(profile.frameRefresh.Cursor().minimumRefreshRate == rate, "Copied profile edits leaked to source");
 	}
 	Profile legacy;
-	legacy.cursorRefresh = {true, false, 240};
+	legacy.frameRefresh.cursorMode = CursorRefreshMode::OriginalOnly; legacy.frameRefresh.cursorRate = 240;
 	Load("{}", legacy);
-	Check(!legacy.cursorRefresh.preferOriginalFrames && legacy.cursorRefresh.minimumRefreshEnabled &&
-		legacy.cursorRefresh.minimumRefreshRate == 60, "Missing fields retained stale data");
+	Check(!legacy.frameRefresh.Cursor().preferOriginalFrames && legacy.frameRefresh.Cursor().minimumRefreshEnabled &&
+		legacy.frameRefresh.Cursor().minimumRefreshRate == 60, "Missing fields retained stale data");
 	for (const char* value : {"0", "-3", "1001", "1e100", "null", "true", "\"bad\""}) {
 		Profile bad;
 		Load(std::string("{\"cursorMinimumRefreshRate\":") + value + "}", bad);
-		Check(bad.cursorRefresh.minimumRefreshRate == 60, "Malformed/range FPS did not default");
+		Check(bad.frameRefresh.Cursor().minimumRefreshRate == 60, "Malformed/range FPS did not default");
 	}
 	Load("{\"cursorPreferOriginalFrames\":\"true\",\"cursorMinimumRefreshEnabled\":0}", legacy);
-	Check(!legacy.cursorRefresh.preferOriginalFrames && legacy.cursorRefresh.minimumRefreshEnabled, "Wrong bool types broke defaults");
+	Check(!legacy.frameRefresh.Cursor().preferOriginalFrames && legacy.frameRefresh.Cursor().minimumRefreshEnabled, "Wrong bool types broke defaults");
 	for (float value : {0.0f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
 		Profile invalid;
-		invalid.cursorRefresh.minimumRefreshRate = value;
+		invalid.frameRefresh.cursorRate = value;
 		Profile repaired;
 		Load(Serialize(invalid), repaired);
-		Check(repaired.cursorRefresh.minimumRefreshRate == 60, "Writer serialized invalid FPS");
+		Check(repaired.frameRefresh.Cursor().minimumRefreshRate == 60, "Writer serialized invalid FPS");
 	}
 	for (auto mode : {DuplicateFrameDetectionMode::Always, DuplicateFrameDetectionMode::Dynamic, DuplicateFrameDetectionMode::Never}) {
 		AppSettings settings;

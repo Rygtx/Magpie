@@ -103,7 +103,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 	}
 	if (!_options.parameterSession) {
 		_options.parameterSession = std::make_shared<EffectParameterSessionState>(
-			_options.effects, FrameSyncSettings{ _options.isFrontEdgeSyncEnabled, _options.frontEdgeSyncFrameRate, _options.frameSyncMode });
+			_options.effects, _options.frameRefresh);
 	}
 	Logger::Get().Info(fmt::format("缩放开始\n\t程序版本: {}\n\tOS 版本: {}\n\t管理员: {}",
 #ifdef MP_VERSION_STRING
@@ -607,7 +607,7 @@ bool ScalingWindow::HasUrgentOverlayInput() const noexcept {
 
 void ScalingWindow::RestartWithEffectParameters(
 	std::vector<EffectOption>&& effects,
-	FrameSyncSettings frameSync
+	FrameRefreshSettings frameRefresh
 ) noexcept {
 	const HWND hwndSource = _srcTracker.Handle();
 	if (!Handle() || !IsWindow(hwndSource) || effects.empty()) {
@@ -616,7 +616,7 @@ void ScalingWindow::RestartWithEffectParameters(
 		return;
 	}
 	if (HasHeldParameterInput()) {
-		_pendingManualParameterRestart.emplace(std::move(effects), frameSync);
+		_pendingManualParameterRestart.emplace(std::move(effects), frameRefresh);
 		return;
 	}
 
@@ -629,9 +629,7 @@ void ScalingWindow::RestartWithEffectParameters(
 	_isSrcRepositioning = false;
 	_options.effects = std::move(effects);
 	// The backend has joined: update the immutable pacing snapshot only now.
-	_options.isFrontEdgeSyncEnabled = frameSync.enabled;
-	_options.frontEdgeSyncFrameRate = frameSync.frameRate;
-	_options.frameSyncMode = frameSync.mode;
+	ApplyFrameRefreshSettings(_options, frameRefresh);
 	_options.parameterSession->Desired(_options.effects);
 	Start(hwndSource, std::move(_options));
 	if (Handle() && _renderer) _renderer->RestoreOverlayState(overlayState);

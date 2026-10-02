@@ -5,6 +5,7 @@
 #include <memory>
 #include "EffectParameterPersistence.h"
 #include "FramePacingOptions.h"
+#include "FrameRefreshSettings.h"
 #include "HdrComponents.h"
 #include "OverlayWindowGeometry.h"
 #include "ToolbarPlacement.h"
@@ -193,14 +194,14 @@ struct EffectParameterSessionState {
 	struct Snapshot {
 		std::vector<EffectOption> applied;
 		std::vector<EffectOption> desired;
-		FrameSyncSettings frameSync;
+		FrameRefreshSettings frameRefresh;
 		uint64_t revision = 0;
 		bool applying = false;
 		bool applyFailed = false;
 	};
 
 	explicit EffectParameterSessionState(const std::vector<EffectOption>& effects,
-		FrameSyncSettings frameSync = {}) : _snapshot{ effects, effects, frameSync, 1 } {}
+		FrameRefreshSettings frameRefresh = {}) : _snapshot{ effects, effects, frameRefresh, 1 } {}
 	// Save receipts survive automatic rebuilds too. The revision is allocated
 	// only by the scaling/UI thread; completion itself is atomic.
 	std::shared_ptr<EffectParametersSaveState> saveState = std::make_shared<EffectParametersSaveState>();
@@ -236,10 +237,10 @@ struct EffectParameterSessionState {
 		_snapshot.desired[effect].parameters[parameter] = value;
 		++_snapshot.revision;
 	}
-	void DesiredFrameSync(FrameSyncSettings value) {
+	void DesiredFrameRefresh(FrameRefreshSettings value) {
 		std::scoped_lock lock(_mutex);
-		if (_snapshot.frameSync == value) return;
-		_snapshot.frameSync = value;
+		if (_snapshot.frameRefresh == value) return;
+		_snapshot.frameRefresh = value;
 		++_snapshot.revision;
 	}
 	void Applying(bool applying, bool failed = false) {
@@ -268,8 +269,8 @@ struct EffectParametersRequest {
 	EffectParametersRequestKind kind = EffectParametersRequestKind::AutoSave;
 	std::vector<EffectOption> effects;
 	std::vector<EffectOption> previousEffects;
-	FrameSyncSettings frameSync;
-	FrameSyncSettings previousFrameSync;
+	FrameRefreshSettings frameRefresh;
+	FrameRefreshSettings previousFrameRefresh;
 	std::shared_ptr<EffectParametersSaveState> saveState;
 	uint64_t revision = 0;
 	HWND hwndSource = nullptr;
@@ -478,6 +479,7 @@ struct ScalingOptions {
 	GraphicsCardId graphicsCardId;
 	float minFrameRate = 0.0f;
 	std::optional<float> maxFrameRate;
+	FrameRefreshSettings frameRefresh;
 	// Stable, weak identity of the profile used to start this session.
 	std::weak_ptr<const uint8_t> frameSyncProfileIdentity;
 	bool isFrontEdgeSyncEnabled = true;

@@ -928,7 +928,7 @@ bool Renderer::_FrontendRender(
 	if (droppedFrame) *droppedFrame = false;
 	if (_pendingFrontendFrame) return _SubmitFrontendFrame();
 	_frontendPacingDeadline.reset();
-	const bool paced = ActiveFrameSyncBackend() == FrameSyncBackend::FrontEdge && !_hasFrameGeneration &&
+	const bool paced = !stableBaseOnly && ActiveFrameSyncBackend() == FrameSyncBackend::FrontEdge && !_hasFrameGeneration &&
 		!waitForGpu && _presenter->SupportsDeferredPresent() &&
 		!ScalingWindow::Get().IsResizingOrMoving();
 	if (paced) {
@@ -937,10 +937,17 @@ bool Renderer::_FrontendRender(
 		const auto now = std::chrono::steady_clock::now();
 		const auto prepareAt = _frontEdgeClock.Due(now) - std::chrono::microseconds(1000);
 		if (now < prepareAt) {
+			// The queued content is not due yet. A changed cursor can use the
+			// last successfully presented background during that gap without
+			// consuming content, advancing history, or moving its deadline.
+			const bool overlayPending = _HasPendingOverlayAction() || _cursorDrawer.NeedRedraw() ||
+				_overlayDrawer.NeedRedraw(_stepTimer.FPS());
+			const bool submitted = _frontendPresentedBaseValid && overlayPending &&
+				_FrontendRender(false, sharedTextureSlot, nullptr, true);
 			_frontendPacingDeadline = prepareAt;
-			return false;
+			return submitted;
 		}
-	} else {
+	} else if (!stableBaseOnly) {
 		_frontEdgeClock.Reset();
 	}
 	if (stableBaseOnly && !paced && !_CanRenderOverlay()) return false;
@@ -1090,7 +1097,7 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 		waitForGpu, paced, overlayActionRevision, contentKey] = frame;
 	const bool submitted = _presenter->EndFrame(waitForGpu);
 	_pendingFrontendFrame.reset();
-	if (submitted && ActiveFrameSyncBackend() == FrameSyncBackend::FrontEdge && !_hasFrameGeneration &&
+	if (submitted && contentFrame && ActiveFrameSyncBackend() == FrameSyncBackend::FrontEdge && !_hasFrameGeneration &&
 		_presenter->SupportsDeferredPresent() && !ScalingWindow::Get().IsResizingOrMoving()) {
 		_frontEdgeClock.SetInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(
 			std::chrono::duration<double>(1.0 / _FrameSyncFrameRate())));
@@ -3114,6 +3121,14 @@ void Renderer::_UpdateFrameRateLimits() noexcept {
 	if (options.maxFrameRate &&
 		(!maxFrameRate || *options.maxFrameRate < *maxFrameRate)) {
 		maxFrameRate = options.maxFrameRate;
+	}
+	// A fixed/auto content choice still owns a target when the selected
+	// presentation strategy is unsupported (e.g. DirectFlip disabled).
+	// Recompute Auto on each monitor/multiplier change; do not persist this cap.
+	if (options.isFrontEdgeSyncEnabled && !_frameSyncEnabled && !options.IsBenchmarkMode()) {
+		maxFrameRate = float(ResolvePresentationFrameRate(options.frontEdgeSyncFrameRate,
+			maxFrameRate.value_or(0.0f), _presentationRefreshRate.load(std::memory_order_acquire),
+			_configuredFrameGenerationMultiplier));
 	}
 	const bool useFrameGeneration = std::ranges::any_of(
 		_runtimeEffectOptions,

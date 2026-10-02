@@ -4,6 +4,7 @@
 #include "HomeViewModel.g.cpp"
 #endif
 #include "AppSettings.h"
+#include "ProfileService.h"
 #include "ScalingService.h"
 #include "Win32Helper.h"
 #include "StrHelper.h"
@@ -24,6 +25,10 @@ using namespace Magpie;
 namespace winrt::Magpie::implementation {
 
 HomeViewModel::HomeViewModel() {
+	_frameRefreshChangedRevoker = ProfileService::Get().FrameRefreshChanged(auto_revoke, [this](const ::Magpie::Profile& profile) {
+		if (profile.runtimeIdentity == AppSettings::Get().DefaultProfile().runtimeIdentity)
+			RaisePropertyChanged(L"DefaultFrameRefreshSummary");
+	});
 	_issueChangedRevoker = ErrorService::Get().Changed(auto_revoke, [this] {
 		RaisePropertyChanged(L"ShowRecentIssue");
 		RaisePropertyChanged(L"RecentIssueSummary");
@@ -506,42 +511,23 @@ void HomeViewModel::IsVRREnabled(bool value) {
 	RaisePropertyChanged(L"IsVRREnabled");
 }
 
-static constexpr std::array MIN_FRAME_RATE_OPTIONS{ 0,5,10,15,20,30,60 };
-
-IVector<IInspectable> HomeViewModel::MinFrameRateOptions() {
-	static IVector<IInspectable> result = [] {
-		std::vector<IInspectable> options;
-		options.reserve(MIN_FRAME_RATE_OPTIONS.size());
-		for (int option : MIN_FRAME_RATE_OPTIONS) {
-			options.push_back(box_value(std::to_wstring(option)));
-		}
-
-		return single_threaded_vector(std::move(options));
-	}();
-	return result;
+hstring HomeViewModel::DefaultFrameRefreshSummary() const {
+	const auto loader = ResourceLoader::GetForViewIndependentUse(CommonSharedConstants::APP_RESOURCE_MAP_ID);
+	const auto& s = AppSettings::Get().DefaultProfile().frameRefresh;
+	const wchar_t* contentKeys[]{ L"FrameRefresh_Source/Content", L"FrameRefresh_Auto/Content", L"FrameRefresh_Custom/Content" };
+	const wchar_t* cursorKeys[]{ L"FrameRefresh_Responsive/Content", L"FrameRefresh_OriginalOnly/Content", L"FrameRefresh_Supplement/Content" };
+	std::wstring content(loader.GetString(contentKeys[uint32_t(s.contentMode)]));
+	if (s.contentMode == ContentFrameRateMode::Custom) content += fmt::format(L" {} FPS", s.contentRate);
+	if (s.legacyContentLimit > 0) content += L" (" + fmt::format(
+		fmt::runtime(std::wstring_view(loader.GetString(L"FrameRefresh_LegacyCapNotice"))), s.legacyContentLimit) + L")";
+	std::wstring cursor(loader.GetString(cursorKeys[uint32_t(s.cursorMode)]));
+	if (s.cursorMode == CursorRefreshMode::Supplement) cursor += s.cursorSupplement == CursorSupplementMode::Auto ?
+		L" (" + std::wstring(loader.GetString(L"FrameRefresh_Auto/Content")) + L")" : fmt::format(L" {} FPS", s.cursorRate);
+	const auto idle = s.idleEnabled ? fmt::format(L"{} FPS", s.idleRate) : std::wstring(loader.GetString(L"FrameRefresh_Off/Content"));
+	return hstring(fmt::format(fmt::runtime(std::wstring_view(loader.GetString(L"Home_FrameRefresh_Summary"))), content, cursor, idle));
 }
-
-int HomeViewModel::MinFrameRateIndex() const noexcept {
-	float minFrameRate = AppSettings::Get().MinFrameRate();
-	auto it = std::find_if(
-		MIN_FRAME_RATE_OPTIONS.begin(),
-		MIN_FRAME_RATE_OPTIONS.end(),
-		[&](int value) { return IsApprox(minFrameRate, (float)value); }
-	);
-	if (it == MIN_FRAME_RATE_OPTIONS.end()) {
-		return -1;
-	} else {
-		return int(it - MIN_FRAME_RATE_OPTIONS.begin());
-	}
-}
-
-void HomeViewModel::MinFrameRateIndex(int value) {
-	if (value < 0 || value >= (int)MIN_FRAME_RATE_OPTIONS.size()) {
-		return;
-	}
-
-	AppSettings::Get().MinFrameRate((float)MIN_FRAME_RATE_OPTIONS[value]);
-	RaisePropertyChanged(L"MinFrameRateIndex");
+void HomeViewModel::EditDefaultFrameRefresh() {
+	if (const auto root = App::Get().RootPage()) root->NavigateToIssueProfile({}, {}, {});
 }
 
 bool HomeViewModel::IsDeveloperMode() const noexcept {

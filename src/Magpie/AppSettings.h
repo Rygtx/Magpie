@@ -58,7 +58,6 @@ struct _AppSettingsData {
 	DuplicateFrameDetectionMode _duplicateFrameDetectionMode =
 		DuplicateFrameDetectionMode::Dynamic;
 
-	float _minFrameRate = 10.0f;
 	bool _isStopEffectsOnTaskSwitchEnabled = false;
 	bool _isVRREnabled = false;
 
@@ -351,15 +350,6 @@ public:
 		SaveAsync();
 	}
 
-	float MinFrameRate() const noexcept {
-		return _minFrameRate;
-	}
-
-	void MinFrameRate(float value) noexcept {
-		_minFrameRate = value;
-		SaveAsync();
-	}
-
 	ToolbarState FullscreenInitialToolbarState() const noexcept {
 		return _fullscreenInitialToolbarState;
 	}
@@ -410,7 +400,9 @@ private:
 		Profile& profile,
 		bool isDefault = false,
 		bool legacyParameterFocusSwitching = false,
-		const FrameSyncSettings& legacyFrameSync = {}
+		const FrameSyncSettings& legacyFrameSync = {},
+		float legacyIdle = 10.0f,
+		bool migrateLegacyRefresh = true
 	) const noexcept;
 	bool _LoadShortcuts(const rapidjson::GenericObject<true, rapidjson::Value>& root) noexcept;
 	void _SetDefaultShortcuts() noexcept;

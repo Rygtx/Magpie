@@ -38,7 +38,8 @@ public:
 	void SetDisplayRate(double displayRate) noexcept {
 		if (!(displayRate >= 1.0 && displayRate <= 1000.0)) displayRate = 60.0;
 		const double rate = std::min<double>(
-			CursorRefreshSettings::ValidateRate(_settings.minimumRefreshRate), displayRate);
+			_settings.automaticRefreshRate ? displayRate :
+				CursorRefreshSettings::ValidateRate(_settings.minimumRefreshRate), displayRate);
 		_interval = std::chrono::duration_cast<std::chrono::nanoseconds>(
 			std::chrono::duration<double>(1.0 / rate));
 	}

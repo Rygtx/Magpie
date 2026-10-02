@@ -1329,8 +1329,8 @@ void OverlayDrawer::_InitEffectParameterValues() noexcept {
 	_draftEffectParameterValues = _startupEffectParameterValues;
 	_submittedEffectParameterValues = _startupEffectParameterValues;
 	_submittedEffectOptions = options.effects;
-	_startupFrameSync = { options.isFrontEdgeSyncEnabled, options.frontEdgeSyncFrameRate, options.frameSyncMode };
-	_draftFrameSync = _submittedFrameSync = _startupFrameSync;
+	_startupFrameRefresh = options.frameRefresh;
+	_draftFrameRefresh = _submittedFrameRefresh = _startupFrameRefresh;
 	_effectParametersInitialized = true;
 }
 
@@ -1338,16 +1338,24 @@ void OverlayDrawer::_InitEffectParameterValues() noexcept {
 void OverlayDrawer::_SyncEffectParameterValues() noexcept {
 	const auto& session = ScalingWindow::Get().Options().parameterSession;
 	if (!session || !session->ReadIfChanged(_parameterSessionSnapshot)) return;
-	const auto frameSync = _parameterSessionSnapshot.frameSync;
-	if (frameSync.enabled != _submittedFrameSync.enabled) {
-		_draftFrameSync.enabled = _submittedFrameSync.enabled = frameSync.enabled;
-	}
-	if (frameSync.frameRate != _submittedFrameSync.frameRate) {
-		_draftFrameSync.frameRate = _submittedFrameSync.frameRate = frameSync.frameRate;
-	}
-	if (frameSync.mode != _submittedFrameSync.mode) {
-		_draftFrameSync.mode = _submittedFrameSync.mode = frameSync.mode;
-	}
+	const auto& refresh = _parameterSessionSnapshot.frameRefresh;
+	// Bring only external changes into the draft. Unsubmitted local edits to
+	// other fields remain available for the transactional save below.
+	auto sync = [](auto& draft, auto& submitted, const auto& desired) {
+		if (desired != submitted) draft = submitted = desired;
+	};
+	sync(_draftFrameRefresh.contentMode, _submittedFrameRefresh.contentMode, refresh.contentMode);
+	sync(_draftFrameRefresh.contentRate, _submittedFrameRefresh.contentRate, refresh.contentRate);
+	sync(_draftFrameRefresh.pacing, _submittedFrameRefresh.pacing, refresh.pacing);
+	sync(_draftFrameRefresh.cursorMode, _submittedFrameRefresh.cursorMode, refresh.cursorMode);
+	sync(_draftFrameRefresh.cursorSupplement, _submittedFrameRefresh.cursorSupplement, refresh.cursorSupplement);
+	sync(_draftFrameRefresh.cursorRate, _submittedFrameRefresh.cursorRate, refresh.cursorRate);
+	sync(_draftFrameRefresh.idleEnabled, _submittedFrameRefresh.idleEnabled, refresh.idleEnabled);
+	sync(_draftFrameRefresh.idleRate, _submittedFrameRefresh.idleRate, refresh.idleRate);
+	sync(_draftFrameRefresh.legacyContentLimit, _submittedFrameRefresh.legacyContentLimit, refresh.legacyContentLimit);
+	sync(_draftFrameRefresh.legacySourceTarget, _submittedFrameRefresh.legacySourceTarget, refresh.legacySourceTarget);
+	sync(_draftFrameRefresh.legacyLimiterOnly, _submittedFrameRefresh.legacyLimiterOnly, refresh.legacyLimiterOnly);
+	sync(_draftFrameRefresh.legacyResponsiveMinimum, _submittedFrameRefresh.legacyResponsiveMinimum, refresh.legacyResponsiveMinimum);
 	const auto& descriptions = ScalingWindow::Get().Renderer().ActiveEffectDescs();
 	for (size_t i = 0; i < _draftEffectParameterValues.size(); ++i) {
 		if (i >= _parameterSessionSnapshot.applied.size() ||
@@ -1405,8 +1413,8 @@ bool OverlayDrawer::_RequestEffectParameters(EffectParametersRequestKind kind) n
 			.kind = kind,
 			.effects = effects,
 			.previousEffects = _submittedEffectOptions,
-			.frameSync = _draftFrameSync,
-			.previousFrameSync = _submittedFrameSync,
+			.frameRefresh = _draftFrameRefresh,
+			.previousFrameRefresh = _submittedFrameRefresh,
 			.saveState = _effectParametersSaveState,
 			.revision = revision,
 			.hwndSource = ScalingWindow::Get().SrcTracker().Handle(),
@@ -1416,8 +1424,8 @@ bool OverlayDrawer::_RequestEffectParameters(EffectParametersRequestKind kind) n
 		if (options.requestEffectParameters &&
 			options.requestEffectParameters(options, std::move(request))) {
 			options.parameterSession->Desired(effects);
-			options.parameterSession->DesiredFrameSync(_draftFrameSync);
-			_submittedFrameSync = _draftFrameSync;
+			options.parameterSession->DesiredFrameRefresh(_draftFrameRefresh);
+			_submittedFrameRefresh = _draftFrameRefresh;
 			_submittedEffectOptions = std::move(effects);
 			_submittedEffectParameterValues = _draftEffectParameterValues;
 			return true;
@@ -1470,10 +1478,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	const size_t configuredEffectCount = std::min(
 		ScalingWindow::Get().Options().effects.size(), descriptions.size());
 	auto frameSyncChangeCount = [&]() noexcept -> uint32_t {
-		const auto& options = ScalingWindow::Get().Options();
-		return uint32_t(_draftFrameSync.enabled != options.isFrontEdgeSyncEnabled) +
-			uint32_t(_draftFrameSync.frameRate != options.frontEdgeSyncFrameRate) +
-			uint32_t(_draftFrameSync.mode != options.frameSyncMode);
+		return uint32_t(_draftFrameRefresh != ScalingWindow::Get().Options().frameRefresh);
 	};
 	uint32_t restartChangeCount = frameSyncChangeCount();
 	for (size_t effectIdx = 0; effectIdx < configuredEffectCount; ++effectIdx) {
@@ -1588,41 +1593,67 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	std::vector<std::tuple<uint32_t, uint32_t, float>> liveUpdates;
 	bool parameterEdited = false;
 	bool requestRestart = false;
-	ImGui::PushID("frameSync");
-	ImGui::SeparatorText(_GetResourceString(L"Overlay_FrameSync_Title").c_str());
-	if (ImGui::Checkbox(_GetResourceString(L"Overlay_FrameSync_Enable").c_str(), &_draftFrameSync.enabled)) {
-		parameterEdited = needRedraw = true;
-	}
-	ImGui::SameLine();
-	ImGui::TextDisabled("%s", _GetResourceString(L"Overlay_EffectParameters_RestartRequired").c_str());
-	static constexpr const wchar_t* modeKeys[]{ L"FrameSync_Mode_FrontEdge/Content",
-		L"FrameSync_Mode_Async/Content", L"FrameSync_Mode_Reflex/Content" };
-	const auto selectedMode = static_cast<uint32_t>(_draftFrameSync.mode);
-	ImGui::BeginDisabled(!_draftFrameSync.enabled);
-	ImGui::TextUnformatted(_GetResourceString(L"Home_FrameSync_Mode/Header").c_str());
-	ImGui::SetNextItemWidth(-1.0f);
-	if (ImGui::BeginCombo("##frameSyncMode", _GetResourceString(modeKeys[selectedMode]).c_str())) {
-		for (uint32_t i = 0; i < std::size(modeKeys); ++i) {
-			if (ImGui::Selectable(_GetResourceString(modeKeys[i]).c_str(), i == selectedMode)) {
-				_draftFrameSync.mode = static_cast<FrameSyncMode>(i);
-				parameterEdited = needRedraw = true;
+	ImGui::PushID("frameRefresh");
+	ImGui::SeparatorText(_GetResourceString(L"FrameRefresh/Header").c_str());
+	ImGui::TextDisabled("%s", _GetResourceString(L"FrameRefresh_RestartNotice").c_str());
+	auto refreshChoice = [&](const char* id, const wchar_t* label, auto& value, const auto& keys) {
+		ImGui::TextUnformatted(_GetResourceString(label).c_str());
+		ImGui::SetNextItemWidth(-1.0f);
+		bool changed = false;
+		if (ImGui::BeginCombo(id, _GetResourceString(keys[uint32_t(value)]).c_str())) {
+			for (uint32_t i = 0; i < std::size(keys); ++i) {
+				if (ImGui::Selectable(_GetResourceString(keys[i]).c_str(), i == uint32_t(value))) {
+					value = static_cast<std::remove_reference_t<decltype(value)>>(i);
+					changed = parameterEdited = needRedraw = true;
+				}
 			}
+			ImGui::EndCombo();
 		}
-		ImGui::EndCombo();
-	}
+		return changed;
+	};
+	auto rate = [&](const char* id, const wchar_t* label, float& value) {
+		ImGui::TextUnformatted(_GetResourceString(label).c_str());
+		ImGui::SetNextItemWidth(-1.0f);
+		const std::string format = fmt::format("{:g} FPS", value);
+		const bool changed = ImGui::SliderFloat(id, &value, 1, 1000, format.c_str(),
+			ImGuiSliderFlags_AlwaysClamp | (_parameterFocusSwitchingEnabled ? ImGuiSliderFlags_None : ImGuiSliderFlags_NoInput));
+		if (changed) parameterEdited = needRedraw = true;
+		return changed;
+	};
+	static constexpr const wchar_t* contentKeys[]{ L"FrameRefresh_Source/Content", L"FrameRefresh_Auto/Content", L"FrameRefresh_Custom/Content" };
+	static constexpr const wchar_t* pacingKeys[]{ L"FrameSync_Mode_FrontEdge/Content", L"FrameSync_Mode_Async/Content", L"FrameSync_Mode_Reflex/Content" };
+	static constexpr const wchar_t* cursorKeys[]{ L"FrameRefresh_Responsive/Content", L"FrameRefresh_OriginalOnly/Content", L"FrameRefresh_Supplement/Content" };
+	static constexpr const wchar_t* supplementKeys[]{ L"FrameRefresh_Auto/Content", L"FrameRefresh_Custom/Content" };
+	static constexpr const wchar_t* idleKeys[]{ L"FrameRefresh_Off/Content", L"FrameRefresh_Custom/Content" };
+	if (refreshChoice("##contentMode", L"FrameRefresh_Content/Header", _draftFrameRefresh.contentMode, contentKeys))
+		_draftFrameRefresh.ContentEdited();
+	ImGui::BeginDisabled(_draftFrameRefresh.contentMode == ContentFrameRateMode::Source);
+	if (refreshChoice("##pacing", L"FrameRefresh_Pacing/Header", _draftFrameRefresh.pacing, pacingKeys))
+		_draftFrameRefresh.ContentEdited();
 	ImGui::EndDisabled();
-	ImGui::TextUnformatted(_GetResourceString(L"Overlay_FrameSync_Target").c_str());
-	ImGui::SameLine();
-	ImGui::TextDisabled("%s", _GetResourceString(L"Overlay_EffectParameters_RestartRequired").c_str());
-	ImGui::SetNextItemWidth(-1.0f);
-	int targetFps = static_cast<int>(std::lround(_draftFrameSync.frameRate));
-	const std::string targetFpsText = fmt::format("{:g} FPS", _draftFrameSync.frameRate);
-	if (ImGui::SliderInt("##targetFps", &targetFps, 15, 360, targetFpsText.c_str(),
-		ImGuiSliderFlags_AlwaysClamp | (_parameterFocusSwitchingEnabled ? ImGuiSliderFlags_None : ImGuiSliderFlags_NoInput))) {
-		_draftFrameSync.frameRate = static_cast<float>(targetFps);
+	if (_draftFrameRefresh.contentMode == ContentFrameRateMode::Custom &&
+		rate("##contentRate", L"FrameRefresh_ContentRate/Header", _draftFrameRefresh.contentRate))
+		_draftFrameRefresh.ContentEdited();
+	if (refreshChoice("##cursorMode", L"FrameRefresh_Cursor/Header", _draftFrameRefresh.cursorMode, cursorKeys))
+		_draftFrameRefresh.CursorEdited();
+	if (_draftFrameRefresh.cursorMode == CursorRefreshMode::Supplement) {
+		refreshChoice("##supplementMode", L"FrameRefresh_CursorSupplement/Header", _draftFrameRefresh.cursorSupplement, supplementKeys);
+		if (_draftFrameRefresh.cursorSupplement == CursorSupplementMode::Custom)
+			rate("##cursorRate", L"FrameRefresh_CursorRate/Header", _draftFrameRefresh.cursorRate);
+	}
+	if (ImGui::CollapsingHeader(_GetResourceString(L"FrameRefresh_Advanced/Header").c_str())) {
+		refreshChoice("##idleMode", L"FrameRefresh_Idle/Header", _draftFrameRefresh.idleEnabled, idleKeys);
+		if (_draftFrameRefresh.idleEnabled) rate("##idleRate", L"FrameRefresh_IdleRate/Header", _draftFrameRefresh.idleRate);
+		ImGui::TextWrapped("%s", _GetResourceString(L"FrameRefresh_Idle/Description").c_str());
+	}
+	if (_draftFrameRefresh.legacyContentLimit > 0 || _draftFrameRefresh.legacySourceTarget >= 0 || _draftFrameRefresh.legacyLimiterOnly || _draftFrameRefresh.legacyResponsiveMinimum)
+		ImGui::TextWrapped("%s", _GetResourceString(L"FrameRefresh_LegacyNotice").c_str());
+	if (_draftFrameRefresh.legacyContentLimit > 0) ImGui::TextWrapped("%s", fmt::format(
+		fmt::runtime(_GetResourceString(L"FrameRefresh_LegacyCapNotice")), _draftFrameRefresh.legacyContentLimit).c_str());
+	if (ImGui::Button(_GetResourceString(L"FrameRefresh_ResetButton/Content").c_str())) {
+		_draftFrameRefresh = {};
 		parameterEdited = needRedraw = true;
 	}
-	ImGui::TextWrapped("%s", _GetResourceString(L"Overlay_FrameSync_Help").c_str());
 	ImGui::PopID();
 	auto getDraftValue = [&](size_t effectIdx, const EffectDesc& description,
 		std::string_view name, float fallback) noexcept {
@@ -1929,7 +1960,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 			_GetResourceString(L"Overlay_EffectParameters_Revert").c_str())) {
 			parameterEdited = true;
 			_draftEffectParameterValues = _startupEffectParameterValues;
-			_draftFrameSync = _startupFrameSync;
+			_draftFrameRefresh = _startupFrameRefresh;
 			for (size_t effectIdx = 0;
 				effectIdx < configuredEffectCount; ++effectIdx) {
 				for (size_t parameterIdx = 0;

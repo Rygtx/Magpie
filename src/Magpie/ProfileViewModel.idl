@@ -47,12 +47,21 @@ namespace Magpie {
 		Boolean IsShowGraphicsCardSettingsCard { get; };
 		Boolean IsNoGraphicsCard { get; };
 
-		Boolean IsFrontEdgeSyncEnabled;
-		Double FrontEdgeSyncFrameRate;
+		Int32 ContentFrameRateModeIndex;
+		Double ContentFrameRate;
 		Int32 FrameSyncModeIndex;
-
-		Boolean IsFrameRateLimiterEnabled;
-		Double MaxFrameRate;
+		Boolean IsContentPacingEnabled { get; };
+		Boolean ShowContentFrameRate { get; };
+		Int32 CursorRefreshModeIndex;
+		Int32 CursorSupplementModeIndex;
+		Double CursorSupplementRate;
+		Boolean ShowCursorSupplement { get; };
+		Boolean ShowCursorSupplementRate { get; };
+		Int32 IdleRedrawModeIndex;
+		Double IdleRedrawRate;
+		Boolean ShowIdleRedrawRate { get; };
+		String FrameRefreshNotice { get; };
+		void ResetFrameRefresh();
 
 		Boolean IsCaptureTitleBar;
 		Boolean CanCaptureTitleBar { get; };
@@ -67,9 +76,6 @@ namespace Magpie {
 		Int32 CursorScaling;
 		Double CustomCursorScaling;
 		Int32 CursorInterpolationMode;
-		Boolean IsCursorOriginalFramePreferred;
-		Boolean IsCursorMinimumRefreshEnabled;
-		Double CursorMinimumRefreshRate;
 		Boolean IsAutoHideCursorEnabled;
 		Double AutoHideCursorDelay;
 		String AutoHideCursorDelayText { get; };
