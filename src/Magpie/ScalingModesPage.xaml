@@ -8,7 +8,7 @@
       mc:Ignorable="d">
 	<Page.Resources>
 		<Style x:Key="ScalingModesHeaderButtonStyle" TargetType="Button"
-		       BasedOn="{StaticResource AccentButtonStyle}">
+		       BasedOn="{StaticResource DefaultButtonStyle}">
 			<Setter Property="FontSize" Value="12" />
 			<Setter Property="MinWidth" Value="0" />
 			<Setter Property="MinHeight" Value="32" />
@@ -259,6 +259,24 @@
 	<local:PageFrame x:Uid="ScalingModes_PageFrame">
 		<local:PageFrame.HeaderAction>
 			<local:SimpleStackPanel Orientation="Horizontal" Spacing="2">
+				<local:SimpleStackPanel.Resources>
+					<ResourceDictionary>
+						<ResourceDictionary.ThemeDictionaries>
+							<ResourceDictionary x:Key="Default">
+								<StaticResource x:Key="ButtonBackground" ResourceKey="ControlFillColorDefaultBrush" />
+								<StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="ControlFillColorSecondaryBrush" />
+								<StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="ControlFillColorTertiaryBrush" />
+								<StaticResource x:Key="ButtonBackgroundDisabled" ResourceKey="ControlFillColorDisabledBrush" />
+							</ResourceDictionary>
+							<ResourceDictionary x:Key="Light">
+								<StaticResource x:Key="ButtonBackground" ResourceKey="ControlFillColorDefaultBrush" />
+								<StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="ControlFillColorSecondaryBrush" />
+								<StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="ControlFillColorTertiaryBrush" />
+								<StaticResource x:Key="ButtonBackgroundDisabled" ResourceKey="ControlFillColorDisabledBrush" />
+							</ResourceDictionary>
+						</ResourceDictionary.ThemeDictionaries>
+					</ResourceDictionary>
+				</local:SimpleStackPanel.Resources>
 				<Button x:Uid="ScalingModes_General_Import"
 				        Click="{x:Bind ViewModel.Import}"
 				        Style="{StaticResource ScalingModesHeaderButtonStyle}" />

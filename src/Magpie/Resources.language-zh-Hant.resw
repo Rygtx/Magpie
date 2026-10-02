@@ -1755,4 +1755,5 @@
   <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
     <value>重設</value>
   </data>
+  <data name="FrameRefresh_DuplicateDetection_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>重複影格偵測</value></data>
 </root>

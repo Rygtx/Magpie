@@ -1804,4 +1804,5 @@
   <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
     <value>Config folder</value>
   </data>
+  <data name="FrameRefresh_DuplicateDetection_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Duplicate frame detection</value></data>
 </root>

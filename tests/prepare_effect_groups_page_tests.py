@@ -18,8 +18,9 @@ page = ET.parse(repo / 'src/Magpie/ScalingModesPage.xaml').getroot()
 frame = page.find('local:PageFrame', ns)
 actions = frame.find('local:PageFrame.HeaderAction/local:SimpleStackPanel', ns)
 expected = ['Import', 'Export', 'ConfigFolder', 'Reset']
-assert [node.get(uid) for node in actions] == ['ScalingModes_General_' + key for key in expected]
-assert [node.get('Click') for node in actions] == [
+buttons = actions.findall('p:Button', ns)
+assert [node.get(uid) for node in buttons] == ['ScalingModes_General_' + key for key in expected]
+assert [node.get('Click') for node in buttons] == [
     '{x:Bind ViewModel.Import}', '{x:Bind ViewModel.Export}',
     'OpenConfigFolderButton_Click', 'ResetScalingModesButton_Click']
 assert not actions.findall('.//p:Button.Flyout', ns)
@@ -29,6 +30,9 @@ frame_resources = ''.join(ET.tostring(node, encoding='unicode')
                           for node in frame_doc.find('p:UserControl.Resources', ns))
 style_xaml = ('<ResourceDictionary xmlns="' + ns['p'] + '" xmlns:x="' + ns['x'] + '">' +
               frame_resources + ET.tostring(style, encoding='unicode') + '</ResourceDictionary>')
+action_resources = actions.find('local:SimpleStackPanel.Resources/p:ResourceDictionary', ns)
+action_resources_xaml = ET.tostring(action_resources, encoding='unicode') if action_resources is not None else (
+    '<ResourceDictionary xmlns="' + ns['p'] + '" />')
 header = deepcopy(frame_doc.find(
     ".//p:Grid[@x:Name='HeaderGrid']", ns))
 # The icon slot is collapsed on this page. Keep the actual title/presenter/style.
@@ -72,6 +76,7 @@ for language in supported:
 fixture = '\n'.join([
     '#pragma once',
     'constexpr auto HeaderStyleXaml = LR"fixture(' + style_xaml + ')fixture";',
+    'constexpr auto HeaderActionResourcesXaml = LR"fixture(' + action_resources_xaml + ')fixture";',
     'constexpr auto HeaderGridXaml = LR"fixture(' + header_xaml + ')fixture";',
     'constexpr auto NewButtonXaml = LR"fixture(' + button_xaml + ')fixture";',
     'constexpr double HeaderSpacing = ' + actions.get('Spacing') + ';',

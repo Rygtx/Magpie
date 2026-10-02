@@ -66,6 +66,7 @@ int main() {
 					header.Margin({ edge, 54, edge, 16 });
 					const auto actions = MakePanel(Orientation::Horizontal);
 					actions->Spacing(HeaderSpacing);
+					actions->Resources(Markup::XamlReader::Load(HeaderActionResourcesXaml).as<ResourceDictionary>());
 					std::vector<Button> buttons;
 					for (const auto* label : language.labels) {
 						Button button;
@@ -94,6 +95,11 @@ int main() {
 					widestActions = std::max(widestActions, extent);
 					float right = 0;
 					for (const auto& button : buttons) {
+						// Exercise the page's actual resource scope under PageFrame's
+						// transparent header overrides, in both supported themes.
+						assert(button.Background().as<Media::SolidColorBrush>().Color().A > 0);
+						const auto border = button.BorderThickness();
+						assert(border.Left == 0 && border.Top == 0 && border.Right == 0 && border.Bottom == 0);
 						const auto text = button.Content().as<TextBlock>();
 						assert(text.ActualWidth() > 0);
 						assert(std::isnan(button.Width()));

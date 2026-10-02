@@ -1804,4 +1804,5 @@
   <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
     <value>配置文件夹</value>
   </data>
+  <data name="FrameRefresh_DuplicateDetection_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>重复帧检测</value></data>
 </root>

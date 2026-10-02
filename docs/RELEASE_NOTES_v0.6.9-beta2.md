@@ -11,6 +11,7 @@
 - 光标支持 **响应优先／仅随原始内容帧／原始帧优先并补充**。补充刷新率支持自动跟随显示器或自定义最低目标；静止光标不持续触发空呈现，成功发布变化状态才推进刷新期限。
 - 高级区默认折叠，提供空闲持续重绘及数值。有效空闲率受内容上限限制，FG 期间停用后端空闲重绘，但保留配置，光标补充仍独立工作。
 - 新配置及恢复默认：**内容自定义 60 FPS、Front Edge、原始帧优先并补充、光标自定义最低 60 FPS、空闲重绘启用 30 FPS**。实时面板与配置页的内容、光标、空闲三个自定义值统一为 **15–360 FPS**，整数、步进 1；自动目标和旧配置小数继续兼容，只在手动编辑时按新范围取整数。
+- 刷新设置的六项下拉框和三组“数值＋FPS”统一为 225 DIP 输入列，三项数值提供行内步进按钮；窄窗口统一换行，条件提示沿用次级文字样式。
 - 修改自动保存，重新启用缩放后生效；运行时参数面板使用同一设置，可保存并重启。新建应用配置复制当前默认配置或选定模板，之后各自独立保存。
 - 旧全局空闲率、同步模式、独立上限和四种旧光标组合按有效旧行为迁移；不会用新默认值覆盖合法旧选择。保存值与运行时有效值分开，隐藏控件保留数值，恢复默认仅影响当前配置。
 - 运行时保存检查配置身份、窗口、运行会话及字段冲突，防止旧回调写入其他配置。配置恢复规则升级，检查字段类型、枚举和范围。
@@ -20,7 +21,7 @@
 
 - 恢复整个列表下方右侧的 **“＋新建效果组”**，修复负边距与零尺寸布局过滤组合导致按钮消失的问题。
 - 标题右侧直接显示 **导入、导出、配置文件夹、重置**，取代更多菜单；18 种支持语言均提供短文字按钮标签。
-- 四个操作按钮采用与“新建效果组”一致的主题色按钮样式，便于识别可点击区域。
+- 四个操作按钮沿用效果组／效果器普通按钮的中性填充、圆角与交互反馈，边框宽度为 0。
 - 配置文件夹打开当前实际生效目录，支持普通与便携模式；失败提示包含实际路径。导入、导出、新建和重置沿用原流程，重置仍先确认。
 
 ### 3. 快捷键清除
@@ -118,6 +119,7 @@ Local test release dated 2026-10-02. This is the **complete cumulative 0.6.9 cha
 - Cursor modes are **Response first / Original content frames only / Prefer original frames with supplementation**. Supplemental rates can follow the display automatically or use a custom minimum. An unchanged cursor does not continuously present; only successfully published changes advance the deadline.
 - The advanced section starts collapsed and contains idle redraw and its rate. Its effective rate respects the content ceiling. FG disables backend idle redraw while retaining the setting; cursor supplementation remains separate.
 - New/restored defaults: **Custom content 60 FPS, Front Edge, original frames with supplementation, Custom cursor minimum 60 FPS, idle redraw enabled at 30 FPS**. Both the runtime panel and profile page use **15–360 FPS**, integer values in 1-FPS steps, for content, cursor and idle targets. Automatically calculated targets and legacy fractional values remain compatible; explicit edits use the new integer range.
+- Six refresh dropdowns and three rate-and-FPS rows share 225-DIP control columns. Rate inputs use inline steppers, narrow layouts share wrapping rules, and conditional notes use secondary text styling.
 - Edits save automatically and apply after restarting scaling. The runtime parameter panel uses the same model and supports save/restart. New profiles copy the current default or selected template and then save independently.
 - Valid legacy global idle rates, pacing, independent ceilings and four cursor combinations migrate without being replaced by the new defaults. Effective rates do not overwrite saved values; hidden controls retain numbers, and restoring defaults affects only the current profile.
 - Runtime saves validate profile, window, session and field conflicts to reject stale writes. Configuration recovery validates types, enums and ranges.
@@ -127,7 +129,7 @@ Local test release dated 2026-10-02. This is the **complete cumulative 0.6.9 cha
 
 - Restore **+ New effect group** at the lower right below the entire list, repairing the interaction between a negative margin and zero-size layout filtering.
 - Show **Import, Export, Config folder, Reset** directly in the header instead of a more menu, with short labels in all 18 supported languages.
-- The four actions use the same accent button design as New effect group to make their clickable area clear.
+- The four actions use the existing neutral fill, corners and interaction feedback of effect-group and effect-row buttons, with a zero-width border.
 - Config folder opens the active normal/portable path and reports the actual path on failure. Import, export, creation and reset retain their existing flows and reset confirmation.
 
 ### 3. Clear shortcuts
