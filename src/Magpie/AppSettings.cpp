@@ -15,6 +15,7 @@
 #include "MainWindow.h"
 #include "Profile.h"
 #include "ProfileFrameSync.h"
+#include "ProfileFrameRefresh.h"
 #include "resource.h"
 #include "ScalingMode.h"
 #include "ScalingModesService.h"
@@ -89,7 +90,7 @@ static void WriteProfile(rapidjson::PrettyWriter<rapidjson::StringBuffer>& write
 		writer.String(StrHelper::UTF16ToUTF8(profile.launchParameters).c_str());
 	}
 
-	WriteProfileFrameSync(writer, profile.frameSync);
+	WriteProfileFrameRefresh(writer, profile.frameRefresh);
 	writer.Key("parameterFocusSwitching");
 	writer.Bool(profile.isParameterFocusSwitchingEnabled);
 	writer.Key("fullscreenToolbarDock");
@@ -123,10 +124,6 @@ static void WriteProfile(rapidjson::PrettyWriter<rapidjson::StringBuffer>& write
 	writer.Key("deviceId");
 	writer.Uint(profile.graphicsCardId.deviceId);
 	writer.EndObject();
-	writer.Key("frameRateLimiterEnabled");
-	writer.Bool(profile.isFrameRateLimiterEnabled);
-	writer.Key("maxFrameRate");
-	writer.Double(profile.maxFrameRate);
 
 	writer.Key("3DGameMode");
 	writer.Bool(profile.Is3DGameMode());
@@ -149,12 +146,6 @@ static void WriteProfile(rapidjson::PrettyWriter<rapidjson::StringBuffer>& write
 	writer.Bool(profile.isAutoHideCursorEnabled);
 	writer.Key("autoHideCursorDelay");
 	writer.Double(profile.autoHideCursorDelay);
-	writer.Key("cursorPreferOriginalFrames");
-	writer.Bool(profile.cursorRefresh.preferOriginalFrames);
-	writer.Key("cursorMinimumRefreshEnabled");
-	writer.Bool(profile.cursorRefresh.minimumRefreshEnabled);
-	writer.Key("cursorMinimumRefreshRate");
-	writer.Double(CursorRefreshSettings::ValidateRate(profile.cursorRefresh.minimumRefreshRate));
 
 	writer.Key("croppingEnabled");
 	writer.Bool(profile.isCroppingEnabled);
@@ -830,8 +821,8 @@ std::string AppSettings::_Serialize(const _AppSettingsData& data) {
 	writer.Bool(data._isStopEffectsOnTaskSwitchEnabled);
 	writer.Key("vrr");
 	writer.Bool(data._isVRREnabled);
-	writer.Key("minFrameRate");
-	writer.Double(data._minFrameRate);
+	writer.Key("experimentalFrameRefreshVersion");
+	writer.Uint(1);
 	writer.Key("disableFP16");
 	writer.Bool(data._isFP16Disabled);
 	writer.Key("experimentalDlssnrSettingsVersion");
@@ -1033,9 +1024,15 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 		_duplicateFrameDetectionMode = (::Magpie::DuplicateFrameDetectionMode)duplicateFrameDetectionMode;
 	}
 	JsonHelper::ReadBool(root, "enableStatisticsForDynamicDetection", _isStatisticsForDynamicDetectionEnabled);
-	JsonHelper::ReadFloat(root, "minFrameRate", _minFrameRate);
+	float legacyIdle = 10.0f;
+	JsonHelper::ReadFloat(root, "minFrameRate", legacyIdle);
+	if (!std::isfinite(legacyIdle) || legacyIdle < 0 || legacyIdle > 1000) legacyIdle = 10.0f;
 	const FrameSyncSettings legacyFrameSync = ReadProfileFrameSync(root);
-	_defaultProfile.frameSync = legacyFrameSync;
+	uint32_t refreshVersion = 0;
+	JsonHelper::ReadUInt(root, "experimentalFrameRefreshVersion", refreshVersion);
+	const bool migrateLegacyRefresh = refreshVersion < 1;
+	if (migrateLegacyRefresh) _isConfigMigrationNeeded = true;
+	_defaultProfile.frameRefresh = ReadProfileFrameRefresh(root, legacyFrameSync, legacyIdle, migrateLegacyRefresh);
 	uint32_t profileFrameSyncVersion = 0;
 	JsonHelper::ReadUInt(root, "experimentalProfileFrameSyncVersion", profileFrameSyncVersion);
 	if (profileFrameSyncVersion < 1 || root.HasMember("frontEdgeSync") ||
@@ -1114,12 +1111,9 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 
 		const rapidjson::SizeType size = scaleProfilesArray.Size();
 		if (size > 0) {
-			for (const auto& item : scaleProfilesArray) {
-				if (item.IsObject() && !HasProfileFrameSync(item.GetObj())) _isConfigMigrationNeeded = true;
-			}
 			if (scaleProfilesArray[0].IsObject()) {
 				// 解析默认缩放配置不会失败
-				_LoadProfile(scaleProfilesArray[0].GetObj(), _defaultProfile, true, legacyParameterFocusSwitching, legacyFrameSync);
+				_LoadProfile(scaleProfilesArray[0].GetObj(), _defaultProfile, true, legacyParameterFocusSwitching, legacyFrameSync, legacyIdle, migrateLegacyRefresh);
 			}
 
 			if (size > 1) {
@@ -1130,7 +1124,7 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 					}
 
 					Profile& rule = _profiles.emplace_back();
-					if (!_LoadProfile(scaleProfilesArray[i].GetObj(), rule, false, legacyParameterFocusSwitching, legacyFrameSync)) {
+					if (!_LoadProfile(scaleProfilesArray[i].GetObj(), rule, false, legacyParameterFocusSwitching, legacyFrameSync, legacyIdle, migrateLegacyRefresh)) {
 						_profiles.pop_back();
 						continue;
 					}
@@ -1206,9 +1200,11 @@ bool AppSettings::_LoadProfile(
 	Profile& profile,
 	bool isDefault,
 	bool legacyParameterFocusSwitching,
-	const FrameSyncSettings& legacyFrameSync
+	const FrameSyncSettings& legacyFrameSync,
+	float legacyIdle,
+	bool migrateLegacyRefresh
 ) const noexcept {
-	profile.frameSync = ReadProfileFrameSync(profileObj, legacyFrameSync);
+	profile.frameRefresh = ReadProfileFrameRefresh(profileObj, legacyFrameSync, legacyIdle, migrateLegacyRefresh);
 	profile.isParameterFocusSwitchingEnabled = legacyParameterFocusSwitching;
 	JsonHelper::ReadBool(profileObj, "parameterFocusSwitching", profile.isParameterFocusSwitchingEnabled);
 	{
@@ -1359,13 +1355,6 @@ bool AppSettings::_LoadProfile(
 		}
 	}
 
-	JsonHelper::ReadBool(profileObj, "frameRateLimiterEnabled", profile.isFrameRateLimiterEnabled);
-	JsonHelper::ReadFloat(profileObj, "maxFrameRate", profile.maxFrameRate);
-	if (profile.maxFrameRate <= 10.0f - FLOAT_EPSILON<float> ||
-		profile.maxFrameRate >= 1000.0f + FLOAT_EPSILON<float>)
-	{
-		profile.maxFrameRate = 60.0f;
-	}
 
 	JsonHelper::ReadBoolFlag(profileObj, "3DGameMode", ScalingFlags::Is3DGameMode, profile.scalingFlags);
 	if (!JsonHelper::ReadBoolFlag(profileObj, "captureTitleBar", ScalingFlags::CaptureTitleBar, profile.scalingFlags, true)) {
@@ -1400,12 +1389,6 @@ bool AppSettings::_LoadProfile(
 	}
 
 	JsonHelper::ReadBool(profileObj, "autoHideCursorEnabled", profile.isAutoHideCursorEnabled);
-	profile.cursorRefresh = {};
-	JsonHelper::ReadBool(profileObj, "cursorPreferOriginalFrames", profile.cursorRefresh.preferOriginalFrames);
-	JsonHelper::ReadBool(profileObj, "cursorMinimumRefreshEnabled", profile.cursorRefresh.minimumRefreshEnabled);
-	JsonHelper::ReadFloat(profileObj, "cursorMinimumRefreshRate", profile.cursorRefresh.minimumRefreshRate);
-	profile.cursorRefresh.minimumRefreshRate = CursorRefreshSettings::ValidateRate(
-		profile.cursorRefresh.minimumRefreshRate);
 	JsonHelper::ReadFloat(profileObj, "autoHideCursorDelay", profile.autoHideCursorDelay);
 	if (profile.autoHideCursorDelay <= 0.1f - FLOAT_EPSILON<float> ||
 		profile.autoHideCursorDelay >= 5.0f + FLOAT_EPSILON<float>)

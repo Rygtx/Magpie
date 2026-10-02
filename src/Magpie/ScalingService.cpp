@@ -69,9 +69,9 @@ void ScalingService::Initialize() {
 	_toolbarShortcutsChangedRevoker = AppSettings::Get().ShortcutChanged(auto_revoke, [this](ShortcutAction) {
 		if (_scalingRuntime) _scalingRuntime->UpdateToolbarShortcutLabels(GetToolbarShortcutLabels());
 	});
-	_frameSyncChangedRevoker = ProfileService::Get().FrameSyncChanged(auto_revoke, [this](const Profile& profile) {
+	_frameSyncChangedRevoker = ProfileService::Get().FrameRefreshChanged(auto_revoke, [this](const Profile& profile) {
 		if (_activeFrameSyncProfile.lock() != profile.runtimeIdentity) return;
-		if (_scalingRuntime) _scalingRuntime->UpdateFrameSyncSettings(profile.frameSync);
+		if (_scalingRuntime) _scalingRuntime->UpdateFrameRefreshSettings(profile.frameRefresh);
 	});
 
 	// 立即检查前台窗口
@@ -447,16 +447,11 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 
 	options.graphicsCardId = profile.graphicsCardId;
 	options.captureMethod = profile.captureMethod;
-	if (profile.isFrameRateLimiterEnabled) {
-		options.maxFrameRate = profile.maxFrameRate;
-	}
+	ApplyFrameRefreshSettings(options, profile.frameRefresh);
 	options.multiMonitorUsage = profile.multiMonitorUsage;
 	options.preferredMonitorId = profile.preferredMonitorId;
 	options.destAlignment = profile.destAlignment;
 	options.cursorInterpolationMode = profile.cursorInterpolationMode;
-	options.cursorRefresh = profile.cursorRefresh;
-	options.cursorRefresh.minimumRefreshRate = CursorRefreshSettings::ValidateRate(
-		options.cursorRefresh.minimumRefreshRate);
 	options.flags = profile.scalingFlags;
 
 	options.IsWindowedMode(windowedMode);
@@ -552,19 +547,8 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	options.IsFP16Disabled(settings.IsFP16Disabled());
 	options.frameSyncProfileIdentity = profile.runtimeIdentity;
 	_activeFrameSyncProfile = profile.runtimeIdentity;
-	options.isFrontEdgeSyncEnabled = profile.frameSync.enabled;
-	// VRR is deferred while its settings card is hidden. Ignore an older
-	// saved true value so no session silently enables tearing.
+	// VRR remains deferred while its settings card is hidden.
 	options.isVRREnabled = false;
-	options.frontEdgeSyncFrameRate = profile.frameSync.frameRate;
-	options.frameSyncMode = profile.frameSync.mode;
-
-	if (options.maxFrameRate) {
-		// 最小帧数不能大于最大帧数
-		options.minFrameRate = std::min(settings.MinFrameRate(), *options.maxFrameRate);
-	} else {
-		options.minFrameRate = settings.MinFrameRate();
-	}
 
 	options.fullscreenInitialToolbarState = settings.FullscreenInitialToolbarState();
 	options.windowedInitialToolbarState = settings.WindowedInitialToolbarState();
@@ -766,8 +750,8 @@ void ScalingService::_HandleEffectParametersRequest(
 	Profile* frameSyncProfile = FindProfileByIdentity(settings.DefaultProfile(), settings.Profiles(),
 		sessionOptions.frameSyncProfileIdentity);
 	if (!frameSyncProfile) { fail(EffectParametersSaveError::SessionExpired); return; }
-	FrameSyncSettings mergedFrameSync = frameSyncProfile->frameSync;
-	if (!MergeFrameSyncSettings(mergedFrameSync, request.previousFrameSync, request.frameSync)) {
+	FrameRefreshSettings mergedFrameRefresh = frameSyncProfile->frameRefresh;
+	if (!MergeFrameRefreshSettings(mergedFrameRefresh, request.previousFrameRefresh, request.frameRefresh)) {
 		fail(EffectParametersSaveError::Conflict);
 		return;
 	}
@@ -814,11 +798,11 @@ void ScalingService::_HandleEffectParametersRequest(
 		}
 	}
 	mode.effects = std::move(merged);
-	if (frameSyncProfile->frameSync != mergedFrameSync) {
-		frameSyncProfile->frameSync = mergedFrameSync;
-		ProfileService::Get().FrameSyncChanged.Invoke(*frameSyncProfile);
+	if (frameSyncProfile->frameRefresh != mergedFrameRefresh) {
+		frameSyncProfile->frameRefresh = mergedFrameRefresh;
+		ProfileService::Get().FrameRefreshChanged.Invoke(*frameSyncProfile);
 	}
-	if (sessionOptions.parameterSession) sessionOptions.parameterSession->DesiredFrameSync(mergedFrameSync);
+	if (sessionOptions.parameterSession) sessionOptions.parameterSession->DesiredFrameRefresh(mergedFrameRefresh);
 	for (uint32_t i = 0; i < mode.effects.size(); ++i) {
 		ScalingModesService::Get().EffectParametersChanged.Invoke(sessionOptions.scalingModeIdx, i);
 	}
@@ -838,7 +822,7 @@ void ScalingService::_HandleEffectParametersRequest(
 	std::vector<EffectOption> effects;
 	for (const EffectItem& item : mode.effects) effects.push_back(static_cast<EffectOption>(item));
 	if (!_scalingRuntime->RestartWithEffectParameters(request.hwndSource,
-		request.hwndScaling, request.scalingRunId, std::move(effects), mergedFrameSync)) {
+		request.hwndScaling, request.scalingRunId, std::move(effects), mergedFrameRefresh)) {
 		fail(EffectParametersSaveError::SessionExpired);
 	}
 }

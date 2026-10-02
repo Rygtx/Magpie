@@ -14,7 +14,7 @@ if (!$cursorRapid) { throw 'Existing rapidjson dependency not found.' }
 & python "$PSScriptRoot/prepare_cursor_refresh_test.py" $cursorOutput
 if ($LASTEXITCODE) { throw 'Production fixture/binding checks failed.' }
 foreach ($cursorTest in @('CursorRefreshTests','CursorConfigTests','CursorInputSamplingTests')) {
-    & cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX /DNOMINMAX /DUNICODE /D_UNICODE "/I$cursorOutput" "/I$($cursorRapid.FullName)/p/include" `
+    & cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX /DNOMINMAX /DUNICODE /D_UNICODE "/I$cursorOutput" "/I$cursorRepo/src/Magpie.Core/include" "/I$cursorRepo/src/Magpie" "/I$($cursorRapid.FullName)/p/include" `
         "$PSScriptRoot/$cursorTest.cpp" "/Fe:$cursorOutput/$cursorTest.exe" "/Fo:$cursorOutput/$cursorTest.obj"
     if ($LASTEXITCODE) { throw "Isolated test compilation failed: $cursorTest" }
     & "$cursorOutput/$cursorTest.exe"

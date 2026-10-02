@@ -12,6 +12,8 @@ repo = Path(__file__).resolve().parents[1]
 build, output = (Path(arg).resolve() for arg in sys.argv[1:3])
 output.mkdir(parents=True, exist_ok=True)
 obj = build / "obj/Magpie"
+if not obj.exists():
+    obj = build / "obj/x64/Release/Magpie"
 shell = ctypes.windll.shell32
 shell.CommandLineToArgvW.argtypes = [ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_int)]
 shell.CommandLineToArgvW.restype = ctypes.POINTER(ctypes.c_wchar_p)
@@ -37,9 +39,12 @@ midl_log = (obj / "Magpie.tlog/midl.command.1.tlog").read_text(encoding="utf-16"
 args = parse(next(line for line in midl_log if not line.startswith("^") and "APP.IDL" in line.upper()))
 args = args[:next(i for i, arg in enumerate(args) if arg.startswith("@")) + 1]
 args[args.index("/winmd") + 1] = str(output / "App.winmd")
+args[-1] = "@" + str(obj / "Magpie.vcxproj.midlrt.rsp")
 args.append(str(repo / "src/Magpie/App.idl"))
 print("Production IDL: App.idl including ProfileViewModel", flush=True)
 run(["midl.exe"] + args, repo / "src/Magpie")
+if not (output / "App.winmd").exists():
+    raise RuntimeError("MIDL reported success without producing the current App.winmd; inspect native-tools.log")
 
 generated = output / "Generated Files"
 args = parse((obj / "Magpie.vcxproj.cppwinrt_comp.rsp").read_text(encoding="utf-8-sig"))
@@ -48,7 +53,10 @@ args[args.index("-comp") + 1] = str(generated / "sources")
 args[args.index("-out") + 1] = str(generated)
 args += ["-in", str(obj / "Unmerged/XamlMetaDataProvider.winmd")]
 print("Generate current application projection headers", flush=True)
-run([str(repo / "packages/Microsoft.Windows.CppWinRT.3.0.260520.1/bin/cppwinrt.exe")]
+cppwinrt = repo / "packages/Microsoft.Windows.CppWinRT.3.0.260520.1/bin/cppwinrt.exe"
+if not cppwinrt.exists():
+    cppwinrt = repo.parents[1] / "source/packages/Microsoft.Windows.CppWinRT.3.0.260520.1/bin/cppwinrt.exe"
+run([str(cppwinrt)]
     + args, output)
 
 lines = (obj / "Magpie.tlog/CL.command.1.tlog").read_text(encoding="utf-16").splitlines()
@@ -60,6 +68,8 @@ defines = list(dict.fromkeys(args[i + 1] for i, arg in enumerate(args[:-1]) if a
 base = ["cl.exe", "/nologo", "/Zs", "/Y-", "/std:c++20", "/EHsc", "/utf-8", "/MT",
         "/W3", "/WX", "/permissive-", "/bigobj", "/Zc:__cplusplus", "/volatile:iso",
         "/I" + str(generated), "/I" + str(generated / "sources"),
+        "/I" + str(output / "xaml"),
+        "/I" + str(obj / "Generated Files"),
         "/I" + str(repo / "src/Magpie.Core/include"), "/I" + str(repo / "src/Magpie")]
 base += includes + [arg for define in defines for arg in ("/D", define)]
 for file in sys.argv[3:] or ["AppSettings.cpp", "ProfileViewModel.cpp", "HomeViewModel.cpp", "ScalingService.cpp"]:

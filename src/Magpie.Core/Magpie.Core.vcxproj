@@ -144,6 +144,7 @@
     <ClInclude Include="FramePresentationTiming.h" />
     <ClInclude Include="FramePacingWait.h" />
     <ClInclude Include="include\FramePacingOptions.h" />
+    <ClInclude Include="include\FrameRefreshSettings.h" />
     <ClInclude Include="FrameGuidanceTypes.h" />
     <ClInclude Include="FrameGuidancePerformance.h" />
     <ClInclude Include="NativeBackendTiming.h" />

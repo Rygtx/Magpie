@@ -165,14 +165,14 @@ void ScalingRuntime::UpdateToolbarShortcutLabels(ToolbarShortcutLabels labels) {
 	});
 }
 
-void ScalingRuntime::UpdateFrameSyncSettings(FrameSyncSettings settings) {
+void ScalingRuntime::UpdateFrameRefreshSettings(FrameRefreshSettings settings) {
 	if (State() == ScalingState::Idle || State() == ScalingState::Stopping) return;
 	const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);
 	_Dispatcher().TryEnqueue([this, generation, settings]() {
 		if (_commandGeneration.load(std::memory_order_acquire) != generation) return;
 		auto& window = ScalingWindow::Get();
 		if (auto session = window.Options().parameterSession) {
-			session->DesiredFrameSync(settings);
+			session->DesiredFrameRefresh(settings);
 			if (window) window.RenderOverlay();
 		}
 	});
@@ -223,12 +223,12 @@ bool ScalingRuntime::RestartWithEffectParameters(
 	HWND hwndScaling,
 	uint32_t scalingRunId,
 	std::vector<EffectOption>&& effects,
-	FrameSyncSettings frameSync
+	FrameRefreshSettings frameRefresh
 ) {
 	const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);
 	return _Dispatcher().TryEnqueue([
 		this, hwndSource, hwndScaling, scalingRunId, generation,
-		effects = std::move(effects), frameSync
+		effects = std::move(effects), frameRefresh
 	]() mutable {
 		if (_commandGeneration.load(std::memory_order_acquire) != generation ||
 			State() != ScalingState::Scaling) return;
@@ -238,7 +238,7 @@ bool ScalingRuntime::RestartWithEffectParameters(
 			window.SrcTracker().Handle() != hwndSource) {
 			return;
 		}
-		window.RestartWithEffectParameters(std::move(effects), frameSync);
+		window.RestartWithEffectParameters(std::move(effects), frameRefresh);
 	});
 }
 

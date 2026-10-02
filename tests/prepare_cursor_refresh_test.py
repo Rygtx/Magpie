@@ -58,10 +58,9 @@ uid = "Home_Advanced_DeveloperOptions_DuplicateFrameDetection"
 cards = [n for n in home.iter() if n.get(x + "Uid") == uid]
 assert len(cards) == 1 and cards[0] not in list(dev.iter())
 profile_ui = ET.fromstring(read("src/Magpie/ProfilePage.xaml"))
-new_uids = {n.get(x + "Uid") for n in profile_ui.iter() if n.get(x + "Uid", "").startswith("Profile_Cursor_Refresh")}
-rate = next(n for n in profile_ui.iter() if "ViewModel.CursorMinimumRefreshRate" in n.get("Value", ""))
+new_uids = {n.get(x + "Uid") for n in profile_ui.iter() if n.get(x + "Uid", "").startswith("FrameRefresh") and n.tag in (ns+"SettingsCard", ns+"SettingsExpander", ns+"SettingsGroup")}
+rate = next(n for n in profile_ui.iter() if "ViewModel.CursorSupplementRate" in n.get("Value", ""))
 assert rate.get("Minimum") == "1" and rate.get("Maximum") == "1000"
-assert "ViewModel.IsCursorMinimumRefreshEnabled" in rate.get("IsEnabled")
 for lang in ("en-US", "zh-Hans", "zh-Hant"):
     root = ET.fromstring(read(f"src/Magpie/Resources.language-{lang}.resw"))
     names = [n.get("name") for n in root.findall("data")]
@@ -73,7 +72,7 @@ assert '<DefaultLanguage>en-US</DefaultLanguage>' in read("src/Common.Pre.props"
 idl = read("src/Magpie/ProfileViewModel.idl")
 header = read("src/Magpie/ProfileViewModel.h")
 vm = read("src/Magpie/ProfileViewModel.cpp")
-for name in ("IsCursorOriginalFramePreferred", "IsCursorMinimumRefreshEnabled", "CursorMinimumRefreshRate"):
+for name in ("CursorRefreshModeIndex", "CursorSupplementModeIndex", "CursorSupplementRate"):
     assert name in idl and name in header and f"ProfileViewModel::{name}(" in vm
     assert f'RaisePropertyChanged(L"{name}")' in vm
 print("Production config extracted; XAML bindings, permanent entries and three language resources checked.")

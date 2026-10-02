@@ -2,6 +2,8 @@
 #include "HomeViewModel.g.h"
 #include "Event.h"
 
+namespace Magpie { struct Profile; }
+
 namespace winrt::Magpie::implementation {
 
 struct HomeViewModel : HomeViewModelT<HomeViewModel>, wil::notify_property_changed_base<HomeViewModel> {
@@ -86,10 +88,8 @@ struct HomeViewModel : HomeViewModelT<HomeViewModel>, wil::notify_property_chang
 	bool IsVRREnabled() const noexcept;
 	void IsVRREnabled(bool value);
 
-	static IVector<IInspectable> MinFrameRateOptions();
-
-	int MinFrameRateIndex() const noexcept;
-	void MinFrameRateIndex(int value);
+	hstring DefaultFrameRefreshSummary() const;
+	void EditDefaultFrameRefresh();
 
 	bool IsDeveloperMode() const noexcept;
 	void IsDeveloperMode(bool value);
@@ -131,6 +131,7 @@ struct HomeViewModel : HomeViewModelT<HomeViewModel>, wil::notify_property_chang
 	void IsStatisticsForDynamicDetectionEnabled(bool value);
 
 private:
+	::Magpie::Event<::Magpie::Profile&>::EventRevoker _frameRefreshChangedRevoker;
 	void _ScalingService_IsTimerOnChanged(bool value, bool windowedMode);
 
 	void _ScalingService_TimerTick(double);
@@ -149,5 +150,3 @@ private:
 };
 
 }
-
-BASIC_FACTORY(HomeViewModel)

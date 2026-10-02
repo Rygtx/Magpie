@@ -1452,7 +1452,7 @@
   <data name="Home_FrameSync_VRR.Header" xml:space="preserve"><value>VRR（可变刷新率）</value></data>
   <data name="Home_FrameSync_VRR.Description" xml:space="preserve"><value>允许兼容 FreeSync / G-SYNC 的呈现。需同时在显示器和驱动中开启 VRR；未生效时可能出现撕裂。</value></data>
   <data name="EffectParam_FrameRate_Filter_frameRateMode_Label" xml:space="preserve"><value>帧率模式</value></data>
-  <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_0" xml:space="preserve"><value>跟随帧同步目标</value></data>
+  <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_0" xml:space="preserve"><value>跟随内容帧率目标</value></data>
   <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_1" xml:space="preserve"><value>自定义</value></data>
   <data name="Overlay_EffectParameters_AutoRestart" xml:space="preserve"><value>自动重启</value></data>
   <data name="Overlay_EffectParameters_Reason_AutoRestart" xml:space="preserve"><value>编辑结束后自动停用效果组，等待 500 毫秒再重新启用，以重建 DLSSNR 历史。</value></data>
@@ -1566,7 +1566,7 @@
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_saturation_Label" xml:space="preserve"><value>饱和度</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_middleGray_Label" xml:space="preserve"><value>中间灰</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_peakNits_Label" xml:space="preserve"><value>峰值亮度（尼特）</value></data>
-  <data name="FrameSync_Mode_FrontEdge.Content" xml:space="preserve"><value>Front Edge Sync</value></data>
+  <data name="FrameSync_Mode_FrontEdge.Content" xml:space="preserve"><value>Front Edge</value></data>
   <data name="FrameSync_Mode_Async.Content" xml:space="preserve"><value>Async</value></data>
   <data name="FrameSync_Mode_Reflex.Content" xml:space="preserve"><value>NVIDIA Reflex</value></data>
   <data name="Home_FrameSync_Mode.Header" xml:space="preserve"><value>同步模式</value></data>
@@ -1755,4 +1755,49 @@
   <data name="EffectParameter_Help_Step" xml:space="preserve"><value>步进</value></data>
   <data name="EffectParameter_Help_AntiFlickerRequired" xml:space="preserve"><value>开启抗闪烁后可调节此参数。</value></data>
 
+  <data name="FrameRefresh_Source.Content" xml:space="preserve"><value>跟随源</value></data>
+  <data name="FrameRefresh_Auto.Content" xml:space="preserve"><value>自动</value></data>
+  <data name="FrameRefresh_Custom.Content" xml:space="preserve"><value>自定义</value></data>
+  <data name="FrameRefresh_Off.Content" xml:space="preserve"><value>关闭</value></data>
+  <data name="FrameRefresh_Responsive.Content" xml:space="preserve"><value>响应优先</value></data>
+  <data name="FrameRefresh_OriginalOnly.Content" xml:space="preserve"><value>仅随原始内容帧</value></data>
+  <data name="FrameRefresh_Supplement.Content" xml:space="preserve"><value>原始帧优先并补充</value></data>
+  <data name="FrameRefresh_ResetButton.Content" xml:space="preserve"><value>恢复默认</value></data>
+  <data name="Home_FrameRefresh_Edit.Content" xml:space="preserve"><value>编辑默认配置</value></data>
+  <data name="Home_FrameRefresh_Summary" xml:space="preserve"><value>内容：{} · 光标：{} · 空闲重绘：{}</value></data>
+  <data name="FrameRefresh_RestartNotice" xml:space="preserve"><value>修改自动保存；重新启用缩放或使用“保存并重启”后生效。</value></data>
+  <data name="FrameRefresh_LegacyNotice" xml:space="preserve"><value>此配置保留旧节奏／光标约束。修改对应模式、内容目标或节奏方式后，由新设置接管对应兼容约束。</value></data>
+  <data name="FrameRefresh_IdleLimitNotice" xml:space="preserve"><value>空闲重绘生效值受内容目标或旧上限约束，保存值保持不变。</value></data>
+  <data name="FrameRefresh.Header" xml:space="preserve"><value>帧率与刷新</value></data>
+  <data name="FrameRefresh_Content.Header" xml:space="preserve"><value>内容帧率</value></data>
+  <data name="FrameRefresh_Pacing.Header" xml:space="preserve"><value>节奏控制方式</value></data>
+  <data name="FrameRefresh_ContentRate.Header" xml:space="preserve"><value>目标基础帧率</value></data>
+  <data name="FrameRefresh_Cursor.Header" xml:space="preserve"><value>光标刷新方式</value></data>
+  <data name="FrameRefresh_CursorSupplement.Header" xml:space="preserve"><value>光标补充刷新率</value></data>
+  <data name="FrameRefresh_CursorRate.Header" xml:space="preserve"><value>目标最低刷新率</value></data>
+  <data name="FrameRefresh_Advanced.Header" xml:space="preserve"><value>高级选项</value></data>
+  <data name="FrameRefresh_Idle.Header" xml:space="preserve"><value>空闲持续重绘</value></data>
+  <data name="FrameRefresh_IdleRate.Header" xml:space="preserve"><value>空闲重绘率</value></data>
+  <data name="FrameRefresh_Reset.Header" xml:space="preserve"><value>恢复刷新默认设置</value></data>
+  <data name="Home_FrameRefresh.Header" xml:space="preserve"><value>默认帧率与刷新</value></data>
+  <data name="FrameRefresh.Description" xml:space="preserve"><value>按配置独立保存，重新启用缩放后生效。</value></data>
+  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>控制 Magpie 的基础内容处理节奏。自动按显示刷新率及补帧倍率计算；不改变源应用帧率。</value></data>
+  <data name="FrameRefresh_Pacing.Description" xml:space="preserve"><value>控制内容目标的执行方式。XeSS 补帧由 XeLL 接管；Reflex 不可用时回退到 Async。</value></data>
+  <data name="FrameRefresh_ContentRate.Description" xml:space="preserve"><value>基础处理目标；补帧后的输出帧率另按倍率计算。</value></data>
+  <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>更新变化的系统光标。仅随原始内容帧时等待新原始帧；补充模式在内容不足时追加更新。</value></data>
+  <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>自动跟随显示刷新率；仅在光标有待发布变化时补充刷新。</value></data>
+  <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>这是补充目标而非上限。原始内容较快时可以高于此值，实际受显示与呈现能力限制。</value></data>
+  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>没有新内容时的可选重绘。</value></data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>没有新内容时定期重绘，可能增加功耗；受内容上限约束，补帧期间停用。不会提高源应用真实帧率。</value></data>
+  <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>受内容上限约束，保存值保持不变。</value></data>
+  <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>将当前配置恢复为内容 60、光标补充 60、空闲重绘 30 FPS，节奏方式为 Front Edge。</value></data>
+  <data name="FrameRefresh_Content_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>内容帧率</value></data>
+  <data name="FrameRefresh_Pacing_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>节奏控制方式</value></data>
+  <data name="FrameRefresh_ContentRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>目标基础帧率</value></data>
+  <data name="FrameRefresh_Cursor_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>光标刷新方式</value></data>
+  <data name="FrameRefresh_CursorSupplement_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>光标补充刷新率</value></data>
+  <data name="FrameRefresh_CursorRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>目标最低刷新率</value></data>
+  <data name="FrameRefresh_Idle_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>空闲持续重绘</value></data>
+  <data name="FrameRefresh_IdleRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>空闲重绘率</value></data>
+  <data name="FrameRefresh_LegacyCapNotice" xml:space="preserve"><value>保留的旧上限：{} FPS</value></data>
 </root>

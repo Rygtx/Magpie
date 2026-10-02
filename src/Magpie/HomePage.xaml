@@ -300,27 +300,10 @@
 					<ToggleSwitch x:Uid="ToggleSwitch"
 					              IsOn="{x:Bind ViewModel.IsInlineParams, Mode=TwoWay}" />
 				</local:SettingsCard>
-				<local:SettingsCard x:Uid="Home_Advanced_MinFrameRate"
-				                    IsWrapEnabled="True">
-					<local:SettingsCard.HeaderIcon>
-						<FontIcon Glyph="&#xECAD;" />
-					</local:SettingsCard.HeaderIcon>
-					<Grid MinWidth="{StaticResource SettingsCardContentMinWidth}">
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="*" />
-							<ColumnDefinition Width="Auto" />
-						</Grid.ColumnDefinitions>
-						<ComboBox Grid.Column="0"
-						          MinWidth="0"
-						          Margin="0,0,8,0"
-						          HorizontalAlignment="Stretch"
-						          DropDownOpened="ComboBox_DropDownOpened"
-						          ItemsSource="{x:Bind local:HomeViewModel.MinFrameRateOptions, Mode=OneTime}"
-						          SelectedIndex="{x:Bind ViewModel.MinFrameRateIndex, Mode=TwoWay}" />
-						<TextBlock Grid.Column="1"
-						           VerticalAlignment="Center"
-						           Text="FPS" />
-					</Grid>
+				<local:SettingsCard x:Uid="Home_FrameRefresh" IsWrapEnabled="True"
+				                    Description="{x:Bind ViewModel.DefaultFrameRefreshSummary, Mode=OneWay}">
+					<local:SettingsCard.HeaderIcon><FontIcon Glyph="&#xECAD;" /></local:SettingsCard.HeaderIcon>
+					<Button x:Uid="Home_FrameRefresh_Edit" Click="{x:Bind ViewModel.EditDefaultFrameRefresh}" />
 				</local:SettingsCard>
 				<local:SettingsCard x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection"
 				                    IsWrapEnabled="True">

@@ -1452,7 +1452,7 @@
   <data name="Home_FrameSync_VRR.Header" xml:space="preserve"><value>VRR (variable refresh rate)</value></data>
   <data name="Home_FrameSync_VRR.Description" xml:space="preserve"><value>Allow compatible FreeSync / G-SYNC presentation. Enable VRR on both the display and driver; tearing may occur when VRR is inactive.</value></data>
   <data name="EffectParam_FrameRate_Filter_frameRateMode_Label" xml:space="preserve"><value>Frame Rate Mode</value></data>
-  <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_0" xml:space="preserve"><value>Follow frame synchronization</value></data>
+  <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_0" xml:space="preserve"><value>Follow content target</value></data>
   <data name="EffectParam_FrameRate_Filter_frameRateMode_Option_1" xml:space="preserve"><value>Custom</value></data>
   <data name="Overlay_EffectParameters_AutoRestart" xml:space="preserve"><value>Auto restart</value></data>
   <data name="Overlay_EffectParameters_Reason_AutoRestart" xml:space="preserve"><value>After editing, the effect group stops and restarts after 500 ms to rebuild DLSSNR history.</value></data>
@@ -1566,7 +1566,7 @@
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_saturation_Label" xml:space="preserve"><value>Saturation</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_middleGray_Label" xml:space="preserve"><value>Middle gray</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_peakNits_Label" xml:space="preserve"><value>Peak brightness (nits)</value></data>
-  <data name="FrameSync_Mode_FrontEdge.Content" xml:space="preserve"><value>Front Edge Sync</value></data>
+  <data name="FrameSync_Mode_FrontEdge.Content" xml:space="preserve"><value>Front Edge</value></data>
   <data name="FrameSync_Mode_Async.Content" xml:space="preserve"><value>Async</value></data>
   <data name="FrameSync_Mode_Reflex.Content" xml:space="preserve"><value>NVIDIA Reflex</value></data>
   <data name="Home_FrameSync_Mode.Header" xml:space="preserve"><value>Pacing mode</value></data>
@@ -1755,4 +1755,49 @@
   <data name="EffectParameter_Help_Step" xml:space="preserve"><value>Step</value></data>
   <data name="EffectParameter_Help_AntiFlickerRequired" xml:space="preserve"><value>Enable Anti-flicker to adjust this parameter.</value></data>
 
+  <data name="FrameRefresh_Source.Content" xml:space="preserve"><value>Follow source</value></data>
+  <data name="FrameRefresh_Auto.Content" xml:space="preserve"><value>Auto</value></data>
+  <data name="FrameRefresh_Custom.Content" xml:space="preserve"><value>Custom</value></data>
+  <data name="FrameRefresh_Off.Content" xml:space="preserve"><value>Off</value></data>
+  <data name="FrameRefresh_Responsive.Content" xml:space="preserve"><value>Responsive</value></data>
+  <data name="FrameRefresh_OriginalOnly.Content" xml:space="preserve"><value>Original content frames only</value></data>
+  <data name="FrameRefresh_Supplement.Content" xml:space="preserve"><value>Original frames + supplement</value></data>
+  <data name="FrameRefresh_ResetButton.Content" xml:space="preserve"><value>Restore defaults</value></data>
+  <data name="Home_FrameRefresh_Edit.Content" xml:space="preserve"><value>Edit default profile</value></data>
+  <data name="Home_FrameRefresh_Summary" xml:space="preserve"><value>Content: {} · Cursor: {} · Idle redraw: {}</value></data>
+  <data name="FrameRefresh_RestartNotice" xml:space="preserve"><value>Automatically saved. Re-enable scaling or use Save and restart to apply.</value></data>
+  <data name="FrameRefresh_LegacyNotice" xml:space="preserve"><value>Legacy pacing/cursor constraints are retained for this profile. Editing the relevant mode, content target, or pacing method replaces its compatibility constraint.</value></data>
+  <data name="FrameRefresh_IdleLimitNotice" xml:space="preserve"><value>The effective idle redraw rate is limited by the content target or legacy cap. The saved rate is unchanged.</value></data>
+  <data name="FrameRefresh.Header" xml:space="preserve"><value>Frame rate and refresh</value></data>
+  <data name="FrameRefresh_Content.Header" xml:space="preserve"><value>Content frame rate</value></data>
+  <data name="FrameRefresh_Pacing.Header" xml:space="preserve"><value>Pacing method</value></data>
+  <data name="FrameRefresh_ContentRate.Header" xml:space="preserve"><value>Target base frame rate</value></data>
+  <data name="FrameRefresh_Cursor.Header" xml:space="preserve"><value>Cursor refresh mode</value></data>
+  <data name="FrameRefresh_CursorSupplement.Header" xml:space="preserve"><value>Supplemental cursor refresh rate</value></data>
+  <data name="FrameRefresh_CursorRate.Header" xml:space="preserve"><value>Target minimum refresh rate</value></data>
+  <data name="FrameRefresh_Advanced.Header" xml:space="preserve"><value>Advanced options</value></data>
+  <data name="FrameRefresh_Idle.Header" xml:space="preserve"><value>Continuous idle redraw</value></data>
+  <data name="FrameRefresh_IdleRate.Header" xml:space="preserve"><value>Idle redraw rate</value></data>
+  <data name="FrameRefresh_Reset.Header" xml:space="preserve"><value>Restore refresh defaults</value></data>
+  <data name="Home_FrameRefresh.Header" xml:space="preserve"><value>Default frame rate and refresh</value></data>
+  <data name="FrameRefresh.Description" xml:space="preserve"><value>Saved per profile. Re-enable scaling to apply.</value></data>
+  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>Controls Magpie’s base content processing. Auto uses display refresh and the frame generation multiplier; source FPS is unchanged.</value></data>
+  <data name="FrameRefresh_Pacing.Description" xml:space="preserve"><value>Executes the content target. XeSS FG uses XeLL; unavailable Reflex falls back to Async.</value></data>
+  <data name="FrameRefresh_ContentRate.Description" xml:space="preserve"><value>Base processing target. Generated output FPS also depends on the multiplier.</value></data>
+  <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>Updates a changed system cursor. Original-only waits for new non-generated content; supplement fills slower-content gaps.</value></data>
+  <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>Auto follows the display refresh rate. Only pending cursor changes request supplemental refreshes.</value></data>
+  <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>Supplemental minimum, not a cap. Faster original content can refresh above it; presentation capacity still applies.</value></data>
+  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>Optional redraws when content is idle.</value></data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>Redraws old content while idle and may increase power use. Limited by the content target; disabled during frame generation. Does not increase source FPS.</value></data>
+  <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>The saved target is retained even when runtime limits reduce it.</value></data>
+  <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>Resets this profile to content 60, supplemental cursor 60, idle redraw 30 FPS, and Front Edge.</value></data>
+  <data name="FrameRefresh_Content_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Content frame rate</value></data>
+  <data name="FrameRefresh_Pacing_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Pacing method</value></data>
+  <data name="FrameRefresh_ContentRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Target base frame rate</value></data>
+  <data name="FrameRefresh_Cursor_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Cursor refresh mode</value></data>
+  <data name="FrameRefresh_CursorSupplement_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Supplemental cursor refresh rate</value></data>
+  <data name="FrameRefresh_CursorRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Target minimum refresh rate</value></data>
+  <data name="FrameRefresh_Idle_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Continuous idle redraw</value></data>
+  <data name="FrameRefresh_IdleRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Idle redraw rate</value></data>
+  <data name="FrameRefresh_LegacyCapNotice" xml:space="preserve"><value>Retained legacy cap: {} FPS</value></data>
 </root>

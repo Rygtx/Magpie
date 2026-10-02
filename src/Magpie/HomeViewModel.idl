@@ -40,8 +40,8 @@ namespace Magpie {
 		Boolean IsInlineParams;
 		Boolean IsStopEffectsOnTaskSwitchEnabled;
 		Boolean IsVRREnabled;
-		static IVector<IInspectable> MinFrameRateOptions { get; };
-		Int32 MinFrameRateIndex;
+		String DefaultFrameRefreshSummary { get; };
+		void EditDefaultFrameRefresh();
 
 		Boolean IsDeveloperMode;
 		void LocateMagpieLogs();
