@@ -14,6 +14,9 @@ struct NativeEffectDrawContext {
 	HdrFrameMetadata inputMetadata{};
 	HdrFrameMetadata outputMetadata{};
 	FrameGuidanceFrameId frameId = 0;
+	// IDs may skip rejected Reflex GPU attempts. Motion still points to the
+	// previous accepted capture, rather than necessarily frameId - 1.
+	FrameGuidanceFrameId previousCaptureFrameId = 0;
 	// Content version of the actual upstream output, including ordinary new
 	// captures and same-frame edits. Include in cache keys, but use the separate
 	// history epoch/reset below when deciding whether to discard temporal state.

@@ -135,7 +135,7 @@ bool DLSSNRTemporal::Draw(const NativeEffectDrawContext& context) noexcept {
 	const auto& meta = motion ? guidance.motion.metadata : zero;
 	const bool reset = context.inputHistoryReset || context.zeroFrameGuidance.requiresHistoryReset || zero.requiresHistoryReset ||
 		(motion && (guidance.requiresHistoryReset || meta.requiresHistoryReset)) ||
-		(motion && impl.state.valid && context.frameId != impl.state.frame && context.frameId != impl.state.frame + 1) ||
+		(motion && !impl.state.MotionPairMatches(context.frameId, context.previousCaptureFrameId)) ||
 		motion != impl.lastMotion || meta.validRegion != impl.region;
 	// Duplicate draws leave both ping-pong indices and EMA time untouched.
 	if (!reset && impl.lastInputRevision == context.inputRevision &&

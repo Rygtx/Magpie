@@ -6,6 +6,7 @@ namespace Magpie {
 
 class DeviceResources;
 class BackendDescriptorStore;
+class ReflexController;
 
 enum class FrameSourceWaitType {
 	NoWait,
@@ -40,6 +41,7 @@ public:
 	virtual bool Start() noexcept { return true; }
 
 	FrameSourceState Update() noexcept;
+	void SetReflexController(ReflexController* controller) noexcept { _reflex = controller; }
 	CaptureFrameReason LastUpdateReason() const noexcept { return _lastUpdateReason; }
 
 	// Backend-thread state. A sequence changes only on a real capture discontinuity;
@@ -98,6 +100,9 @@ public:
 	virtual void OnCursorVisibilityChanged(bool /*isVisible*/, bool /*onDestory*/) noexcept {};
 
 protected:
+	// Capture acquisition/readiness checks happen before this hook. Call it
+	// before the first GPU operation on the candidate texture.
+	void _BeginCaptureRender() noexcept;
 	virtual ColorDescription _GetSourceColorDescription() const noexcept;
 	uint64_t _captureSequence = 0;
 	bool _captureInterrupted = false;
@@ -138,6 +143,7 @@ protected:
 	std::pair<uint32_t, uint32_t> _dispatchCount;
 
 private:
+	ReflexController* _reflex = nullptr;
 	CaptureFrameReason _lastUpdateReason = CaptureFrameReason::NoFrame;
 	bool _duplicateComparisonFailed = false;
 	bool _duplicateReadbackFailureLogged = false;
