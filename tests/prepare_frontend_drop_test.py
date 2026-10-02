@@ -22,7 +22,7 @@ def block(source, marker):
     return source[start:end]
 
 update = block(s, 'Renderer::FrontendBaseResult Renderer::_UpdateFrontendBase(')
-update = update[:update.index('\n\tD3D11_TEXTURE2D_DESC sourceDesc')] + '\nreturn FrontendBaseResult::Ready;\n}'
+update = update[:update.index('\n\t// IDs are protected by accessLock')] + '\nreturn FrontendBaseResult::Ready;\n}'
 render = block(s, 'bool Renderer::_FrontendRender(')
 dispatch = block(render, 'if (!stableBaseOnly) {')
 dlss = block(s, 'DLSSFGFrameRenderResult Renderer::RenderDLSSFGFrame(')

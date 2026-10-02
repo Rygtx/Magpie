@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "FrameTrace.h"
 #include "FrameSourceBase.h"
+#include "ReflexController.h"
 #include "BackendDescriptorStore.h"
 #include "DeviceResources.h"
 #include "DirectXHelper.h"
@@ -73,6 +74,10 @@ bool FrameSourceBase::Initialize(DeviceResources& deviceResources, BackendDescri
 	}
 
 	return true;
+}
+
+void FrameSourceBase::_BeginCaptureRender() noexcept {
+	if (_reflex) _reflex->BeginCaptureRender();
 }
 
 FrameSourceState FrameSourceBase::Update() noexcept {

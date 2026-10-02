@@ -802,6 +802,12 @@ Renderer::FrontendBaseResult Renderer::_UpdateFrontendBase(uint32_t sharedTextur
 		return FrontendBaseResult::Dropped;
 	}
 
+	// IDs are protected by accessLock and belong to this publication. Start
+	// before texture creation/copies, after rejecting stale or unavailable slots.
+	_frontendReflexIds = _sharedReflexIds[sharedTextureSlot];
+	_presenter->SetReflexFrame(_frontendReflexIds.first, _frontendReflexIds.second,
+		_sharedFrameMetadata[sharedTextureSlot].generated);
+	_presenter->BeginReflexRender();
 	D3D11_TEXTURE2D_DESC sourceDesc{};
 	source->GetDesc(&sourceDesc);
 	bool recreateBase = !_frontendBaseTexture || !_frontendPresentedBaseTexture;
@@ -832,7 +838,6 @@ Renderer::FrontendBaseResult Renderer::_UpdateFrontendBase(uint32_t sharedTextur
 		_frontendResources.GetD3DDC()->CopyResource(_frontendBaseTexture.get(), source);
 		_frontendCaptureFrameId = _sharedTextureFrameIds[sharedTextureSlot].load(std::memory_order_acquire);
 		_frontendFrameMetadata = _sharedFrameMetadata[sharedTextureSlot];
-		_frontendReflexIds = _sharedReflexIds[sharedTextureSlot];
 		FrameTrace::SetFrame(_frontendCaptureFrameId);
 		traceBase.FrameId(_frontendCaptureFrameId);
 		if (!_passThroughFrames.Consume(sharedTextureSlot) && _isPassThroughActive) {
@@ -955,6 +960,14 @@ bool Renderer::_FrontendRender(
 		return false;
 	}
 	const auto beginFrameStart = std::chrono::steady_clock::now();
+	if (!_presenter->PrepareFrame()) {
+		if (timings) {
+			timings->beginFrame = std::chrono::steady_clock::now() - beginFrameStart;
+			timings->capacityBusy = _presenter->WasFrameCapacityBusy();
+		}
+		return false;
+	}
+	auto cancelReflexRender = wil::scope_exit([this] { _presenter->CancelReflexRender(); });
 	if (sharedTextureSlot >= _sharedTextureSlotCount) {
 		sharedTextureSlot = _latestSharedTextureSlot.load(std::memory_order_acquire);
 	}
@@ -1005,6 +1018,7 @@ bool Renderer::_FrontendRender(
 		}
 		return false;
 	}
+	cancelReflexRender.release();
 	FrameTrace::Scope traceDraw(FrameTrace::Event::FrontendDraw, stableBaseOnly, _isPassThroughActive);
 	const auto drawStart = std::chrono::steady_clock::now();
 	if (timings) {
@@ -1704,6 +1718,7 @@ bool Renderer::_InitFrameSource() noexcept {
 		_backendInitSystemError = captureDiagnostic.SystemError();
 		return false;
 	}
+	_frameSource->SetReflexController(&_reflex);
 	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() &&
 		!_hdrPresentationAdapter.Initialize(_backendResources, _backendDescriptorStore)) {
 		Logger::Get().Error("初始化 HDR 发布适配器失败");
@@ -2982,6 +2997,11 @@ void Renderer::_BackendThreadProc() noexcept {
 		if (_sessionLifetime->IsStopping()) continue;
 		_stepTimer.CaptureStarting();
 		const FrameSourceState frameSourceState = _frameSource->Update();
+		// A rejected GPU comparison is a completed attempt. Polls without GPU
+		// work retain their slept candidate, and staged FG retains its base ID.
+		const auto discardReflexRender = wil::scope_exit([this] {
+			if (!_pendingFrameGenerationInput) _reflex.DiscardCaptureRender();
+		});
 		traceCapture.Data(static_cast<int64_t>(frameSourceState));
 		traceCapture.End();
 		FrameTrace::Mark(FrameTrace::Event::CaptureResult, static_cast<int64_t>(frameSourceState),
@@ -2990,6 +3010,7 @@ void Renderer::_BackendThreadProc() noexcept {
 		switch (frameSourceState) {
 		case FrameSourceState::Waiting:
 			if (_frameSource->IsCaptureInterrupted()) {
+				_reflex.CompleteCapture();
 				// Keep the last published frame; even live parameter edits must wait
 				// for valid input before re-entering temporal effects. The timeout
 				// also avoids busy spinning after the minimum-FPS deadline expires.
@@ -3033,6 +3054,7 @@ void Renderer::_BackendThreadProc() noexcept {
 			}
 			break;
 		case FrameSourceState::Error:
+			_reflex.CompleteCapture();
 			// 捕获出错，退出缩放
 			ScalingWindow::Dispatcher().TryEnqueue([
 				session = _sessionLifetime,
@@ -3317,6 +3339,7 @@ void Renderer::_BackendRender(
 ) noexcept {
 	if (_colorPipelineFailed || (!isNewCaptureFrame &&
 		(_capturedFrameId == 0 || !_frameSource->IsHdrFrameReady()))) return;
+	_reflex.BeginCaptureRender();
 	_activeResourceGeneration.store(_frameSource->ResourceGeneration(), std::memory_order_release);
 	FrameTrace::Scope traceRender(FrameTrace::Event::BackendRender, isNewCaptureFrame);
 	_stepTimer.PrepareForRender();
@@ -3358,6 +3381,7 @@ void Renderer::_BackendRender(
 		_lastCapturedFrameTime = captureTime;
 		// A cancelled Reflex candidate may leave a gap. Keep NGX's
 		// BackbufferFrameID, guidance and Reflex on the same monotonic base ID.
+		_previousCapturedFrameId = _capturedFrameId;
 		_capturedFrameId = std::max(_capturedFrameId + 1, _reflex.CaptureFrameId());
 		_acceptedCaptureTimestamp100ns = _frameSource->CaptureTimestamp100ns();
 		FrameTrace::SetFrame(_capturedFrameId);
@@ -3503,6 +3527,7 @@ void Renderer::_BackendRender(
 				.outputMetadata = effectDrawer.GetHdrBoundary().hdrEnabled
 					? effectDrawer.GetHdrBoundary().inputFrame.metadata : HdrFrameMetadata{},
 				.frameId = _capturedFrameId,
+				.previousCaptureFrameId = _previousCapturedFrameId,
 				.inputRevision = key.inputRevision,
 				.inputHistoryRevision = key.inputHistoryRevision,
 				.inputHistoryReset = historyReset,
@@ -3587,6 +3612,7 @@ void Renderer::_BackendRender(
 		_backendMayDeferFG && _synchronousFramePresentationEnabled.load(std::memory_order_acquire)) {
 		_pendingFrameGenerationInput.copy_from(effectsOutput);
 		d3dDC->Flush();
+		_reflex.EndCaptureRender();
 		return;
 	}
 	_CompleteBackendFrame(effectsOutput, isNewCaptureFrame, _captureSequence);
