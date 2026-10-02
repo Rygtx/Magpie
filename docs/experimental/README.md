@@ -20,7 +20,7 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
-- **0.6.9 Beta2 整合部署**：全部 11 个功能分支已核对合入主线，包含 Beta1 fix1–3；正在执行完整 Release x64、回归、资源、包与启动检查。[累计中英更新清单](../RELEASE_NOTES_v0.6.9-beta2.md)、[整合与部署记录](reviews/20261002-v0.6.9-beta2-integration.md)。
+- **0.6.9 Beta2 已部署**：全部 11 个功能分支已核对合入主线，包含 Beta1 fix1–3；完整 Release x64、19 组回归、45 组真实 NGX 合成场景、xBR 编译、资源／包校验和主窗口启动通过。保留旧配置语义及原 Toolbar 热键占用；实际游戏、Sunshine／外接显卡及完整 FG/HDR／多显示器验收待实测。[累计中英更新清单](../RELEASE_NOTES_v0.6.9-beta2.md)、[整合与部署记录](reviews/20261002-v0.6.9-beta2-integration.md)。
 
 - [069 帧率、空闲重绘与光标刷新统一 TODO](todos/20261002-v0.6.9-unified-frame-refresh-TODO.md)：源码实现及离线验证完成，内容／光标／空闲 60／60／30 默认值和统一配置入口已接入；节奏方式位于内容选择与基础数值之间。保留旧配置语义，光标呈现独立于内容时钟；产品编译部署、原生 UI 与真实 GPU 验收交给 069 beta2。[实施记录](reviews/20261002-v0.6.9-unified-frame-refresh.md)。
 
