@@ -9,13 +9,24 @@ namespace Magpie {
 
 bool DirectXHelper::IsDisplayOnlyAdapter(IDXGIAdapter1* adapter) noexcept {
 	DXGI_ADAPTER_DESC1 desc;
-	if (FAILED(adapter->GetDesc1(&desc))) {
+	const HRESULT hr = adapter->GetDesc1(&desc);
+	if (FAILED(hr)) {
+		Logger::Get().ComWarn("Adapter type probe: GetDesc1 failed; LUID unavailable", hr);
 		return false;
 	}
 
+	const auto logFailure = [&desc](const char* operation, NTSTATUS status) {
+		Logger::Get().Warn(fmt::format(
+			"Adapter type probe: {} failed; LUID={:08X}:{:08X} NTSTATUS=0x{:08X}",
+			operation, static_cast<uint32_t>(desc.AdapterLuid.HighPart),
+			desc.AdapterLuid.LowPart, static_cast<uint32_t>(status)));
+	};
+
 	D3DKMT_OPENADAPTERFROMLUID open{};
 	open.AdapterLuid = desc.AdapterLuid;
-	if (D3DKMTOpenAdapterFromLuid(&open) < 0) {
+	const NTSTATUS openStatus = D3DKMTOpenAdapterFromLuid(&open);
+	if (openStatus < 0) {
+		logFailure("D3DKMTOpenAdapterFromLuid", openStatus);
 		return false;
 	}
 
@@ -29,7 +40,15 @@ bool DirectXHelper::IsDisplayOnlyAdapter(IDXGIAdapter1* adapter) noexcept {
 
 	D3DKMT_CLOSEADAPTER close{};
 	close.hAdapter = open.hAdapter;
-	D3DKMTCloseAdapter(&close);
+	const NTSTATUS closeStatus = D3DKMTCloseAdapter(&close);
+	if (closeStatus < 0) {
+		logFailure("D3DKMTCloseAdapter", closeStatus);
+	}
+	if (status < 0) {
+		logFailure("D3DKMTQueryAdapterInfo", status);
+		// 类型查询不可用时仍让原有 D3D 创建设备与回退路径决定是否可用。
+		return false;
+	}
 	return status >= 0 && type.IndirectDisplayDevice && !type.RenderSupported;
 }
 
