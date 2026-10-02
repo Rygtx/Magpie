@@ -15,7 +15,8 @@ migration=settings[settings.index('\tbool legacyParameterFocusSwitching ='):sett
 load=settings[settings.index('\tauto scaleProfilesNode = root.FindMember("profiles");'):settings.index('\tauto overlayNode = root.FindMember("overlay");')]
 # Frame-sync migration is covered by ProfileFrameSyncTests; isolate this focus fixture.
 load=re.sub(r'\t\t\tfor \(const auto& item : scaleProfilesArray\) \{.*?\n\t\t\t\}\n', '', load, flags=re.S)
-load=load.replace(', legacyFrameSync', '')
+load=load.replace(', legacyFrameSync, legacyIdle, migrateLegacyRefresh', '')
+assert 'legacyFrameSync' not in load and 'migrateLegacyRefresh' not in load
 per_profile=re.search(r'profile.isParameterFocusSwitchingEnabled = legacyParameterFocusSwitching;\s+JsonHelper::ReadBool\(profileObj, "parameterFocusSwitching", profile.isParameterFocusSwitchingEnabled\);',settings).group()
 save=re.search(r'writer.Key\("parameterFocusSwitching"\);\s+writer.Bool\(profile.isParameterFocusSwitchingEnabled\);',settings).group()
 select=re.search(r'options.isParameterFocusSwitchingEnabled = profile.isParameterFocusSwitchingEnabled;',read('src/Magpie/ScalingService.cpp')).group()

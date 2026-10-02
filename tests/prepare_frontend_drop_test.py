@@ -24,7 +24,9 @@ def block(source, marker):
 update = block(s, 'Renderer::FrontendBaseResult Renderer::_UpdateFrontendBase(')
 update = update[:update.index('\n\t// IDs are protected by accessLock')] + '\nreturn FrontendBaseResult::Ready;\n}'
 render = block(s, 'bool Renderer::_FrontendRender(')
-dispatch = block(render, 'if (!stableBaseOnly) {')
+# Match the standalone dispatch, not the preceding pacing `else if` branch.
+dispatch = block(render, '\n\tif (!stableBaseOnly) {')
+assert '_UpdateFrontendBase(sharedTextureSlot)' in dispatch
 dlss = block(s, 'DLSSFGFrameRenderResult Renderer::RenderDLSSFGFrame(')
 drop = block(dlss, 'if (droppedFrame) {')
 wait_start = s.index('if (_frameSyncEnabled && _frameSyncUsesSharedSlot &&\n\t\t\t_frameSyncAcknowledgedKey.load(std::memory_order_acquire) !=\n\t\t\t_sharedTextureMutexKeys[0].load(std::memory_order_acquire)) continue;')
