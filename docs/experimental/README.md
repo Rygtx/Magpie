@@ -20,6 +20,8 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [069 PR #62 排除仅显示的间接适配器合并 TODO](todos/20261002-v0.6.9-pr62-display-only-adapters-TODO.md)：已在独立修复分支接入并合并回本地 experimental，保留原 PR 作者及历史；失败日志、51 项生产代码回归、3 个改动翻译单元语法检查和真实适配器查询通过。整项目构建、部署及 Sunshine DLSS NR／FG 实机验收交由 069 beta2 会话。关联 Issue #61。
+
 - **0.6.9 Beta1 fix3 已部署**：消除工具栏 FPS 继承按钮基线导致的垂直下偏；128 组布局与既有交互回归、完整编译、包核验和主窗口启动检查通过。实际捕获视觉验收仍待实测；[更新说明](../RELEASE_NOTES_v0.6.9-beta1-fix3.md)、[实施与恢复记录](reviews/20261001-v0.6.9-beta1-fix3.md)。
 
 - **0.6.9 Beta1 fix2 已部署**：[TODO](todos/20261001-v0.6.9-beta1-fix2-TODO.md)、[实施与验证](reviews/20261001-v0.6.9-beta1-fix2.md)、[参数文案 Review](reviews/20261001-v0.6.9-beta1-fix1-dlssnr-parameter-copy-review.md)。原生主窗口与配置迁移通过；完整 GUI／实际捕获验收待实测，保留两项快捷键注册冲突。
