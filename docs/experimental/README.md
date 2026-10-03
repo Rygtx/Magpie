@@ -1,12 +1,12 @@
 # Magpie 实验分支文档索引
 
-0.6.9 正在按 0.6.8 三附件结构准备本地分发：[完整中英 Release Note](../RELEASE_NOTES_v0.6.9-experimental.md)、[分发准备记录](reviews/20261002-v0.6.9-release-preparation.md)。包含当前 Beta3 菜单、按钮尺度和全部效果器说明；程序版本设为 `0.6.9`，本轮完成本地构建与文件核验，GitHub 上传另行处理。下方 0.6.8 Draft 状态为历史记录。
+当前公开版本为 [Magpie Experimental v0.6.9](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.9-experimental)：[完整中英 Release Note](../RELEASE_NOTES_v0.6.9-experimental.md)、[分发准备记录](reviews/20261002-v0.6.9-release-preparation.md)。默认分支 `experimental` 已同步完整 0.6.9 源码，`version.json` 指向该版本。发布标签及运行包的准确构建提交为 `27c5df91177a29b33be612e98274169f3d2fca49`；后续文档与版本入口更新保留为独立提交。
 
 帧同步当前状态：保留 Front Edge 默认，普通效果与 DLSS FG 支持 Async／Reflex 驱动基础限帧，XeSS FG 由 XeLL 接管；自动回退仅记简短日志，实时参数面板不显示运行状态。见 [使用指南](../FRAME_SYNC_GUIDE.md) 与 [实施记录](reviews/20260909-v0.6.7-frame-sync-modes.md)。
 
 HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关保持关闭；效果器选择器新增「HDR 组件」分类，仅显式转换链按节点启用 HDR 捕获／输出。见 [HDR 组件实施记录](reviews/20260908-v0.6.7-hdr-conversion-effects-plan.md)。
 
-`068` 已合并到 `experimental`，正在准备 [0.6.8 更新说明（Draft 待审核）](../RELEASE_NOTES_v0.6.8-experimental.md)。分发沿用 067 的完整主包、DLSSNR DLL 选项包和 NGX OTA 工具；本轮授权推送源码及创建 Draft，不发布。构建、附件及远端检查见 [0.6.8 分发准备记录](reviews/20260914-v0.6.8-release-preparation.md)。
+历史版本 [Magpie Experimental v0.6.8](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.8-experimental.1) 的[更新说明](../RELEASE_NOTES_v0.6.8-experimental.md)与[分发准备记录](reviews/20260914-v0.6.8-release-preparation.md)保留供查阅。下方 Beta、TODO 与部署状态均为当时的历史记录，具体使用说明以当前版本 Release Note 为准。
 
 当前功能已包含 Beta 1–6 的全部迭代，见 [Beta 6 TODO](todos/20260910-v0.6.7-beta6-TODO.md)、[Reflex 驱动限帧](reviews/20260910-beta6-reflex-pacing.md)、[HDR 组件](reviews/20260908-v0.6.7-hdr-conversion-effects-plan.md) 与 [参数输入验证](testing/PARAMETER-INPUT.md)。历史 [Beta 6 说明](../RELEASE_NOTES_v0.6.7-beta6.md)、[Beta 1 说明](../RELEASE_NOTES_v0.6.7-beta1.md)、[0.6.6 说明](../RELEASE_NOTES_v0.6.6-experimental.md) 保留。
 

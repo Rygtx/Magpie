@@ -1,5 +1,16 @@
 # 开发与分发准备 / Development and Distribution Preparation
 
+## 当前公开版本 / Current public release
+
+[Magpie Experimental v0.6.9](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.9-experimental) 已公开发布，默认分支 `experimental` 已同步本版源码。完整中英文说明见 [0.6.9 Release Note](RELEASE_NOTES_v0.6.9-experimental.md)，后续计划与验证记录见[实验分支文档索引](experimental/README.md)。`version.json` 指向 0.6.9。
+
+[Magpie Experimental v0.6.9](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.9-experimental) is publicly available. The default `experimental` branch includes its source, and `version.json` points to 0.6.9. See the [complete bilingual release notes](RELEASE_NOTES_v0.6.9-experimental.md) and [development index](experimental/README.md).
+
+## 历史准备记录 / Historical preparation records
+
+以下保留当时的 Beta 与 Draft 准备记录；其中的版本和授权状态为历史快照。
+The following Beta and draft-preparation records describe their historical version and authorization states.
+
 ## 0.6.9 Beta2 本地整合
 
 全部 11 个 069 功能分支已合入本地 `experimental`，包含 Beta1 及 fix1–3 的累计修正，以及统一帧率与刷新、效果组页面、Reflex 标记和仅显示适配器筛选。见 [完整中英清单](RELEASE_NOTES_v0.6.9-beta2.md) 与 [整合部署记录](experimental/reviews/20261002-v0.6.9-beta2-integration.md)。独立本地测试包版本为 `0.6.9-beta2`，准确构建和验收结果以清单与审计为准。
