@@ -1,6 +1,11 @@
 #include "pch.h"
 #include "NgxRuntimeGuard.h"
 #include "DLSSNRFilter.h"
+#include "DLSSNRColorShader.h"
+#include "DLSSNRDetailShader.h"
+#include "DLSSNRDetailParameters.h"
+#include "DLSSNRParameters.h"
+#include "DLSSNRChainCache.h"
 #include "DeviceResources.h"
 #include "DirectXHelper.h"
 #include "Logger.h"
@@ -30,13 +35,21 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) 
 		.inputResolutionPercent = static_cast<uint32_t>(std::clamp(
 			static_cast<int>(std::lround(
 				getParameter("inputResolutionPercent", 100.0f))), 25, 100)),
-		.residualMultiplier = getClamped("residualMultiplier", 1.0f, 1.0f, 2.0f),
+		.residualMultiplier = getClamped("residualMultiplier", 1.0f, 0.0f, 2.0f),
 		.residualSaturation = getClamped("residualSaturation", 1.0f, 0.0f, 2.0f),
 		.residualLightness = getClamped("residualLightness", 1.0f, 0.0f, 2.0f),
 		.shadowStructureMultiplier = getClamped(
 			"shadowStructureMultiplier", 1.0f, 0.0f, 2.0f),
 		.reflectionGlowMultiplier = getClamped(
 			"reflectionGlowMultiplier", 1.0f, 0.0f, 2.0f),
+		.residualHueProtection = getClamped("residualHueProtection", 0.f, 0.f, 1.f),
+		.residualDarkProtection = getClamped("residualDarkProtection", 0.f, 0.f, 1.f),
+		.residualHighlightProtection = getClamped("residualHighlightProtection", 0.f, 0.f, 1.f),
+		.residualLocalCompression = getClamped("residualLocalCompression", 0.f, 0.f, 1.f),
+		.residualLowFrequencyGain = getClamped("residualLowFrequencyGain", 1.f, 0.f, 2.f),
+		.residualDetailGain = getClamped("residualDetailGain", 1.f, 0.f, 2.f),
+		.residualChromaTemporalStrength = 0.f,
+		.residualDebugView = static_cast<int>(std::lround(getClamped("residualDebugView", 0.f, 0.f, 7.f))),
 		.style = std::clamp(static_cast<int>(std::lround(
 			getParameter("style", 0.0f))), 0, 2),
 		.intensity = getClamped("intensity", 1.0f, 0.0f, 2.0f),
@@ -58,6 +71,7 @@ DLSSNRSettings ParseDLSSNRSettings(const EffectOption& option, bool hdrEnabled) 
 #include <d3d12.h>
 #include <nvsdk_ngx.h>
 #include <atomic>
+#include <map>
 
 namespace Magpie {
 
@@ -167,6 +181,14 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
+    uint Reserved1;
+    float HueProtection;
+    float DarkProtection;
+    float HighlightProtection;
+    float LocalCompression;
+    float LowFrequencyGain;
+    float DetailGain;
+    uint DebugView;
 };
 
 float Sinc(float x) {
@@ -239,6 +261,14 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
+    uint Reserved1;
+    float HueProtection;
+    float DarkProtection;
+    float HighlightProtection;
+    float LocalCompression;
+    float LowFrequencyGain;
+    float DetailGain;
+    uint DebugView;
 };
 
 [numthreads(8, 8, 1)]
@@ -302,104 +332,15 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
+    uint Reserved1;
+    float HueProtection;
+    float DarkProtection;
+    float HighlightProtection;
+    float LocalCompression;
+    float LowFrequencyGain;
+    float DetailGain;
+    uint DebugView;
 };
-
-float3 RGBToHSL(float3 color) {
-    float maximum = max(color.r, max(color.g, color.b));
-    float minimum = min(color.r, min(color.g, color.b));
-    float delta = maximum - minimum;
-    float lightness = (maximum + minimum) * 0.5;
-    if (delta <= 1e-6) {
-        return float3(0.0, 0.0, lightness);
-    }
-
-    float hue = 0.0;
-    if (maximum == color.r) {
-        hue = (color.g - color.b) / delta;
-        if (hue < 0.0) hue += 6.0;
-    } else if (maximum == color.g) {
-        hue = (color.b - color.r) / delta + 2.0;
-    } else {
-        hue = (color.r - color.g) / delta + 4.0;
-    }
-    float saturation = delta / max(1.0 - abs(2.0 * lightness - 1.0), 1e-6);
-    return float3(hue / 6.0, saturate(saturation), saturate(lightness));
-}
-
-float HueToRGB(float p, float q, float hue) {
-    hue = frac(hue);
-    if (hue < 1.0 / 6.0) return p + (q - p) * 6.0 * hue;
-    if (hue < 1.0 / 2.0) return q;
-    if (hue < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - hue) * 6.0;
-    return p;
-}
-
-float3 HSLToRGB(float3 hsl) {
-    if (hsl.y <= 1e-6) {
-        return float3(hsl.z, hsl.z, hsl.z);
-    }
-    float q = hsl.z < 0.5 ?
-        hsl.z * (1.0 + hsl.y) : hsl.z + hsl.y - hsl.z * hsl.y;
-    float p = 2.0 * hsl.z - q;
-    return saturate(float3(
-        HueToRGB(p, q, hsl.x + 1.0 / 3.0),
-        HueToRGB(p, q, hsl.x),
-        HueToRGB(p, q, hsl.x - 1.0 / 3.0)));
-}
-
-float3 ToLinear(float3 color) {
-    return float3(
-        color.r <= 0.04045 ? color.r / 12.92 : pow(max(color.r + 0.055, 0.0) / 1.055, 2.4),
-        color.g <= 0.04045 ? color.g / 12.92 : pow(max(color.g + 0.055, 0.0) / 1.055, 2.4),
-        color.b <= 0.04045 ? color.b / 12.92 : pow(max(color.b + 0.055, 0.0) / 1.055, 2.4));
-}
-
-float3 ApplyResidualControls(float3 original, float3 residual) {
-    residual *= ResidualMultiplier;
-    if (all(residual == 0.0)) return original;
-    float4 fineControls = float4(
-        ResidualSaturation, ResidualLightness,
-        ShadowStructureMultiplier, ReflectionGlowMultiplier);
-    // Neutral fine controls preserve the multiplied residual in this low-resolution domain.
-    float3 output = saturate(original + residual);
-    [branch]
-    if (any(abs(fineControls - 1.0) >= 1e-6)) {
-        // Classify the whole pixel before directional/HSL controls. The
-        // reference cannot depend on the multiplier selected by this branch.
-        float deltaY = dot(ToLinear(output) - ToLinear(original),
-            float3(0.2126, 0.7152, 0.0722));
-        float directionalMultiplier = deltaY < 0.0 ? ShadowStructureMultiplier :
-            (deltaY > 0.0 ? ReflectionGlowMultiplier : 1.0);
-        float3 controlledResidual = residual * directionalMultiplier;
-        float3 candidate = saturate(original + controlledResidual);
-        [branch]
-        if (abs(ResidualSaturation - 1.0) >= 1e-6 ||
-            abs(ResidualLightness - 1.0) >= 1e-6) {
-            // The SRVs are non-sRGB UNORM views, so HSL operates on normalized
-            // stored SDR RGB values without an implicit transfer conversion.
-            float3 originalHSL = RGBToHSL(original);
-            float3 candidateHSL = RGBToHSL(candidate);
-            candidateHSL.y = saturate(originalHSL.y +
-                (candidateHSL.y - originalHSL.y) * ResidualSaturation);
-            candidateHSL.z = saturate(originalHSL.z +
-                (candidateHSL.z - originalHSL.z) * ResidualLightness);
-            candidate = HSLToRGB(candidateHSL);
-        }
-        output = candidate;
-    }
-    return output;
-}
-
-[numthreads(8, 8, 1)]
-void PrepareResidual(uint3 tid : SV_DispatchThreadID) {
-    if (any(tid.xy >= TargetExtent)) return;
-    float3 original = ReducedColor.Load(int3(tid.xy, 0)).rgb;
-    float3 denoised = ReducedDenoised.Load(int3(tid.xy, 0)).rgb;
-    // Apply every residual control once per low-resolution pixel, before
-    // either Catmull-Rom pass. Keep signed differences in an FP16 texture.
-    ControlledResidual[tid.xy] = float4(
-        ApplyResidualControls(original, denoised - original) - original, 0.0);
-}
 )";
 
 constexpr char RESIDUAL_HORIZONTAL_HLSL[] = R"(
@@ -416,6 +357,14 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
+    uint Reserved1;
+    float HueProtection;
+    float DarkProtection;
+    float HighlightProtection;
+    float LocalCompression;
+    float LowFrequencyGain;
+    float DetailGain;
+    uint DebugView;
 };
 
 float CatmullRom(float x) {
@@ -466,6 +415,14 @@ cbuffer ResampleParams : register(b0) {
     float ResidualLightness;
     float ShadowStructureMultiplier;
     float ReflectionGlowMultiplier;
+    uint Reserved1;
+    float HueProtection;
+    float DarkProtection;
+    float HighlightProtection;
+    float LocalCompression;
+    float LowFrequencyGain;
+    float DetailGain;
+    uint DebugView;
 };
 
 float CatmullRom(float x) {
@@ -501,9 +458,12 @@ void CompositeResidualVertical(uint3 tid : SV_DispatchThreadID) {
         residual /= abs(totalWeight) > 1e-6 ? totalWeight : 1.0;
     }
     OutputColor[tid.xy] = float4(
-        saturate(original + residual), storedOriginal.a);
+        saturate(DebugView != 0 ? residual : original + residual), storedOriginal.a);
 }
 )";
+
+inline const std::string RESIDUAL_PREPARE_SHADER = std::string(DLSSNR_COLOR_HLSL) +
+	RESIDUAL_PREPARE_HLSL + std::string(DLSSNR_DETAIL_HLSL);
 
 struct ResampleConstants {
 	uint32_t sourceWidth = 0;
@@ -518,8 +478,16 @@ struct ResampleConstants {
 	float residualLightness = 1.0f;
 	float shadowStructureMultiplier = 1.0f;
 	float reflectionGlowMultiplier = 1.0f;
+	uint32_t reserved1 = 0;
+	float hueProtection = 0;
+	float darkProtection = 0;
+	float highlightProtection = 0;
+	float localCompression = 0;
+	float lowFrequencyGain = 1;
+	float detailGain = 1;
+	uint32_t debugView = 0;
 };
-static_assert(sizeof(ResampleConstants) == 48);
+static_assert(sizeof(ResampleConstants) == 80);
 
 bool NGXSucceeded(NVSDK_NGX_Result result) noexcept {
 	return NVSDK_NGX_SUCCEED(result);
@@ -570,6 +538,19 @@ T GetExport(HMODULE module, const char* name) noexcept {
 
 struct DLSSNRFilter::Impl {
 	static constexpr uint32_t COMMAND_SLOT_COUNT = 4;
+	static constexpr uint32_t TIMESTAMP_STRIDE = 8; // chain plus three pass pairs
+	struct ShaderSet {
+		std::map<std::string, winrt::com_ptr<ID3D11ComputeShader>> shaders;
+	};
+	std::shared_ptr<ShaderSet> shaders;
+	std::vector<std::unique_ptr<Impl>> laterPasses;
+	DLSSNRChainCache cache;
+	uint64_t cachedInputHistoryRevision = 0;
+	FrameGuidanceView cachedGuidance{};
+	FrameGuidanceView preparedGuidance{};
+	bool guidancePrepared = false;
+	bool residualConstantsValid = false;
+	winrt::com_ptr<ID3D11Buffer> residualConstants11;
 	struct CommandSlot {
 		winrt::com_ptr<ID3D12CommandAllocator> allocator;
 		winrt::com_ptr<ID3D12GraphicsCommandList> commandList;
@@ -577,6 +558,8 @@ struct DLSSNRFilter::Impl {
 		uint32_t timestampQuery = 0;
 		FrameGuidanceFrameId timestampFrameId = 0;
 		bool timestampPending = false;
+		uint32_t timestampFirstPass = 0;
+		uint32_t timestampPassCount = 0;
 	};
 
 	using SnippetInitExtFn = NVSDK_NGX_Result(NVSDK_CONV*)(
@@ -639,7 +622,7 @@ struct DLSSNRFilter::Impl {
 	winrt::com_ptr<ID3D11UnorderedAccessView> compositeOutputUav11;
 	winrt::com_ptr<ID3D12Resource> sharedInput12;
 	winrt::com_ptr<ID3D12Resource> sharedOutput12;
-	std::unique_ptr<FrameGuidanceD3D12Interop> guidanceInterop;
+	std::shared_ptr<FrameGuidanceD3D12Interop> guidanceInterop;
 	winrt::com_ptr<ID3D11Fence> fence11;
 	winrt::com_ptr<ID3D12Fence> fence12;
 	wil::unique_event_nothrow fenceEvent;
@@ -667,13 +650,10 @@ struct DLSSNRFilter::Impl {
 	TimingWindow evaluateCpuTimings;
 	TimingWindow submitTimings;
 	TimingWindow evaluateGpuTimings;
+	TimingWindow passGpuTimings;
 	FrameGuidanceFrameId lastGuidanceResetFrameId =
 		std::numeric_limits<FrameGuidanceFrameId>::max();
-	FrameGuidanceFrameId lastEvaluatedFrameId =
-		std::numeric_limits<FrameGuidanceFrameId>::max();
 	uint64_t evaluateParameterRevision = 0;
-	uint64_t lastEvaluatedParameterRevision = 0;
-	uint64_t lastEvaluatedInputRevision = 0;
 	uint64_t duplicateFrameReuseCount = 0;
 	uint32_t sourceWidth = 0;
 	uint32_t sourceHeight = 0;
@@ -947,7 +927,12 @@ bool RestoreSnippetCallerCompatibility(DLSSNRFilter::Impl& impl) noexcept {
 }
 
 static bool WaitForFence(DLSSNRFilter::Impl& impl, uint64_t value) noexcept {
-	if (!value || impl.fence12->GetCompletedValue() >= value) {
+	const uint64_t completed = impl.fence12->GetCompletedValue();
+	if (completed == std::numeric_limits<uint64_t>::max()) {
+		Logger::Get().Error("DLSSNR device removed while waiting for a fence");
+		return false;
+	}
+	if (!value || completed >= value) {
 		return true;
 	}
 	if (!impl.fenceEvent) {
@@ -962,7 +947,7 @@ static bool WaitForFence(DLSSNRFilter::Impl& impl, uint64_t value) noexcept {
 		return false;
 	}
 	impl.fenceEvent.wait();
-	return true;
+	return impl.fence12->GetCompletedValue() != std::numeric_limits<uint64_t>::max();
 }
 
 static bool WaitForQueue(DLSSNRFilter::Impl& impl) noexcept {
@@ -982,7 +967,7 @@ static void CollectGpuTiming(
 	if (!slot.timestampPending || !impl.timestampReadback ||
 		!impl.timestampFrequency) return;
 	const size_t offset = size_t(slot.timestampQuery) * sizeof(uint64_t);
-	const D3D12_RANGE readRange{ offset, offset + sizeof(uint64_t) * 2 };
+	const D3D12_RANGE readRange{ offset, offset + sizeof(uint64_t) * DLSSNRFilter::Impl::TIMESTAMP_STRIDE };
 	void* mapped = nullptr;
 	const HRESULT hr = impl.timestampReadback->Map(0, &readRange, &mapped);
 	if (FAILED(hr) || !mapped) {
@@ -997,6 +982,15 @@ static void CollectGpuTiming(
 			double(impl.timestampFrequency);
 		impl.evaluateGpuTimings.Add(gpuMs);
 		FrameGuidancePerformance::PublishDlssnrGpuTiming(gpuMs);
+	}
+	for (uint32_t i = slot.timestampFirstPass; i < slot.timestampPassCount; ++i) {
+		const size_t q = 2 + size_t(i) * 2;
+		if (timestamps[q + 1] >= timestamps[q]) {
+			auto& pass = i ? *impl.laterPasses[i - 1] : impl;
+			const double ms = double(timestamps[q + 1] - timestamps[q]) * 1000.0 / double(impl.timestampFrequency);
+			pass.passGpuTimings.Add(ms);
+			Logger::Get().Info(fmt::format("DLSSNR GPU pass {}: frame={} ms={:.3f}", i + 1, slot.timestampFrameId, ms));
+		}
 	}
 	const D3D12_RANGE writtenRange{ 0, 0 };
 	impl.timestampReadback->Unmap(0, &writtenRange);
@@ -1016,6 +1010,8 @@ DLSSNRFilter::Impl::~Impl() {
 	if (queue12 && fence12) {
 		WaitForQueue(*this);
 	}
+	// Release all child features before the runtime and Core owner.
+	laterPasses.clear();
 	if (feature) {
 		DWORD sehCode = 0;
 		const auto function = useSignedSnippet ? snippetReleaseFeature :
@@ -1121,6 +1117,19 @@ static bool CreateComputeShader(
 	const char* sourceName,
 	winrt::com_ptr<ID3D11ComputeShader>& shader
 ) noexcept {
+	static std::map<ID3D11Device5*, std::weak_ptr<DLSSNRFilter::Impl::ShaderSet>> sharedShaders;
+	if (!impl.shaders) {
+		impl.shaders = sharedShaders[impl.device11].lock();
+		if (!impl.shaders) {
+			impl.shaders = std::make_shared<DLSSNRFilter::Impl::ShaderSet>();
+			sharedShaders[impl.device11] = impl.shaders;
+		}
+	}
+	const auto cached = impl.shaders->shaders.find(sourceName);
+	if (cached != impl.shaders->shaders.end()) {
+		shader = cached->second;
+		return true;
+	}
 	winrt::com_ptr<ID3DBlob> shaderBlob;
 	if (!DirectXHelper::CompileComputeShader(
 		source, entryPoint, shaderBlob.put(), sourceName)) {
@@ -1134,6 +1143,7 @@ static bool CreateComputeShader(
 			"Create {} compute shader failed", sourceName), hr);
 		return false;
 	}
+	impl.shaders->shaders.emplace(sourceName, shader);
 	return true;
 }
 
@@ -1198,27 +1208,30 @@ static bool CreateResolutionScalingResources(
 		return false;
 	}
 	if (!CreateCompositeOutput(impl, input, output, outputDesc)) return false;
-	impl.resampleIntermediate11 = DirectXHelper::CreateTexture2D(
-		impl.device11, DXGI_FORMAT_R16G16B16A16_FLOAT,
-		impl.sourceWidth, impl.height,
-		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS);
-	if (!impl.resampleIntermediate11) {
-		Logger::Get().Error(
-			"Create DLSSNR horizontal residual texture failed");
-		return false;
-	}
-	hr = impl.device11->CreateShaderResourceView(
-		impl.resampleIntermediate11.get(), nullptr,
-		impl.resampleIntermediateSrv11.put());
-	if (SUCCEEDED(hr)) {
-		hr = impl.device11->CreateUnorderedAccessView(
+	const bool reduced = impl.width != impl.sourceWidth || impl.height != impl.sourceHeight;
+	if (reduced) {
+		impl.resampleIntermediate11 = DirectXHelper::CreateTexture2D(
+			impl.device11, DXGI_FORMAT_R16G16B16A16_FLOAT,
+			impl.sourceWidth, impl.height,
+			D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS);
+		if (!impl.resampleIntermediate11) {
+			Logger::Get().Error(
+				"Create DLSSNR horizontal residual texture failed");
+			return false;
+		}
+		hr = impl.device11->CreateShaderResourceView(
 			impl.resampleIntermediate11.get(), nullptr,
-			impl.resampleIntermediateUav11.put());
-	}
-	if (FAILED(hr)) {
-		Logger::Get().ComError(
-			"Create DLSSNR horizontal residual views failed", hr);
-		return false;
+			impl.resampleIntermediateSrv11.put());
+		if (SUCCEEDED(hr)) {
+			hr = impl.device11->CreateUnorderedAccessView(
+				impl.resampleIntermediate11.get(), nullptr,
+				impl.resampleIntermediateUav11.put());
+		}
+		if (FAILED(hr)) {
+			Logger::Get().ComError(
+				"Create DLSSNR horizontal residual views failed", hr);
+			return false;
+		}
 	}
 
 	constexpr UINT GUIDANCE_BIND_FLAGS =
@@ -1240,72 +1253,78 @@ static bool CreateResolutionScalingResources(
 		Logger::Get().ComError("Create DLSSNR controlled residual views failed", hr);
 		return false;
 	}
-	constexpr UINT GUIDANCE_MISC_FLAGS =
-		D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
-	impl.reducedMotion11 = DirectXHelper::CreateTexture2D(
-		impl.device11, DXGI_FORMAT_R16G16_FLOAT, impl.width, impl.height,
-		GUIDANCE_BIND_FLAGS, D3D11_USAGE_DEFAULT, GUIDANCE_MISC_FLAGS);
-	impl.reducedDepth11 = DirectXHelper::CreateTexture2D(
-		impl.device11, DXGI_FORMAT_R32_FLOAT, impl.width, impl.height,
-		GUIDANCE_BIND_FLAGS, D3D11_USAGE_DEFAULT, GUIDANCE_MISC_FLAGS);
-	impl.reducedConfidence11 = DirectXHelper::CreateTexture2D(
-		impl.device11, DXGI_FORMAT_R8_UNORM, impl.width, impl.height,
-		GUIDANCE_BIND_FLAGS, D3D11_USAGE_DEFAULT, GUIDANCE_MISC_FLAGS);
-	if (!impl.reducedMotion11 || !impl.reducedDepth11 ||
-		!impl.reducedConfidence11) {
-		Logger::Get().Error(
-			"Create DLSSNR reduced Frame Guidance textures failed");
-		return false;
-	}
-	hr = impl.device11->CreateUnorderedAccessView(
-		impl.reducedMotion11.get(), nullptr, impl.reducedMotionUav11.put());
-	if (SUCCEEDED(hr)) {
+	if (reduced) {
+		constexpr UINT GUIDANCE_MISC_FLAGS =
+			D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
+		impl.reducedMotion11 = DirectXHelper::CreateTexture2D(
+			impl.device11, DXGI_FORMAT_R16G16_FLOAT, impl.width, impl.height,
+			GUIDANCE_BIND_FLAGS, D3D11_USAGE_DEFAULT, GUIDANCE_MISC_FLAGS);
+		impl.reducedDepth11 = DirectXHelper::CreateTexture2D(
+			impl.device11, DXGI_FORMAT_R32_FLOAT, impl.width, impl.height,
+			GUIDANCE_BIND_FLAGS, D3D11_USAGE_DEFAULT, GUIDANCE_MISC_FLAGS);
+		impl.reducedConfidence11 = DirectXHelper::CreateTexture2D(
+			impl.device11, DXGI_FORMAT_R8_UNORM, impl.width, impl.height,
+			GUIDANCE_BIND_FLAGS, D3D11_USAGE_DEFAULT, GUIDANCE_MISC_FLAGS);
+		if (!impl.reducedMotion11 || !impl.reducedDepth11 ||
+			!impl.reducedConfidence11) {
+			Logger::Get().Error(
+				"Create DLSSNR reduced Frame Guidance textures failed");
+			return false;
+		}
 		hr = impl.device11->CreateUnorderedAccessView(
-			impl.reducedDepth11.get(), nullptr, impl.reducedDepthUav11.put());
-	}
-	if (SUCCEEDED(hr)) {
-		hr = impl.device11->CreateUnorderedAccessView(
-			impl.reducedConfidence11.get(), nullptr,
-			impl.reducedConfidenceUav11.put());
-	}
-	if (FAILED(hr)) {
-		Logger::Get().ComError(
-			"Create DLSSNR reduced Frame Guidance UAVs failed", hr);
-		return false;
+			impl.reducedMotion11.get(), nullptr, impl.reducedMotionUav11.put());
+		if (SUCCEEDED(hr)) {
+			hr = impl.device11->CreateUnorderedAccessView(
+				impl.reducedDepth11.get(), nullptr, impl.reducedDepthUav11.put());
+		}
+		if (SUCCEEDED(hr)) {
+			hr = impl.device11->CreateUnorderedAccessView(
+				impl.reducedConfidence11.get(), nullptr,
+				impl.reducedConfidenceUav11.put());
+		}
+		if (FAILED(hr)) {
+			Logger::Get().ComError(
+				"Create DLSSNR reduced Frame Guidance UAVs failed", hr);
+			return false;
+		}
 	}
 
 	D3D11_BUFFER_DESC constantsDesc{};
 	constantsDesc.ByteWidth = sizeof(ResampleConstants);
 	constantsDesc.Usage = D3D11_USAGE_DEFAULT;
 	constantsDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	const ResampleConstants constants{
+		.sourceWidth = impl.sourceWidth, .sourceHeight = impl.sourceHeight,
+		.targetWidth = impl.width, .targetHeight = impl.height,
+		.motionScaleX = float(impl.width) / float(impl.sourceWidth),
+		.motionScaleY = float(impl.height) / float(impl.sourceHeight)
+	};
+	const D3D11_SUBRESOURCE_DATA data{ &constants, 0, 0 };
 	hr = impl.device11->CreateBuffer(
-		&constantsDesc, nullptr, impl.resampleConstants11.put());
+		&constantsDesc, &data, impl.resampleConstants11.put());
+	if (SUCCEEDED(hr)) hr = impl.device11->CreateBuffer(
+		&constantsDesc, nullptr, impl.residualConstants11.put());
 	if (FAILED(hr)) {
 		Logger::Get().ComError(
 			"Create DLSSNR resample constants failed", hr);
 		return false;
 	}
 
-	return CreateComputeShader(
+	return (!reduced || (CreateComputeShader(
 			impl, COLOR_DOWNSAMPLE_HLSL, "DownsampleColorVertical",
-            "DLSSNRColorDownsampleVertical", impl.colorDownsampleVerticalShader11) &&
-        CreateComputeShader(
-            impl, COLOR_DOWNSAMPLE_HLSL, "DownsampleColorHorizontal",
-            "DLSSNRColorDownsampleHorizontal", impl.colorDownsampleHorizontalShader11) &&
-        (!impl.convertInputToRgba || CreateComputeShader(
-            impl, COLOR_CONVERT_HLSL, "ConvertToRgba",
-            "DLSSNRColorConvert", impl.colorConvertShader11)) &&
-		CreateComputeShader(
-			impl, GUIDANCE_DOWNSAMPLE_HLSL, "DownsampleGuidance",
-			"DLSSNRGuidanceDownsample", impl.guidanceDownsampleShader11) &&
-		CreateComputeShader(
-			impl, RESIDUAL_PREPARE_HLSL, "PrepareResidual",
+			"DLSSNRColorDownsampleVertical", impl.colorDownsampleVerticalShader11) &&
+		CreateComputeShader(impl, COLOR_DOWNSAMPLE_HLSL, "DownsampleColorHorizontal",
+			"DLSSNRColorDownsampleHorizontal", impl.colorDownsampleHorizontalShader11) &&
+		CreateComputeShader(impl, GUIDANCE_DOWNSAMPLE_HLSL, "DownsampleGuidance",
+			"DLSSNRGuidanceDownsample", impl.guidanceDownsampleShader11))) &&
+		(!impl.convertInputToRgba || CreateComputeShader(impl, COLOR_CONVERT_HLSL,
+			"ConvertToRgba", "DLSSNRColorConvert", impl.colorConvertShader11)) &&
+		CreateComputeShader(impl, RESIDUAL_PREPARE_SHADER, "PrepareResidual",
 			"DLSSNRResidualPrepare", impl.residualPrepareShader11) &&
-		CreateComputeShader(
+		(impl.sourceWidth == impl.width || CreateComputeShader(
 			impl, RESIDUAL_HORIZONTAL_HLSL, "UpsampleResidualHorizontal",
-			"DLSSNRResidualHorizontal", impl.residualHorizontalShader11) &&
-		CreateComputeShader(
-			impl, RESIDUAL_VERTICAL_COMPOSITE_HLSL,
+			"DLSSNRResidualHorizontal", impl.residualHorizontalShader11)) &&
+		CreateComputeShader(impl, RESIDUAL_VERTICAL_COMPOSITE_HLSL,
 			"CompositeResidualVertical", "DLSSNRResidualVerticalComposite",
 			impl.residualVerticalCompositeShader11);
 }
@@ -1508,16 +1527,6 @@ static bool PrepareInput(
 ) noexcept {
 	if (impl.useResolutionScaling &&
 		(impl.width != impl.sourceWidth || impl.height != impl.sourceHeight)) {
-		const ResampleConstants constants{
-			.sourceWidth = impl.sourceWidth,
-			.sourceHeight = impl.sourceHeight,
-			.targetWidth = impl.width,
-			.targetHeight = impl.height,
-			.motionScaleX = float(impl.width) / float(impl.sourceWidth),
-			.motionScaleY = float(impl.height) / float(impl.sourceHeight)
-		};
-		impl.context11->UpdateSubresource(
-			impl.resampleConstants11.get(), 0, nullptr, &constants, 0, 0);
 		ID3D11ShaderResourceView* srv = impl.inputSrv11.get();
 		ID3D11UnorderedAccessView* uav = impl.resampleIntermediateUav11.get();
 		ID3D11Buffer* constantBuffer = impl.resampleConstants11.get();
@@ -1608,16 +1617,6 @@ static bool PrepareReducedGuidance(
 	const FrameGuidanceView& guidance
 ) noexcept {
 	if (!UpdateGuidanceShaderResources(impl, guidance)) return false;
-	const ResampleConstants constants{
-		.sourceWidth = impl.sourceWidth,
-		.sourceHeight = impl.sourceHeight,
-		.targetWidth = impl.width,
-		.targetHeight = impl.height,
-		.motionScaleX = float(impl.width) / float(impl.sourceWidth),
-		.motionScaleY = float(impl.height) / float(impl.sourceHeight)
-	};
-	impl.context11->UpdateSubresource(
-		impl.resampleConstants11.get(), 0, nullptr, &constants, 0, 0);
 	ID3D11ShaderResourceView* srvs[]{
 		impl.guidanceMotionSrv11.get(),
 		impl.guidanceDepthSrv11.get(),
@@ -1724,15 +1723,25 @@ static bool CompositeResidual(
 		.residualSaturation = settings.residualSaturation,
 		.residualLightness = settings.residualLightness,
 		.shadowStructureMultiplier = settings.shadowStructureMultiplier,
-		.reflectionGlowMultiplier = settings.reflectionGlowMultiplier
+		.reflectionGlowMultiplier = settings.reflectionGlowMultiplier,
+		.hueProtection = settings.residualHueProtection,
+		.darkProtection = settings.residualDarkProtection,
+		.highlightProtection = settings.residualHighlightProtection,
+		.localCompression = settings.residualLocalCompression,
+		.lowFrequencyGain = settings.residualLowFrequencyGain,
+		.detailGain = settings.residualDetailGain,
+		.debugView = static_cast<uint32_t>(settings.residualDebugView)
 	};
-	impl.context11->UpdateSubresource(
-		impl.resampleConstants11.get(), 0, nullptr, &constants, 0, 0);
+	if (!impl.residualConstantsValid || impl.residualParametersDirty) {
+		impl.context11->UpdateSubresource(
+			impl.residualConstants11.get(), 0, nullptr, &constants, 0, 0);
+		impl.residualConstantsValid = true;
+	}
 	ID3D11ShaderResourceView* prepareSrvs[]{
 		impl.sharedInputSrv11.get(), reducedDenoised
 	};
 	ID3D11UnorderedAccessView* prepareUav = impl.controlledResidualUav11.get();
-	ID3D11Buffer* constantBuffer = impl.resampleConstants11.get();
+	ID3D11Buffer* constantBuffer = impl.residualConstants11.get();
 	impl.context11->CSSetShader(
 		impl.residualPrepareShader11.get(), nullptr, 0);
 	impl.context11->CSSetShaderResources(
@@ -1801,11 +1810,11 @@ DLSSNRFilter::GetFrameGuidanceRequirements() const noexcept {
 EffectParameterApplyMode DLSSNRFilter::GetParameterApplyMode(
 	std::string_view parameterName
 ) const noexcept {
+	if (parameterName == "residualShowAdvanced")
+		return EffectParameterApplyMode::Live;
 	if (_settings.experimentalHdr.enabled &&
 		(parameterName == "enableInputResolutionScaling" || parameterName == "inputResolutionPercent" ||
-		 parameterName == "residualMultiplier" || parameterName == "residualSaturation" ||
-		 parameterName == "residualLightness" || parameterName == "shadowStructureMultiplier" ||
-		 parameterName == "reflectionGlowMultiplier")) return EffectParameterApplyMode::Unavailable;
+		 IsDLSSNRResidualParameter(parameterName))) return EffectParameterApplyMode::Unavailable;
 	if (parameterName == "style" || parameterName == "intensity" ||
 		parameterName == "localToneStrength" ||
 		parameterName == "localStructureStrength" ||
@@ -1813,14 +1822,9 @@ EffectParameterApplyMode DLSSNRFilter::GetParameterApplyMode(
 		parameterName == "useAutoMask" || parameterName == "uiCorrection") {
 		return EffectParameterApplyMode::Live;
 	}
-	if (parameterName == "residualMultiplier" ||
-		parameterName == "residualSaturation" ||
-		parameterName == "residualLightness" ||
-		parameterName == "shadowStructureMultiplier" ||
-		parameterName == "reflectionGlowMultiplier") {
+	if (IsDLSSNRResidualParameter(parameterName)) {
 		return _settings.enableInputResolutionScaling
-			? EffectParameterApplyMode::Live
-			: EffectParameterApplyMode::RestartRequired;
+			? EffectParameterApplyMode::Live : EffectParameterApplyMode::RestartRequired;
 	}
 	return EffectParameterApplyMode::RestartRequired;
 }
@@ -1834,60 +1838,55 @@ EffectParameterRestartReason DLSSNRFilter::GetParameterRestartReason(
 	return EffectParameterRestartReason::ResourceRecreation;
 }
 
+static bool SameNRSettings(const DLSSNRSettings& a, const DLSSNRSettings& b) noexcept {
+	return a.style == b.style && a.intensity == b.intensity &&
+		a.localToneStrength == b.localToneStrength && a.localStructureStrength == b.localStructureStrength &&
+		a.skinStructureStrength == b.skinStructureStrength && a.useAutoMask == b.useAutoMask &&
+		a.uiCorrection == b.uiCorrection;
+}
+
 bool DLSSNRFilter::ApplyLiveParameters(
-	const EffectOption& option,
-	std::span<const std::string> parameterNames
+	const EffectOption& option, std::span<const std::string> names
 ) noexcept {
-	if (!_impl) {
-		return false;
+	if (!_impl) return false;
+	std::vector<DLSSNRSettings> candidates;
+	for (size_t i = 0; i < _passSettings.size(); ++i) {
+		const auto candidate = ParseDLSSNRSettings(DLSSNRPassOption(option, static_cast<int>(i + 1)),
+			_settings.experimentalHdr.enabled);
+		if (candidate.enableInputResolutionScaling != _settings.enableInputResolutionScaling ||
+			candidate.inputResolutionPercent != _settings.inputResolutionPercent ||
+			candidate.motionRequest != _settings.motionRequest) return false;
+		candidates.push_back(candidate);
 	}
-
-	// Preserve the active HDR protocol while validating live SDR parameters.
-	const DLSSNRSettings candidate = ParseDLSSNRSettings(
-		option, _settings.experimentalHdr.enabled);
-	if (candidate.enableInputResolutionScaling !=
-			_settings.enableInputResolutionScaling ||
-		candidate.inputResolutionPercent != _settings.inputResolutionPercent ||
-		candidate.motionRequest != _settings.motionRequest) {
-		return false;
+	for (const auto& name : names) {
+		const size_t pass = DLSSNRParameterPass(name) - 1;
+		if (pass >= _passSettings.size()) continue; // persisted hidden setting
+		const auto base = DLSSNRBaseParameter(name);
+		if (GetParameterApplyMode(base) != EffectParameterApplyMode::Live) return false;
 	}
-
-	bool evaluateChanged = false;
-	bool residualChanged = false;
-	for (const std::string& name : parameterNames) {
-		if (GetParameterApplyMode(name) != EffectParameterApplyMode::Live) {
-			return false;
-		}
-		if (name == "residualMultiplier" || name == "residualSaturation" ||
-			name == "residualLightness" ||
-			name == "shadowStructureMultiplier" ||
-			name == "reflectionGlowMultiplier") {
-			residualChanged = true;
-		} else {
-			evaluateChanged = true;
-		}
+	const auto& post = candidates.front();
+	const bool residualChanged = post.residualMultiplier != _settings.residualMultiplier ||
+		post.residualSaturation != _settings.residualSaturation || post.residualLightness != _settings.residualLightness ||
+		post.shadowStructureMultiplier != _settings.shadowStructureMultiplier ||
+		post.reflectionGlowMultiplier != _settings.reflectionGlowMultiplier ||
+		post.residualHueProtection != _settings.residualHueProtection ||
+		post.residualDarkProtection != _settings.residualDarkProtection ||
+		post.residualHighlightProtection != _settings.residualHighlightProtection ||
+		post.residualLocalCompression != _settings.residualLocalCompression ||
+		post.residualLowFrequencyGain != _settings.residualLowFrequencyGain ||
+		post.residualDetailGain != _settings.residualDetailGain ||
+		post.residualChromaTemporalStrength != _settings.residualChromaTemporalStrength ||
+		post.residualDebugView != _settings.residualDebugView;
+	for (size_t i = 0; i < _passSettings.size(); ++i) {
+		if (SameNRSettings(candidates[i], _passSettings[i])) continue;
+		Impl& pass = i ? *_impl->laterPasses[i - 1] : *_impl;
+		++pass.evaluateParameterRevision;
+		for (size_t j = i; j < _passSettings.size(); ++j)
+			(j ? *_impl->laterPasses[j - 1] : *_impl).resetHistory = true;
 	}
-
-	_settings.style = candidate.style;
-	_settings.intensity = candidate.intensity;
-	_settings.localToneStrength = candidate.localToneStrength;
-	_settings.localStructureStrength = candidate.localStructureStrength;
-	_settings.skinStructureStrength = candidate.skinStructureStrength;
-	_settings.useAutoMask = candidate.useAutoMask;
-	_settings.uiCorrection = candidate.uiCorrection;
-	_settings.residualMultiplier = candidate.residualMultiplier;
-	_settings.residualSaturation = candidate.residualSaturation;
-	_settings.residualLightness = candidate.residualLightness;
-	_settings.shadowStructureMultiplier = candidate.shadowStructureMultiplier;
-	_settings.reflectionGlowMultiplier = candidate.reflectionGlowMultiplier;
-
-	if (evaluateChanged) {
-		++_impl->evaluateParameterRevision;
-		_impl->resetHistory = true;
-	}
-	if (residualChanged) {
-		_impl->residualParametersDirty = true;
-	}
+	_passSettings = std::move(candidates);
+	_settings = _passSettings.front();
+	_impl->residualParametersDirty |= residualChanged;
 	return true;
 }
 
@@ -1898,9 +1897,24 @@ bool DLSSNRFilter::Initialize(
 	ID3D11Texture2D* output,
 	const DLSSNRSettings& settings
 ) noexcept {
+	return InitializeChain(resources, ngxCore, input, output, { &settings, 1 });
+}
+
+bool DLSSNRFilter::InitializeChain(DeviceResources& resources, NgxD3D12Core& ngxCore,
+	ID3D11Texture2D* input, ID3D11Texture2D* output,
+	std::span<const DLSSNRSettings> passes) noexcept {
+	if (passes.empty() || passes.size() > 3 || !input || !output) return false;
+	const DLSSNRSettings settings = passes.front();
+	for (const auto& pass : passes) {
+		if (pass.enableInputResolutionScaling != settings.enableInputResolutionScaling ||
+			pass.inputResolutionPercent != settings.inputResolutionPercent ||
+			pass.motionRequest != settings.motionRequest ||
+			pass.experimentalHdr.enabled != settings.experimentalHdr.enabled) return false;
+	}
+	_passSettings.assign(passes.begin(), passes.end());
 	_settings = settings;
 	_settings.residualMultiplier = ClampFinite(
-		_settings.residualMultiplier, 1.0f, 2.0f, 1.0f);
+		_settings.residualMultiplier, 0.0f, 2.0f, 1.0f);
 	_settings.residualSaturation = ClampFinite(
 		_settings.residualSaturation, 0.0f, 2.0f, 1.0f);
 	_settings.residualLightness = ClampFinite(
@@ -1909,12 +1923,29 @@ bool DLSSNRFilter::Initialize(
 		_settings.shadowStructureMultiplier, 0.0f, 2.0f, 1.0f);
 	_settings.reflectionGlowMultiplier = ClampFinite(
 		_settings.reflectionGlowMultiplier, 0.0f, 2.0f, 1.0f);
+	_settings.residualHueProtection = ClampFinite(_settings.residualHueProtection,0.f,1.f,0.f);
+	_settings.residualDarkProtection = ClampFinite(_settings.residualDarkProtection,0.f,1.f,0.f);
+	_settings.residualHighlightProtection = ClampFinite(_settings.residualHighlightProtection,0.f,1.f,0.f);
+	_settings.residualLocalCompression = ClampFinite(_settings.residualLocalCompression,0.f,1.f,0.f);
+	_settings.residualLowFrequencyGain = ClampFinite(_settings.residualLowFrequencyGain,0.f,2.f,1.f);
+	_settings.residualDetailGain = ClampFinite(_settings.residualDetailGain,0.f,2.f,1.f);
+	_settings.residualChromaTemporalStrength = 0.f;
+	_settings.residualDebugView = std::clamp(_settings.residualDebugView,0,7);
 	_settings.intensity = ClampFinite(
 		_settings.intensity, 0.0f, 2.0f, 1.0f);
 	_settings.localToneStrength = ClampFinite(
 		_settings.localToneStrength, 0.0f, 2.0f, 1.0f);
 	_settings.localStructureStrength = ClampFinite(
 		_settings.localStructureStrength, 0.0f, 2.0f, 1.0f);
+	_passSettings.front() = _settings;
+	for (auto& pass : _passSettings) {
+		pass.style = std::clamp(pass.style, 0, 2);
+		pass.intensity = ClampFinite(pass.intensity, 0.0f, 2.0f, 1.0f);
+		pass.localToneStrength = ClampFinite(pass.localToneStrength, 0.0f, 2.0f, 1.0f);
+		pass.localStructureStrength = ClampFinite(pass.localStructureStrength, 0.0f, 2.0f, 1.0f);
+		pass.skinStructureStrength = ClampFinite(pass.skinStructureStrength, 0.0f, 2.0f, 0.0f);
+	}
+	_settings = _passSettings.front();
 	_ngxCore = &ngxCore;
 	_impl.reset();
 	FrameGuidancePerformance::ResetDlssnrGpuTiming();
@@ -2011,17 +2042,8 @@ bool DLSSNRFilter::Initialize(
 			hr = impl->device11->CreateUnorderedAccessView(
 				impl->sharedInput11.get(), nullptr, impl->sharedInputUav11.put());
 		}
-		winrt::com_ptr<ID3DBlob> shaderBlob;
-		if (SUCCEEDED(hr) && !DirectXHelper::CompileComputeShader(
-			COLOR_CONVERT_HLSL, "ConvertToRgba", shaderBlob.put(),
-			"DLSSNRColorConvert")) {
-			hr = E_FAIL;
-		}
-		if (SUCCEEDED(hr)) {
-			hr = impl->device11->CreateComputeShader(
-				shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr,
-				impl->colorConvertShader11.put());
-		}
+		if (SUCCEEDED(hr) && !CreateComputeShader(*impl, COLOR_CONVERT_HLSL,
+			"ConvertToRgba", "DLSSNRColorConvert", impl->colorConvertShader11)) hr = E_FAIL;
 		if (FAILED(hr)) {
 			Logger::Get().ComError("Create DLSSNR BGRA conversion resources failed", hr);
 			return false;
@@ -2056,7 +2078,7 @@ bool DLSSNRFilter::Initialize(
 	if constexpr (NativeBackendTiming::Enabled) {
 		D3D12_QUERY_HEAP_DESC queryDesc{};
 		queryDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
-		queryDesc.Count = Impl::COMMAND_SLOT_COUNT * 2;
+		queryDesc.Count = Impl::COMMAND_SLOT_COUNT * Impl::TIMESTAMP_STRIDE;
 		hr = impl->device12->CreateQueryHeap(
 			&queryDesc, IID_PPV_ARGS(impl->timestampQueryHeap.put()));
 		D3D12_HEAP_PROPERTIES readbackHeap{};
@@ -2132,6 +2154,35 @@ bool DLSSNRFilter::Initialize(
 		return false;
 	}
 
+	for (size_t i = 1; i < passes.size(); ++i) {
+		auto child = std::make_unique<Impl>();
+		child->coreOwner = &ngxCore;
+		child->device11 = impl->device11;
+		child->device12 = impl->device12;
+		child->width = impl->width;
+		child->height = impl->height;
+		child->sharedInput11 = i == 1 ? impl->sharedOutput11 : impl->laterPasses.back()->sharedOutput11;
+		child->sharedInput12 = i == 1 ? impl->sharedOutput12 : impl->laterPasses.back()->sharedOutput12;
+		child->snippetSession = impl->snippetSession;
+		child->snippetReleaseFeature = impl->snippetReleaseFeature;
+		child->snippetEvaluateFeature = impl->snippetEvaluateFeature;
+		child->useSignedSnippet = impl->useSignedSnippet;
+		if (!CreateSharedTexture(*impl, sharedDesc, true,
+			child->sharedOutput11, child->sharedOutput12)) return false;
+		if (impl->useResolutionScaling && i + 1 == passes.size() && FAILED(impl->device11->CreateShaderResourceView(
+			child->sharedOutput11.get(), nullptr, child->sharedOutputSrv11.put()))) return false;
+		if (!ngxCore.AllocateParameters(&child->parameters, "DLSSNR") ||
+			!SetCreateParametersSafely(*child, &sehCode)) return false;
+		result = CallCreateFeatureSafely(createFeature, impl->commandList12.get(), FEATURE_DLSSNR,
+			child->parameters, &child->feature, &sehCode);
+		if (sehCode || !NGXSucceeded(result) || !child->feature) {
+			Logger::Get().Error(fmt::format("DLSSNR pass {} creation failed ({:#x}), SEH={:#x}",
+				i + 1, static_cast<uint32_t>(result), sehCode));
+			return false;
+		}
+		impl->laterPasses.push_back(std::move(child));
+	}
+
 	hr = impl->commandList12->Close();
 	if (FAILED(hr)) {
 		Logger::Get().ComError("Close DLSSNR initialization command list failed", hr);
@@ -2144,7 +2195,7 @@ bool DLSSNRFilter::Initialize(
 	}
 	for (uint32_t i = 0; i < impl->commandSlots.size(); ++i) {
 		Impl::CommandSlot& slot = impl->commandSlots[i];
-		slot.timestampQuery = i * 2;
+		slot.timestampQuery = i * Impl::TIMESTAMP_STRIDE;
 		hr = impl->device12->CreateCommandAllocator(
 			D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(slot.allocator.put()));
 		if (SUCCEEDED(hr)) {
@@ -2158,11 +2209,15 @@ bool DLSSNRFilter::Initialize(
 			return false;
 		}
 	}
-	impl->guidanceInterop = std::make_unique<FrameGuidanceD3D12Interop>();
+	impl->guidanceInterop = std::make_shared<FrameGuidanceD3D12Interop>();
 	if (!impl->guidanceInterop->Initialize(
 		impl->device12.get(), impl->fence12.get())) {
 		return false;
 	}
+
+	for (const auto& child : impl->laterPasses) child->guidanceInterop = impl->guidanceInterop;
+	Logger::Get().Info(fmt::format("DLSSNR chain: passes={} queues=1 fences=1 slots={} intermediates={}x{} residual=total",
+		passes.size(), Impl::COMMAND_SLOT_COUNT, impl->width, impl->height));
 
 	LogDlssnrStatus(fmt::format(
 		"DLSSNR STATUS: Feature=18 created=true path={} sourceSize={}x{} sourceFormat={} "
@@ -2195,7 +2250,8 @@ bool DLSSNRFilter::Resize(
 	ID3D11Texture2D* input,
 	ID3D11Texture2D* output
 ) noexcept {
-	return _ngxCore && Initialize(resources, *_ngxCore, input, output, _settings);
+	const auto settings = _passSettings;
+	return _ngxCore && InitializeChain(resources, *_ngxCore, input, output, settings);
 }
 
 bool DLSSNRFilter::Drain() noexcept {
@@ -2213,269 +2269,225 @@ static FrameGuidanceView SelectGuidance(
 		settings.motionRequest.method != OpticalFlowMethod::None);
 }
 
+// Resource identity, generations, validity and synchronization are part of reuse.
+static bool SameGuidance(const FrameGuidanceView& a, const FrameGuidanceView& b,
+	bool constantContents = false) noexcept {
+	if (a.motionDirection != b.motionDirection || a.motionUnit != b.motionUnit ||
+		(!constantContents && a.requiresHistoryReset != b.requiresHistoryReset)) return false;
+	const FrameGuidanceResource* left[]{ &a.motion, &a.depth, &a.confidence };
+	const FrameGuidanceResource* right[]{ &b.motion, &b.depth, &b.confidence };
+	for (size_t i = 0; i < 3; ++i) {
+		const auto& x = left[i]->metadata;
+		const auto& y = right[i]->metadata;
+		if (left[i]->texture != right[i]->texture || left[i]->format != right[i]->format ||
+			x.resourceGeneration != y.resourceGeneration || x.sourceExtent != y.sourceExtent ||
+			x.validRegion != y.validRegion || x.valid != y.valid || x.isZero != y.isZero ||
+			x.sync.fence != y.sync.fence || x.sync.value != y.sync.value) return false;
+		if (!constantContents && (x.frameId != y.frameId || x.captureSequence != y.captureSequence ||
+			x.timestamp100ns != y.timestamp100ns || x.requiresHistoryReset != y.requiresHistoryReset ||
+			x.resetReason != y.resetReason)) return false;
+	}
+	return true;
+}
+
+static void TransitionColor(ID3D12GraphicsCommandList* list, ID3D12Resource* resource,
+	D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) noexcept {
+	D3D12_RESOURCE_BARRIER barrier{};
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Transition = { resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, before, after };
+	list->ResourceBarrier(1, &barrier);
+}
+
 bool DLSSNRFilter::Draw(const NativeEffectDrawContext& context) noexcept {
-	if (!_impl || !_impl->feature || !_impl->parameters) {
-		return false;
-	}
+	if (!_impl || !_impl->feature || !_impl->parameters) return false;
 	Impl& impl = *_impl;
-	ID3D11Texture2D* input = context.input;
-	ID3D11Texture2D* output = context.output;
-	if (impl.lastEvaluatedFrameId == context.frameId &&
-		impl.lastEvaluatedParameterRevision == impl.evaluateParameterRevision &&
-		impl.lastEvaluatedInputRevision == context.inputRevision) {
-		if (impl.residualParametersDirty && impl.useResolutionScaling) {
-			const bool composited = CompositeResidual(
-				impl, output,
-				impl.disabled ? impl.sharedInputSrv11.get() :
-					impl.sharedOutputSrv11.get(),
-				_settings);
-			if (composited) {
-				impl.residualParametersDirty = false;
-			}
-			return composited;
-		}
-		++impl.duplicateFrameReuseCount;
-		if (impl.duplicateFrameReuseCount <= 3 ||
-			impl.duplicateFrameReuseCount % 120 == 0) {
-			Logger::Get().Info(fmt::format(
-				"DLSSNR duplicate capture reused: frameId={} reuseCount={}",
-				context.frameId, impl.duplicateFrameReuseCount));
-		}
+	const size_t count = _passSettings.size();
+	auto passAt = [&](size_t i) -> Impl& { return i ? *impl.laterPasses[i - 1] : impl; };
+	Impl& final = passAt(count - 1);
+	auto composite = [&]() noexcept {
+		if (impl.useResolutionScaling) return CompositeResidual(impl, context.output,
+			impl.disabled ? impl.sharedInputSrv11.get() : final.sharedOutputSrv11.get(), _settings);
+		impl.context11->CopyResource(context.output,
+			impl.disabled ? impl.sharedInput11.get() : final.sharedOutput11.get());
 		return true;
-	}
-	// A live upstream edit can change this input even for the same capture ID.
-	// Re-evaluate with fresh history instead of mixing it with the old image.
-	if (impl.lastEvaluatedInputRevision != context.inputRevision) {
-		impl.resetHistory = true;
-	}
+	};
 	auto fail = [&](std::string_view stage) noexcept {
 		impl.disabled = true;
-		LogDlssnrStatus(fmt::format(
-			"DLSSNR STATUS: Feature=18 frameId={} stage={} result=internal-failure "
-			"disabled=true fallback=pass-through-next-frame",
+		impl.cache.valid = false;
+		LogDlssnrStatus(fmt::format("DLSSNR chain failed: frame={} stage={} rejecting complete output",
 			context.frameId, stage), true);
 		return false;
 	};
-	Impl::CommandSlot& commandSlot =
-		impl.commandSlots[impl.nextCommandSlot++ % Impl::COMMAND_SLOT_COUNT];
-	const auto slotWaitStart = NativeBackendTiming::Now();
-	if (commandSlot.completionValue &&
-		!WaitForFence(impl, commandSlot.completionValue)) {
-		return fail("command-slot-wait");
-	}
-	const double slotWaitMs = NativeBackendTiming::ElapsedMilliseconds(slotWaitStart);
-	if constexpr (NativeBackendTiming::Enabled) CollectGpuTiming(impl, commandSlot);
-	const auto inputPrepareStart = NativeBackendTiming::Now();
-	if (!PrepareInput(impl, input)) return fail("prepare-input");
-	const double inputPrepareMs = NativeBackendTiming::ElapsedMilliseconds(inputPrepareStart);
 	if (impl.disabled) {
-		bool succeeded = true;
-		if (impl.useResolutionScaling) {
-			succeeded = CompositeResidual(
-				impl, output, impl.sharedInputSrv11.get(),
-				_settings);
-		} else {
-			impl.context11->CopyResource(output, impl.sharedInput11.get());
-		}
-		if (succeeded) {
-			impl.lastEvaluatedFrameId = context.frameId;
-			impl.lastEvaluatedParameterRevision = impl.evaluateParameterRevision;
-			impl.lastEvaluatedInputRevision = context.inputRevision;
+		if (count > 1 || !Drain() || !PrepareInput(impl, context.input)) return false;
+		return composite(); // preserve the legacy single-feature pass-through
+	}
+	FrameGuidanceView guidance = SelectGuidance(context, _settings,
+		{ impl.sourceWidth, impl.sourceHeight });
+	if (!guidance.IsValidFor(context.frameId, { impl.sourceWidth, impl.sourceHeight }))
+		return fail("invalid-guidance");
+	std::array<uint64_t, 3> revisions{};
+	for (size_t i = 0; i < count; ++i) revisions[i] = passAt(i).evaluateParameterRevision;
+	const std::span<const uint64_t> activeRevisions{ revisions.data(), count };
+	const FrameGuidanceView sourceGuidance = guidance;
+	const bool sameGuidance = !context.inputHistoryReset &&
+		impl.cachedInputHistoryRevision == context.inputHistoryRevision &&
+		SameGuidance(impl.cachedGuidance, guidance);
+	const size_t first = impl.cache.FirstDirty(context.frameId, context.inputRevision,
+		sameGuidance, activeRevisions);
+	if (first == count) {
+		if (impl.residualParametersDirty) {
+			if (!composite()) return fail("cached-residual-composite");
 			impl.residualParametersDirty = false;
-			impl.resetHistory = false;
 		}
-		return succeeded;
+		++impl.duplicateFrameReuseCount;
+		return true;
 	}
-	const auto guidancePrepareStart = NativeBackendTiming::Now();
-	const FrameGuidanceView guidance = SelectGuidance(
-		context, _settings, { impl.sourceWidth, impl.sourceHeight });
-	if (!impl.guidanceInterop->WaitForProducer(impl.context11, guidance)) {
-		return fail("guidance-interop");
+	const bool prepareColor = !impl.cache.valid || impl.cache.frame != context.frameId ||
+		impl.cache.inputRevision != context.inputRevision;
+	const bool resourcesChanged = impl.cache.valid && (
+		impl.cachedGuidance.motion.texture != guidance.motion.texture ||
+		impl.cachedGuidance.depth.texture != guidance.depth.texture ||
+		impl.cachedGuidance.confidence.texture != guidance.confidence.texture ||
+		impl.cachedGuidance.motion.metadata.resourceGeneration != guidance.motion.metadata.resourceGeneration ||
+		impl.cachedGuidance.depth.metadata.resourceGeneration != guidance.depth.metadata.resourceGeneration ||
+		impl.cachedGuidance.confidence.metadata.resourceGeneration != guidance.confidence.metadata.resourceGeneration ||
+		impl.cachedGuidance.motion.metadata.validRegion != guidance.motion.metadata.validRegion);
+	if (resourcesChanged || context.inputHistoryReset ||
+		impl.cachedInputHistoryRevision != context.inputHistoryRevision ||
+		!context.isNewCaptureFrame || (impl.cache.valid && (
+			(impl.cache.frame == context.frameId && impl.cache.inputRevision != context.inputRevision) ||
+			context.frameId < impl.cache.frame))) {
+		for (size_t i = 0; i < count; ++i) passAt(i).resetHistory = true;
 	}
-	FrameGuidanceView reducedGuidance;
+	if (!context.isNewCaptureFrame) {
+		// Perform the reuse/residual decision against the captured guidance first.
+		// Only a real SDK re-evaluation needs Zero and reset for this old frame.
+		guidance = SelectFrameGuidanceChannels(context.zeroFrameGuidance, context.zeroFrameGuidance,
+			context.frameId, { impl.sourceWidth, impl.sourceHeight }, false);
+		if (!guidance.IsValidFor(context.frameId, { impl.sourceWidth, impl.sourceHeight }))
+			return fail("invalid-redraw-zero-guidance");
+	}
+	Impl::CommandSlot& slot = impl.commandSlots[impl.nextCommandSlot++ % Impl::COMMAND_SLOT_COUNT];
+	const auto waitStart = NativeBackendTiming::Now();
+	if (slot.completionValue && !WaitForFence(impl, slot.completionValue)) return fail("slot-wait");
+	const double waitMs = NativeBackendTiming::ElapsedMilliseconds(waitStart);
+	if constexpr (NativeBackendTiming::Enabled) CollectGpuTiming(impl, slot);
+	const auto inputStart = NativeBackendTiming::Now();
+	if (prepareColor && !PrepareInput(impl, context.input)) return fail("prepare-input");
+	const double inputMs = NativeBackendTiming::ElapsedMilliseconds(inputStart);
+	const auto guidanceStart = NativeBackendTiming::Now();
+	const bool reduceGuidance = impl.useResolutionScaling &&
+		(impl.width != impl.sourceWidth || impl.height != impl.sourceHeight);
+	if (!impl.guidanceInterop->WaitForProducer(impl.context11, guidance, reduceGuidance)) return fail("producer-wait");
+	FrameGuidanceView reduced;
 	const FrameGuidanceView* evaluateGuidance = &guidance;
-	if (impl.useResolutionScaling) {
-		if (!PrepareReducedGuidance(impl, guidance)) {
-			return fail("guidance-downsample");
+	if (reduceGuidance) {
+		// Zero resources are immutable constants (depth can be ONE). Resample their
+		// actual contents once rather than guessing the clear value from isZero.
+		const bool constant = guidance.motion.metadata.isZero && guidance.depth.metadata.isZero &&
+			guidance.confidence.metadata.isZero;
+		if (!impl.guidancePrepared || !SameGuidance(impl.preparedGuidance, guidance, constant)) {
+			if (!PrepareReducedGuidance(impl, guidance)) return fail("guidance-downsample");
+			impl.preparedGuidance = guidance;
+			impl.guidancePrepared = true;
 		}
-		reducedGuidance = MakeReducedGuidance(impl, guidance);
-		evaluateGuidance = &reducedGuidance;
+		reduced = MakeReducedGuidance(impl, guidance);
+		evaluateGuidance = &reduced;
 	}
-	if (!UpdateGuidanceResources(
-		impl, *evaluateGuidance, context.frameId)) {
-		return fail("guidance-interop");
-	}
-	const double guidancePrepareMs = NativeBackendTiming::ElapsedMilliseconds(guidancePrepareStart);
+	if (!UpdateGuidanceResources(impl, *evaluateGuidance, context.frameId)) return fail("guidance-mapping");
+	const double guidanceMs = NativeBackendTiming::ElapsedMilliseconds(guidanceStart);
 	const uint64_t inputReady = ++impl.fenceValue;
-	HRESULT hr = impl.context11->Signal(impl.fence11.get(), inputReady);
-	if (FAILED(hr)) {
-		return fail("d3d11-input-signal");
-	}
+	if (FAILED(impl.context11->Signal(impl.fence11.get(), inputReady))) return fail("input-signal");
 	impl.context11->Flush();
-	hr = impl.queue12->Wait(impl.fence12.get(), inputReady);
-	if (FAILED(hr)) {
-		return fail("d3d12-input-wait");
-	}
-	hr = commandSlot.allocator->Reset();
-	if (SUCCEEDED(hr)) {
-		hr = commandSlot.commandList->Reset(commandSlot.allocator.get(), nullptr);
-	}
-	if (FAILED(hr)) {
-		return fail("command-list-reset");
-	}
-	ID3D12GraphicsCommandList* commandList = commandSlot.commandList.get();
-
-	D3D12_RESOURCE_BARRIER barriers[2]{};
-	barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barriers[0].Transition = {
-		impl.sharedInput12.get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-		D3D12_RESOURCE_STATE_COMMON,
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
-	};
-	barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barriers[1].Transition = {
-		impl.sharedOutput12.get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-		D3D12_RESOURCE_STATE_COMMON,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS
-	};
-	commandList->ResourceBarrier(ARRAYSIZE(barriers), barriers);
-	impl.guidanceInterop->Transition(
-		commandList, D3D12_RESOURCE_STATE_COMMON,
+	if (FAILED(impl.queue12->Wait(impl.fence12.get(), inputReady))) return fail("input-wait");
+	HRESULT hr = slot.allocator->Reset();
+	if (SUCCEEDED(hr)) hr = slot.commandList->Reset(slot.allocator.get(), nullptr);
+	if (FAILED(hr)) return fail("list-reset");
+	auto* list = slot.commandList.get();
+	impl.guidanceInterop->Transition(list, D3D12_RESOURCE_STATE_COMMON,
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	const bool guidanceReset = evaluateGuidance->requiresHistoryReset &&
-		impl.lastGuidanceResetFrameId != context.frameId;
-	DWORD sehCode = 0;
-	if (!SetEvaluateParametersSafely(
-		impl, _settings, *evaluateGuidance, guidanceReset, &sehCode)) {
-		commandList->Close();
-		Logger::Get().Error(fmt::format(
-			"DLSSNR evaluation parameter setup raised SEH {:#x}", sehCode));
-		return fail("ngx-parameters-seh");
-	}
-	if (impl.timestampQueryHeap) {
-		commandList->EndQuery(
-			impl.timestampQueryHeap.get(), D3D12_QUERY_TYPE_TIMESTAMP,
-			commandSlot.timestampQuery);
-	}
+	TransitionColor(list, passAt(first).sharedInput12.get(), D3D12_RESOURCE_STATE_COMMON,
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	if (impl.timestampQueryHeap) list->EndQuery(impl.timestampQueryHeap.get(),
+		D3D12_QUERY_TYPE_TIMESTAMP, slot.timestampQuery);
 	const auto evaluateStart = NativeBackendTiming::Now();
-	const Impl::EvaluateFeatureFn evaluateFeature = impl.useSignedSnippet ?
-		impl.snippetEvaluateFeature :
-		static_cast<Impl::EvaluateFeatureFn>(&NVSDK_NGX_D3D12_EvaluateFeature);
-	const NVSDK_NGX_Result result = CallEvaluateFeatureSafely(
-		evaluateFeature, commandList, impl.feature,
-		impl.parameters, &sehCode);
-	const double evaluateCpuMs = NativeBackendTiming::ElapsedMilliseconds(evaluateStart);
-	if (impl.timestampQueryHeap) {
-		commandList->EndQuery(
-			impl.timestampQueryHeap.get(), D3D12_QUERY_TYPE_TIMESTAMP,
-			commandSlot.timestampQuery + 1);
-		commandList->ResolveQueryData(
-			impl.timestampQueryHeap.get(), D3D12_QUERY_TYPE_TIMESTAMP,
-			commandSlot.timestampQuery, 2, impl.timestampReadback.get(),
-			uint64_t(commandSlot.timestampQuery) * sizeof(uint64_t));
-	}
-	++impl.evaluateCount;
-	const bool evaluateSucceeded = !sehCode && NGXSucceeded(result);
-	if (evaluateSucceeded) {
-		++impl.evaluateSuccessCount;
-	} else {
-		++impl.evaluateFailureCount;
-		impl.disabled = true;
-		if (sehCode) {
-			Logger::Get().Error(fmt::format(
-				"DLSSNR EvaluateFeature raised SEH {:#x}", sehCode));
+	bool success = true;
+	for (size_t i = first; i < count; ++i) {
+		Impl& pass = passAt(i);
+		TransitionColor(list, pass.sharedOutput12.get(), D3D12_RESOURCE_STATE_COMMON,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		const bool reset = evaluateGuidance->requiresHistoryReset && pass.lastGuidanceResetFrameId != context.frameId;
+		DWORD seh = 0;
+		if (!SetEvaluateParametersSafely(pass, _passSettings[i], *evaluateGuidance, reset, &seh)) {
+			list->Close();
+			return fail("parameters-seh");
 		}
+		const uint32_t query = slot.timestampQuery + 2 + static_cast<uint32_t>(i) * 2;
+		if (impl.timestampQueryHeap) list->EndQuery(impl.timestampQueryHeap.get(), D3D12_QUERY_TYPE_TIMESTAMP, query);
+		const auto function = pass.useSignedSnippet ? pass.snippetEvaluateFeature :
+			static_cast<Impl::EvaluateFeatureFn>(&NVSDK_NGX_D3D12_EvaluateFeature);
+		const auto result = CallEvaluateFeatureSafely(function, list, pass.feature, pass.parameters, &seh);
+		++pass.evaluateCount;
+		const bool evaluated = !seh && NGXSucceeded(result);
+		if (evaluated) ++pass.evaluateSuccessCount; else ++pass.evaluateFailureCount;
+		if (!evaluated || pass.evaluateCount == 1) Logger::Get().Info(fmt::format(
+			"DLSSNR pass {}: frame={} result={:#x} SEH={:#x}", i + 1, context.frameId, static_cast<uint32_t>(result), seh));
+		if (impl.timestampQueryHeap) {
+			list->EndQuery(impl.timestampQueryHeap.get(), D3D12_QUERY_TYPE_TIMESTAMP, query + 1);
+			list->ResolveQueryData(impl.timestampQueryHeap.get(), D3D12_QUERY_TYPE_TIMESTAMP, query, 2,
+				impl.timestampReadback.get(), uint64_t(query) * sizeof(uint64_t));
+		}
+		TransitionColor(list, pass.sharedInput12.get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_COMMON);
+		TransitionColor(list, pass.sharedOutput12.get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+			evaluated && i + 1 < count ? D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE : D3D12_RESOURCE_STATE_COMMON);
+		if (!evaluated) { success = false; break; }
+		if (reset) pass.lastGuidanceResetFrameId = context.frameId;
+		pass.resetHistory = false;
 	}
-	if (!evaluateSucceeded || impl.evaluateCount == 1 ||
-		(NativeBackendTiming::Enabled &&
-			(impl.evaluateCount <= 8 || impl.evaluateCount % 120 == 0))) {
-		LogDlssnrStatus(fmt::format(
-			"DLSSNR STATUS: Feature=18 frameId={} evaluateCount={} result={:#x} "
-			"success={} failures={} opticalFlowMethod={} opticalFlowQuality={} path={} disabled={}",
-			context.frameId, impl.evaluateCount, static_cast<uint32_t>(result),
-			impl.evaluateSuccessCount, impl.evaluateFailureCount,
-			static_cast<uint32_t>(_settings.motionRequest.method),
-			static_cast<uint32_t>(_settings.motionRequest.quality),
-			impl.useSignedSnippet ? "signed-snippet" : "core-diagnostic",
-			impl.disabled), !evaluateSucceeded);
+	const double evaluateMs = NativeBackendTiming::ElapsedMilliseconds(evaluateStart);
+	impl.guidanceInterop->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON);
+	if (impl.timestampQueryHeap) {
+		list->EndQuery(impl.timestampQueryHeap.get(), D3D12_QUERY_TYPE_TIMESTAMP, slot.timestampQuery + 1);
+		list->ResolveQueryData(impl.timestampQueryHeap.get(), D3D12_QUERY_TYPE_TIMESTAMP, slot.timestampQuery, 2,
+			impl.timestampReadback.get(), uint64_t(slot.timestampQuery) * sizeof(uint64_t));
 	}
 	const auto submitStart = NativeBackendTiming::Now();
-	for (D3D12_RESOURCE_BARRIER& barrier : barriers) {
-		std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
-	}
-	impl.guidanceInterop->Transition(
-		commandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-		D3D12_RESOURCE_STATE_COMMON);
-	commandList->ResourceBarrier(ARRAYSIZE(barriers), barriers);
-	hr = commandList->Close();
-	if (FAILED(hr)) {
-		return fail("command-list-close");
-	}
-	ID3D12CommandList* lists[]{ commandList };
+	if (FAILED(list->Close())) return fail("list-close");
+	ID3D12CommandList* lists[]{ list };
 	impl.queue12->ExecuteCommandLists(1, lists);
-	commandSlot.timestampPending = impl.timestampQueryHeap != nullptr;
-	commandSlot.timestampFrameId = context.frameId;
+	slot.timestampPending = impl.timestampQueryHeap != nullptr;
+	slot.timestampFrameId = context.frameId;
+	slot.timestampFirstPass = static_cast<uint32_t>(first);
+	slot.timestampPassCount = success ? static_cast<uint32_t>(count) : static_cast<uint32_t>(first);
 	const uint64_t outputReady = ++impl.fenceValue;
 	hr = impl.queue12->Signal(impl.fence12.get(), outputReady);
-	commandSlot.completionValue = outputReady;
+	slot.completionValue = outputReady;
 	impl.guidanceInterop->MarkSubmitted(outputReady);
-	if (SUCCEEDED(hr)) {
-		hr = impl.context11->Wait(impl.fence11.get(), outputReady);
-	}
-	if (FAILED(hr)) {
-		return fail("output-signal-wait");
-	}
-	if (impl.useResolutionScaling) {
-		if (!CompositeResidual(
-			impl, output,
-			impl.disabled ? impl.sharedInputSrv11.get() :
-				impl.sharedOutputSrv11.get(),
-			_settings)) {
-			return fail("residual-composite");
-		}
-	} else {
-		impl.context11->CopyResource(
-			output, impl.disabled ? impl.sharedInput11.get() :
-				impl.sharedOutput11.get());
-	}
-	const double submitMs = NativeBackendTiming::ElapsedMilliseconds(submitStart);
-	if constexpr (NativeBackendTiming::Enabled) {
-		impl.slotWaitTimings.Add(slotWaitMs);
-		impl.inputPrepareTimings.Add(inputPrepareMs);
-		impl.guidancePrepareTimings.Add(guidancePrepareMs);
-		impl.evaluateCpuTimings.Add(evaluateCpuMs);
-		impl.submitTimings.Add(submitMs);
-	}
-	if (guidanceReset) {
-		impl.lastGuidanceResetFrameId = context.frameId;
-	}
-	impl.resetHistory = false;
+	if (SUCCEEDED(hr)) hr = impl.context11->Wait(impl.fence11.get(), outputReady);
+	if (FAILED(hr)) return fail("output-signal-wait");
+	if (!success) return fail("evaluate");
+	if (!composite()) return fail("composite");
 	impl.residualParametersDirty = false;
+	impl.cachedGuidance = sourceGuidance;
+	impl.cachedInputHistoryRevision = context.inputHistoryRevision;
+	impl.cache.Commit(context.frameId, context.inputRevision, activeRevisions);
 	if constexpr (NativeBackendTiming::Enabled) {
-		if (impl.evaluateCount <= 8 || impl.evaluateCount % 120 == 0) {
-			if (impl.evaluateCount <= 8) {
-				Logger::Get().Info(fmt::format(
-					"DLSSNR timing: frameId={} evaluateCount={} slotWait={:.3f} ms "
-					"inputPrepare={:.3f} ms guidancePrepare={:.3f} ms "
-					"evaluateCPU={:.3f} ms submit={:.3f} ms",
-					context.frameId, impl.evaluateCount, slotWaitMs, inputPrepareMs,
-					guidancePrepareMs, evaluateCpuMs, submitMs));
-			} else {
-				Logger::Get().Info(fmt::format(
-					"DLSSNR timing 120-frame window: frameId={} evaluateCount={} {} {} {} {} {} {}",
-					context.frameId, impl.evaluateCount,
-					FormatTimingSummary("slotWait", impl.slotWaitTimings.Summarize()),
-					FormatTimingSummary("inputPrepare", impl.inputPrepareTimings.Summarize()),
-					FormatTimingSummary("guidancePrepare", impl.guidancePrepareTimings.Summarize()),
-					FormatTimingSummary("evaluateCPU", impl.evaluateCpuTimings.Summarize()),
-					FormatTimingSummary("submit", impl.submitTimings.Summarize()),
-					FormatTimingSummary("evaluateGPU", impl.evaluateGpuTimings.Summarize())));
-			}
-		}
+		impl.slotWaitTimings.Add(waitMs);
+		impl.inputPrepareTimings.Add(inputMs);
+		impl.guidancePrepareTimings.Add(guidanceMs);
+		impl.evaluateCpuTimings.Add(evaluateMs);
+		impl.submitTimings.Add(NativeBackendTiming::ElapsedMilliseconds(submitStart));
+		if (impl.evaluateCount <= 8 || impl.evaluateCount % 120 == 0) Logger::Get().Info(fmt::format(
+			"DLSSNR chain timing: frame={} firstPass={} {} {} {} {} {} {}",
+			context.frameId, first + 1, FormatTimingSummary("slotWait", impl.slotWaitTimings.Summarize()),
+			FormatTimingSummary("inputPrepare", impl.inputPrepareTimings.Summarize()),
+			FormatTimingSummary("guidancePrepare", impl.guidancePrepareTimings.Summarize()),
+			FormatTimingSummary("evaluateCPU", impl.evaluateCpuTimings.Summarize()),
+			FormatTimingSummary("submit", impl.submitTimings.Summarize()),
+			FormatTimingSummary("evaluateGPU", impl.evaluateGpuTimings.Summarize())));
 	}
-	impl.lastEvaluatedFrameId = context.frameId;
-	impl.lastEvaluatedParameterRevision = impl.evaluateParameterRevision;
-	impl.lastEvaluatedInputRevision = context.inputRevision;
 	return true;
 }
 
@@ -2498,6 +2510,11 @@ DLSSNRFilter::GetFrameGuidanceRequirements() const noexcept { return {}; }
 bool DLSSNRFilter::Initialize(
 	DeviceResources&, NgxD3D12Core&, ID3D11Texture2D*, ID3D11Texture2D*,
 	const DLSSNRSettings&) noexcept {
+	Logger::Get().Error("DLSSNR support is disabled at build time");
+	return false;
+}
+bool DLSSNRFilter::InitializeChain(DeviceResources&, NgxD3D12Core&,
+	ID3D11Texture2D*, ID3D11Texture2D*, std::span<const DLSSNRSettings>) noexcept {
 	Logger::Get().Error("DLSSNR support is disabled at build time");
 	return false;
 }

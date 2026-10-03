@@ -25,17 +25,21 @@ template<class GetValue>
 bool IsEffectParameterVisible(std::string_view effect, std::string_view parameter,
 	GetValue&& getValue) noexcept {
 	if (effect == "DLSSNR\\DLSSNR_AI_Filter" &&
-		DLSSNRParameterPass(parameter) > DLSSNRPassCount(getValue)) return false;
+		(parameter == "residualChromaTemporalStrength" ||
+		 DLSSNRParameterPass(parameter) > DLSSNRPassCount(getValue))) return false;
 	if (HasOpticalFlowSelection(effect)) {
 		const float method = getValue("opticalFlowMethod", effect == "XeSSFG\\XeSS_FrameGeneration" ? 1.0f : 0.0f);
 		if (parameter == "amdOpticalFlowMode") return method == 1.0f;
 		if (parameter == "nvidiaOpticalFlowQuality") return method == 2.0f;
 	}
-	if (effect == "DLSSNR\\DLSSNR_AI_Filter" &&
-		(parameter == "inputResolutionPercent" || parameter == "residualMultiplier" ||
-		 parameter == "residualSaturation" || parameter == "residualLightness" ||
-		 parameter == "shadowStructureMultiplier" || parameter == "reflectionGlowMultiplier")) {
-		return getValue("enableInputResolutionScaling", 0.0f) != 0.0f;
+	if (effect == "DLSSNR\\DLSSNR_AI_Filter") {
+		if (parameter == "residualShowAdvanced")
+			return getValue("enableInputResolutionScaling", 0.f) != 0;
+		if (parameter == "inputResolutionPercent" || IsDLSSNRResidualParameter(parameter)) {
+			if (getValue("enableInputResolutionScaling", 0.f) == 0) return false;
+			if (IsDLSSNRAdvancedParameter(parameter))
+				return getValue("residualShowAdvanced", 0.f) != 0;
+		}
 	}
 	return true;
 }

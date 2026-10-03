@@ -7,7 +7,7 @@
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Adjust Input Resolution\n(Reduces DLSSNR Quality)
+//!LABEL Adjust Input Resolution
 //!DEFAULT 0
 //!MIN 0
 //!MAX 1
@@ -25,16 +25,16 @@ int inputResolutionPercent;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Residual Multiplier
+//!LABEL Overall Strength
 //!DEFAULT 1
-//!MIN 1
+//!MIN 0
 //!MAX 2
 //!STEP 0.05
 float residualMultiplier;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Residual Saturation Multiplier
+//!LABEL Chroma Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
@@ -43,7 +43,7 @@ float residualSaturation;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Residual Lightness Multiplier
+//!LABEL Overall Lightness Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
@@ -52,7 +52,7 @@ float residualLightness;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Shadow / Structure Control
+//!LABEL Shadow / Structure Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
@@ -61,12 +61,21 @@ float shadowStructureMultiplier;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL Reflection / Glow Control
+//!LABEL Highlight / Glow Strength
 //!DEFAULT 1
 //!MIN 0
 //!MAX 2
 //!STEP 0.05
 float reflectionGlowMultiplier;
+
+//!PARAMETER
+//!GROUP Detail Control
+//!LABEL Advanced Adjustments
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 1
+int residualShowAdvanced;
 
 //!PARAMETER
 //!GROUP Detail Control
@@ -79,7 +88,7 @@ int opticalFlowMethod;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL OF Quality
+//!LABEL Optical Flow Quality
 //!DEFAULT 1
 //!OPTION 0 Performance
 //!OPTION 1 Quality
@@ -87,7 +96,7 @@ int amdOpticalFlowMode;
 
 //!PARAMETER
 //!GROUP Detail Control
-//!LABEL OF Quality
+//!LABEL Optical Flow Quality
 //!DEFAULT 2
 //!OPTION 1 Performance
 //!OPTION 2 Balanced
@@ -97,8 +106,76 @@ int amdOpticalFlowMode;
 int nvidiaOpticalFlowQuality;
 
 //!PARAMETER
+//!GROUP Advanced Adjustments
+//!LABEL Hue Protection
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 0.05
+float residualHueProtection;
+
+//!PARAMETER
+//!GROUP Advanced Adjustments
+//!LABEL Shadow Protection
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 0.05
+float residualDarkProtection;
+
+//!PARAMETER
+//!GROUP Advanced Adjustments
+//!LABEL Highlight Protection
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 0.05
+float residualHighlightProtection;
+
+//!PARAMETER
+//!GROUP Advanced Adjustments
+//!LABEL Overcorrection Suppression
+//!DEFAULT 0
+//!MIN 0
+//!MAX 1
+//!STEP 0.05
+float residualLocalCompression;
+
+//!PARAMETER
+//!GROUP Advanced Adjustments
+//!LABEL Low-frequency Range Strength
+//!DEFAULT 1
+//!MIN 0
+//!MAX 2
+//!STEP 0.05
+float residualLowFrequencyGain;
+
+//!PARAMETER
+//!GROUP Advanced Adjustments
+//!LABEL High-frequency Range Strength
+//!DEFAULT 1
+//!MIN 0
+//!MAX 2
+//!STEP 0.05
+float residualDetailGain;
+
+//!PARAMETER
+//!GROUP Advanced Adjustments
+//!LABEL Diagnostic View
+//!DEFAULT 0
+//!OPTION 0 Final Image
+//!OPTION 1 Raw Total Residual
+//!OPTION 2 Controlled Total Residual
+//!OPTION 3 Lightness Change
+//!OPTION 4 Chroma Change
+//!OPTION 5 Protection Weight
+//!OPTION 6 Gamut Scale
+//!OPTION 7 Compression Scale
+int residualDebugView;
+
+//!PARAMETER
 //!GROUP DLSSNR · Pass 1
-//!LABEL NR Style\n(0 Default, 1 Natural, 2 Cinematic)
+//!LABEL NR Style
 //!DEFAULT 0
 //!MIN 0
 //!MAX 2
@@ -181,7 +258,7 @@ int antiFlicker;
 
 //!PARAMETER
 //!GROUP DLSSNR · Pass 2
-//!LABEL NR Style\n(0 Default, 1 Natural, 2 Cinematic)
+//!LABEL NR Style
 //!DEFAULT 0
 //!MIN 0
 //!MAX 2
@@ -244,7 +321,7 @@ int pass2_uiCorrection;
 
 //!PARAMETER
 //!GROUP DLSSNR · Pass 3
-//!LABEL NR Style\n(0 Default, 1 Natural, 2 Cinematic)
+//!LABEL NR Style
 //!DEFAULT 0
 //!MIN 0
 //!MAX 2
